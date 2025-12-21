@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseU
 from django.utils.text import slugify
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
+from .utils import rename_prod
 
 
 class UserManager(BaseUserManager):
@@ -101,3 +102,25 @@ class Category(MPTTModel):
         ]  # уникальная комбинация род.категории и слага
         verbose_name = "Категория"
         verbose_name_plural = "Категории"
+
+
+# TODO: доработать!
+class Product(models.Model):
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        verbose_name="Категория товара",
+    )
+    name = models.CharField(max_length=100, verbose_name="Наименование")
+    description = models.TextField(blank=True, verbose_name="Описание")
+    price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="Цена")
+    image = models.ImageField(
+        upload_to=rename_prod, blank=True, verbose_name="Фото товара"
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Товар"
+        verbose_name_plural = "Товары"
