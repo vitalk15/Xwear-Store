@@ -52,7 +52,7 @@ def generate_unique_slug(model_instance, base_field="name", scope_field=None):
 
 
 # Генерация превью в админке
-def get_admin_thumb(image_field, size=(100, 90)):
+def get_admin_thumb(image_field, size=(100, 100)):
     if not image_field:
         return "Нет фото"
     try:

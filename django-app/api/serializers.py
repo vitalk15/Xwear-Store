@@ -6,7 +6,13 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from easy_thumbnails.files import get_thumbnailer
-from xwear.models import Category, Product, ProductImage, ProductSize
+from xwear.models import (
+    Category,
+    Product,
+    ProductImage,
+    ProductSize,
+    ProductSpecification,
+)
 from .utils import get_thumbnail_data
 
 User = get_user_model()
@@ -196,11 +202,27 @@ class ProductSizeSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "price", "is_active"]
 
 
+class SpecificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductSpecification
+        fields = [
+            "article",
+            "season",
+            "material_outer",
+            "material_inner",
+            "material_sole",
+        ]
+
+
 class ProductListSerializer(serializers.ModelSerializer):
     category = serializers.StringRelatedField()
     category_slug = serializers.CharField(source="category.slug", read_only=True)
     min_price = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
+    sizes = ProductSizeSerializer(
+        source='sizes.order_by("-size")', many=True, read_only=True
+    )
+    # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
 
     def get_min_price(self, obj):
         active_sizes = obj.sizes.filter(is_active=True)
@@ -232,6 +254,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "category",
             "category_slug",
             "gender",
+            "sizes",
             "min_price",
             "main_image",
             "is_active",
@@ -244,7 +267,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     sizes = ProductSizeSerializer(
         source='sizes.order_by("-size")', many=True, read_only=True
     )
+    # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
+    specification = SpecificationSerializer(read_only=True)
 
     class Meta:
         model = Product
@@ -258,5 +283,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "gender",
             "sizes",
             "images",
+            "specification",
             "is_active",
         ]

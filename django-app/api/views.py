@@ -194,7 +194,9 @@ def product_detail_view(request, category_slug, product_slug):
     product = get_object_or_404(
         Product.objects.filter(
             is_active=True, category__slug=category_slug, slug=product_slug
-        ).prefetch_related(
+        )
+        .select_related("specification")
+        .prefetch_related(
             Prefetch("images", queryset=ProductImage.objects.order_by("-is_main")),
             Prefetch(
                 "sizes",

@@ -74,27 +74,6 @@ class Category(MPTTModel):
             self.slug = generate_unique_slug(self, scope_field="parent")
         super().save(*args, **kwargs)
 
-    # def save(self, *args, **kwargs):
-    #     if not self.slug:
-    #         self.slug = self.generate_unique_slug()
-    #     super().save(*args, **kwargs)
-
-    # def generate_unique_slug(self):
-    #     slug_base = slugify(self.name, allow_unicode=False)
-    #     slug = slug_base
-
-    #     # Проверяем уникальность в рамках родителя, если совпадает - добавляем число
-    #     counter = 1
-    #     while (
-    #         self.__class__.objects.filter(slug=slug, parent=self.parent)
-    #         .exclude(pk=self.pk)
-    #         .exists()
-    #     ):
-    #         slug = f"{slug_base}-{counter}"
-    #         counter += 1
-
-    #     return slug
-
     def __str__(self):
         return self.name
 
@@ -120,13 +99,28 @@ class Size(models.Model):
     name = models.CharField(max_length=10, verbose_name="Размер")
     order = models.PositiveSmallIntegerField(default=0, verbose_name="Порядок")
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         ordering = ["order", "name"]
         verbose_name = "Размер"
         verbose_name_plural = "Размеры"
 
-    def __str__(self):
-        return self.name
+
+class ProductSize(models.Model):
+    product = models.ForeignKey(
+        "Product", on_delete=models.CASCADE, related_name="sizes", verbose_name="Товар"
+    )
+    size = models.ForeignKey(Size, on_delete=models.CASCADE, verbose_name="Размер")
+    # stock = models.PositiveIntegerField(default=0, verbose_name="Остаток")
+    price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="Цена")
+    is_active = models.BooleanField(default=True, verbose_name="В наличии")
+
+    class Meta:
+        unique_together = ["product", "size"]
+        verbose_name = "Размер/цена товара"
+        verbose_name_plural = "Размеры/цены товаров"
 
 
 class ProductImage(models.Model):
@@ -137,10 +131,6 @@ class ProductImage(models.Model):
     image = ThumbnailerImageField(upload_to=rename_image_prod, verbose_name="Фото")
     is_main = models.BooleanField(default=False, verbose_name="Главное фото")
     alt = models.CharField(max_length=200, blank=True, verbose_name="Alt текст")
-
-    class Meta:
-        verbose_name = "Фото товара"
-        verbose_name_plural = "Фото товаров"
 
     def save(self, *args, **kwargs):
         # Если ставим is_main=True, сбрасываем у всех остальных фото этого товара
@@ -158,6 +148,10 @@ class ProductImage(models.Model):
                 other_main.is_main = True
                 other_main.save()
         super().delete(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Фото товара"
+        verbose_name_plural = "Фото товаров"
 
 
 class Product(models.Model):
@@ -182,27 +176,6 @@ class Product(models.Model):
             self.slug = generate_unique_slug(self, scope_field="category")
         super().save(*args, **kwargs)
 
-    # def save(self, *args, **kwargs):
-    #     if not self.slug:
-    #         self.slug = self.generate_unique_slug()
-    #     super().save(*args, **kwargs)
-
-    # def generate_unique_slug(self):
-    #     slug_base = slugify(self.name, allow_unicode=False)
-    #     slug = slug_base
-
-    #     # Уникальность в рамках категории
-    #     counter = 1
-    #     while (
-    #         self.__class__.objects.filter(slug=slug, category=self.category)
-    #         .exclude(pk=self.pk)
-    #         .exists()
-    #     ):
-    #         slug = f"{slug_base}-{counter}"
-    #         counter += 1
-
-    #     return slug
-
     def __str__(self):
         return self.name
 
@@ -220,16 +193,29 @@ class Product(models.Model):
         ]
 
 
-class ProductSize(models.Model):
-    product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="sizes", verbose_name="Товар"
+class ProductSpecification(models.Model):
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="specification",
+        verbose_name="Характеристики",
     )
-    size = models.ForeignKey(Size, on_delete=models.CASCADE, verbose_name="Размер")
-    # stock = models.PositiveIntegerField(default=0, verbose_name="Остаток")
-    price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="Цена")
-    is_active = models.BooleanField(default=True, verbose_name="В наличии")
+    article = models.CharField(max_length=50, verbose_name="Артикул", unique=True)
+    season = models.CharField(max_length=50, verbose_name="Сезон")
+
+    # Состав (общие и специфические поля)
+    material_outer = models.CharField(max_length=255, verbose_name="Материал верха")
+    material_inner = models.CharField(max_length=255, verbose_name="Материал подкладки")
+    material_sole = models.CharField(
+        max_length=255,
+        verbose_name="Материал подошвы",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
-        unique_together = ["product", "size"]
-        verbose_name = "Размер/цена товара"
-        verbose_name_plural = "Размеры/цены товаров"
+        verbose_name = "Характеристики товара"
+        verbose_name_plural = "Характеристики товаров"
+
+    # def __str__(self):
+    #     return f"Характеристики для {self.product.name}"

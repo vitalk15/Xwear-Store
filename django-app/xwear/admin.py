@@ -1,6 +1,14 @@
 from django.contrib import admin
 from django_mptt_admin.admin import DjangoMpttAdmin
-from .models import User, Category, Product, ProductImage, Size, ProductSize
+from .models import (
+    User,
+    Category,
+    Product,
+    ProductImage,
+    Size,
+    ProductSize,
+    ProductSpecification,
+)
 from .utils import get_admin_thumb
 
 
@@ -43,7 +51,7 @@ class CategoryAdmin(DjangoMpttAdmin):
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
-    extra = 1  # 1 пустая строка
+    extra = 1  # 1 пустая строка для изображения
     fields = ["image", "is_main", "alt", "image_preview"]
     readonly_fields = ["image_preview"]
 
@@ -85,9 +93,17 @@ class ProductSizeInline(admin.TabularInline):
         return super().get_queryset(request).select_related("size")
 
 
+class SpecificationInline(admin.StackedInline):
+    model = ProductSpecification
+    can_delete = False
+    verbose_name = "Характеристики"
+    # Ограничиваем количество, так как это OneToOne
+    max_num = 1
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    inlines = [ProductImageInline, ProductSizeInline]
+    inlines = [ProductImageInline, ProductSizeInline, SpecificationInline]
 
     list_display = [
         "name",
@@ -110,10 +126,9 @@ class ProductAdmin(admin.ModelAdmin):
         "slug",
         "category",
         "description",
-        "gender_display",
+        "gender",
         "is_active",
     ]
-    readonly_fields = ["slug"]
 
     # Автозаполнение slug
     prepopulated_fields = {"slug": ("name",)}
@@ -130,7 +145,7 @@ class ProductAdmin(admin.ModelAdmin):
             all_images[0] if all_images else None
         )
 
-        return get_admin_thumb(main_img.image if main_img else None, size=(60, 50))
+        return get_admin_thumb(main_img.image if main_img else None, size=(80, 80))
 
     image_main.short_description = "Главное фото"
 
@@ -145,6 +160,6 @@ class ProductAdmin(admin.ModelAdmin):
         return (
             super()
             .get_queryset(request)
-            .select_related("category")
+            .select_related("category", "specification")
             .prefetch_related("sizes__size", "images")
         )
