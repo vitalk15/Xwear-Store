@@ -2,24 +2,26 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-# from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
-
-# from django.shortcuts import get_object_or_404
+from django.db.models import Prefetch
+from django.shortcuts import get_object_or_404
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from xwear.models import Category
+from xwear.models import Category, Product, ProductImage, ProductSize
 from .serializers import (
     RegisterSerializer,
     ChangePasswordSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
     CategorySerializer,
+    ProductListSerializer,
+    ProductDetailSerializer,
 )
 
 User = get_user_model()
@@ -153,22 +155,55 @@ def category_tree_view(request):
 
 
 # товары категории
-# @api_view(["GET"])
-# def category_products_view(request, slug):
-#     category = get_object_or_404(Category.objects.prefetch_related('products'), slug=slug, is_active=True)
-#     products_queryset = category.products.filter(is_active=True).order_by("-created_at")
+@api_view(["GET"])
+def category_detail_view(request, category_slug):
+    category = get_object_or_404(Category, slug=category_slug, is_active=True)
+    products_queryset = (
+        category.products.filter(is_active=True)
+        .prefetch_related(
+            Prefetch(
+                "images",
+                queryset=ProductImage.objects.filter(is_main=True),
+                to_attr="main_image_preview",  # Сохраняем в отдельный атрибут для скорости
+            )
+        )
+        .order_by("-created_at")
+    )
 
-#     # Пагинация из settings.py
-#     paginator = LimitOffsetPagination()
-#     page = paginator.paginate_queryset(products_queryset, request)
+    # Пагинация из settings.py
+    paginator = LimitOffsetPagination()
+    page = paginator.paginate_queryset(products_queryset, request)
 
-#     products_serializer = ProductSerializer(page, many=True)
+    serializer = ProductListSerializer(page, many=True, context={"request": request})
 
-#     return paginator.get_paginated_response({
-#         'category': {
-#             'id': category.id,
-#             'name': category.name,
-#             'slug': category.slug,
-#         },
-#         'products': products_serializer.data,
-#     })
+    return paginator.get_paginated_response(
+        {
+            "category": {
+                "id": category.id,
+                "name": category.name,
+                "slug": category.slug,
+            },
+            "products": serializer.data,
+        }
+    )
+
+
+# Детали товара
+@api_view(["GET"])
+def product_detail_view(request, category_slug, product_slug):
+    product = get_object_or_404(
+        Product.objects.filter(
+            is_active=True, category__slug=category_slug, slug=product_slug
+        ).prefetch_related(
+            Prefetch("images", queryset=ProductImage.objects.order_by("-is_main")),
+            Prefetch(
+                "sizes",
+                queryset=ProductSize.objects.filter(is_active=True).select_related(
+                    "size"
+                ),
+            ),
+        )
+    )
+
+    serializer = ProductDetailSerializer(product, context={"request": request})
+    return Response(serializer.data, status=status.HTTP_200_OK)

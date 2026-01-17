@@ -5,7 +5,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
-from xwear.models import Category
+from easy_thumbnails.files import get_thumbnailer
+from xwear.models import Category, Product, ProductImage, ProductSize
+from .utils import get_thumbnail_data
 
 User = get_user_model()
 
@@ -16,7 +18,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "password", "password_confirm")
+        fields = ("id", "email", "password", "password_confirm")
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
@@ -140,7 +142,7 @@ class CategorySerializer(serializers.ModelSerializer):
         serializer = CategorySerializer(children, many=True, context=self.context)
         return serializer.data
 
-    # есть ли активные дочерние элементы (для ленивой загрузки подкатегорий, если их будет много)
+    # есть ли активные дочерние элементы (для ленивой загрузки подкатегорий на фронте, если их будет много)
     def get_has_children(self, obj):
         return obj.get_children().filter(is_active=True).exists()
 
@@ -149,7 +151,112 @@ class CategorySerializer(serializers.ModelSerializer):
     #     return not obj.is_leaf_node()
 
 
-# class ProductSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Product
-#         fields = ["id", "name", "slug", "price", "stock", "image"]
+class ProductImageSerializer(serializers.ModelSerializer):
+    thumbnails = serializers.SerializerMethodField()
+
+    def get_thumbnails(self, obj):
+        request = self.context.get("request")
+        if not obj.image:
+            return None
+
+        thumbnailer = get_thumbnailer(obj.image)
+
+        aliases = {
+            "small": "product_small",
+            "medium": "product_medium",
+            "large": "product_large",
+        }
+
+        data = {}
+        for key, alias_name in aliases.items():
+            try:
+                thumb = thumbnailer.get_thumbnail({"alias": alias_name})
+                data[key] = {
+                    "url": request.build_absolute_uri(thumb.url),
+                    "width": thumb.width,  # Берется из кэша БД (THUMBNAIL_CACHE_DIMENSIONS)
+                    "height": thumb.height,
+                }
+            except Exception:
+                # Если файл поврежден, просто пропускаем этот размер
+                continue
+
+        data["original"] = request.build_absolute_uri(obj.image.url)
+        return data
+
+    class Meta:
+        model = ProductImage
+        fields = ["id", "thumbnails", "is_main", "alt"]
+
+
+class ProductSizeSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="size.name", read_only=True)
+
+    class Meta:
+        model = ProductSize
+        fields = ["id", "name", "price", "is_active"]
+
+
+class ProductListSerializer(serializers.ModelSerializer):
+    category = serializers.StringRelatedField()
+    category_slug = serializers.CharField(source="category.slug", read_only=True)
+    min_price = serializers.SerializerMethodField()
+    main_image = serializers.SerializerMethodField()
+
+    def get_min_price(self, obj):
+        active_sizes = obj.sizes.filter(is_active=True)
+        return (
+            min(active_sizes.values_list("price", flat=True))
+            if active_sizes.exists()
+            else 0
+        )
+
+    def get_main_image(self, obj):
+        main = getattr(obj, "main_image_preview", [])
+        main_img = main[0] if main else None
+
+        if main_img:
+            return {
+                "medium": get_thumbnail_data(
+                    main_img.image, "product_medium", self.context["request"]
+                ),
+                "alt": main_img.alt,
+            }
+        return None
+
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "category",
+            "category_slug",
+            "gender",
+            "min_price",
+            "main_image",
+            "is_active",
+        ]
+
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    category = serializers.StringRelatedField()
+    category_slug = serializers.CharField(source="category.slug", read_only=True)
+    sizes = ProductSizeSerializer(
+        source='sizes.order_by("-size")', many=True, read_only=True
+    )
+    images = ProductImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "category",
+            "category_slug",
+            "description",
+            "gender",
+            "sizes",
+            "images",
+            "is_active",
+        ]
