@@ -76,6 +76,7 @@ class Category(MPTTModel):
 
     def __str__(self):
         return self.name
+        # return f"{self.parent} -> {self.name}"
 
     class MPTTMeta:
         order_insertion_by = ["name"]
@@ -152,6 +153,7 @@ class ProductImage(models.Model):
     class Meta:
         verbose_name = "Фото товара"
         verbose_name_plural = "Фото товаров"
+        ordering = ["-is_main", "id"]
 
 
 class Product(models.Model):
@@ -170,6 +172,11 @@ class Product(models.Model):
         max_length=1, choices=GenderChoices.choices, verbose_name="Пол"
     )
     is_active = models.BooleanField(default=True, verbose_name="Активен")
+
+    @property
+    def get_main_image_obj(self):
+        images = list(self.images.all())
+        return images[0] if images else None
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -205,7 +212,12 @@ class ProductSpecification(models.Model):
 
     # Состав (общие и специфические поля)
     material_outer = models.CharField(max_length=255, verbose_name="Материал верха")
-    material_inner = models.CharField(max_length=255, verbose_name="Материал подкладки")
+    material_inner = models.CharField(
+        max_length=255,
+        verbose_name="Материал подкладки",
+        blank=True,
+        null=True,
+    )
     material_sole = models.CharField(
         max_length=255,
         verbose_name="Материал подошвы",

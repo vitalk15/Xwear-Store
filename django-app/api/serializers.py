@@ -133,28 +133,29 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
-    has_children = serializers.SerializerMethodField()
+    # has_children = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ["id", "name", "slug", "level", "children", "has_children"]
+        fields = ["id", "name", "slug", "level", "children"]
 
-    # рекурсивная сериализация активных дочерних элементов
+    # рекурсивная сериализация активных дочерних элементов (до 300-500 категорий)
     def get_children(self, obj):
+        # get_children() в MPTT при использовании get_cached_trees
+        # берет данные из кэша объекта, а не из БД
         if obj.is_leaf_node():
             return []
 
-        children = obj.get_children().filter(is_active=True)
+        # Если дерево было кэшировано через get_cached_trees,
+        # этот цикл не будет делать запросов к БД
+        children = [child for child in obj.get_children() if child.is_active]
         serializer = CategorySerializer(children, many=True, context=self.context)
         return serializer.data
 
-    # есть ли активные дочерние элементы (для ленивой загрузки подкатегорий на фронте, если их будет много)
-    def get_has_children(self, obj):
-        return obj.get_children().filter(is_active=True).exists()
-
-    # есть ли дочерние элементы, без фильтра активности
+    # для ленивой загрузки подкатегорий на фронте (1000 и более категорий)
     # def get_has_children(self, obj):
-    #     return not obj.is_leaf_node()
+    #     # Проверяем наличие активных детей в кэше
+    #     return any(child.is_active for child in obj.get_children())
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -169,7 +170,6 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
         aliases = {
             "small": "product_small",
-            "medium": "product_medium",
             "large": "product_large",
         }
 
@@ -215,7 +215,7 @@ class SpecificationSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    category = serializers.StringRelatedField()
+    category_name = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.CharField(source="category.slug", read_only=True)
     min_price = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
@@ -225,23 +225,18 @@ class ProductListSerializer(serializers.ModelSerializer):
     # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
 
     def get_min_price(self, obj):
-        active_sizes = obj.sizes.filter(is_active=True)
-        return (
-            min(active_sizes.values_list("price", flat=True))
-            if active_sizes.exists()
-            else 0
-        )
+        active_prices = [s.price for s in obj.sizes.all() if s.is_active]
+
+        return min(active_prices) if active_prices else 0
 
     def get_main_image(self, obj):
-        main = getattr(obj, "main_image_preview", [])
-        main_img = main[0] if main else None
-
-        if main_img:
+        img_obj = obj.get_main_image_obj
+        if img_obj:
             return {
-                "medium": get_thumbnail_data(
-                    main_img.image, "product_medium", self.context["request"]
+                "thumbnails": get_thumbnail_data(
+                    img_obj.image, {"medium": "product_medium"}, self.context["request"]
                 ),
-                "alt": main_img.alt,
+                "alt": img_obj.alt,
             }
         return None
 
@@ -251,7 +246,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "slug",
-            "category",
+            "category_name",
             "category_slug",
             "gender",
             "sizes",
@@ -262,7 +257,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    category = serializers.StringRelatedField()
+    category_name = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.CharField(source="category.slug", read_only=True)
     sizes = ProductSizeSerializer(
         source='sizes.order_by("-size")', many=True, read_only=True
@@ -270,6 +265,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     specification = SpecificationSerializer(read_only=True)
+    breadcrumbs = serializers.SerializerMethodField()
+
+    def get_breadcrumbs(self, obj):
+        # MPTT метод get_ancestors возвращает всю цепочку от корня до текущей категории
+        ancestors = obj.category.get_ancestors(include_self=True)
+        return [{"name": cat.name, "slug": cat.slug} for cat in ancestors]
 
     class Meta:
         model = Product
@@ -277,8 +278,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "slug",
-            "category",
+            "category_name",
             "category_slug",
+            "breadcrumbs",
             "description",
             "gender",
             "sizes",

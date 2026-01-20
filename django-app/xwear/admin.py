@@ -139,12 +139,7 @@ class ProductAdmin(admin.ModelAdmin):
     gender_display.short_description = "Пол"
 
     def image_main(self, obj):
-        # Используем данные из кэша prefetch_related, не обращаясь к БД снова
-        all_images = list(obj.images.all())
-        main_img = next((img for img in all_images if img.is_main), None) or (
-            all_images[0] if all_images else None
-        )
-
+        main_img = obj.get_main_image_obj
         return get_admin_thumb(main_img.image if main_img else None, size=(80, 80))
 
     image_main.short_description = "Главное фото"

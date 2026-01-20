@@ -17,13 +17,26 @@ def jwt_get_user_id_from_payload_handler(payload):
 
 
 # получение данных миниатюр
-def get_thumbnail_data(image_field, alias, request):
+def get_thumbnail_data(image_field, aliases, request):
+    """
+    Универсальная функция для получения словаря миниатюр.
+    Возвращает URL, ширину и высоту для каждого алиаса.
+    """
     if not image_field:
         return None
+
     thumbnailer = get_thumbnailer(image_field)
-    thumb = thumbnailer.get_thumbnail({"alias": alias})
-    return {
-        "url": request.build_absolute_uri(thumb.url),
-        "width": thumb.width,
-        "height": thumb.height,
-    }
+    data = {}
+
+    for key, alias_name in aliases.items():
+        try:
+            thumb = thumbnailer.get_thumbnail({"alias": alias_name})
+            data[key] = {
+                "url": request.build_absolute_uri(thumb.url),
+                "width": thumb.width,
+                "height": thumb.height,
+            }
+        except Exception:
+            continue
+
+    return data

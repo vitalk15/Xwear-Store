@@ -142,14 +142,14 @@ def logout_view(request):
 # дерево категорий
 @api_view(["GET"])
 def category_tree_view(request):
-    # c корневой mptt-категорией
-    # root_categories = Category.objects.filter(level=0, is_active=True)
-    # serializer = CategorySerializer(
-    #     root_categories, many=True, context={"request": request}
-    # )
+    # Забираем ВСЕ активные категории одним запросом
+    queryset = Category.objects.filter(is_active=True)
+
+    # Строим дерево в памяти с помощью mptt метода - это исключает N+1 запросов в сериализаторе
+    tree = queryset.get_cached_trees()
 
     # без корневой mptt-категории
-    categories = Category.objects.filter(level=1, is_active=True)
+    categories = [node for node in tree if node.level == 1]
     serializer = CategorySerializer(categories, many=True, context={"request": request})
     return Response(serializer.data)
 
@@ -158,14 +158,21 @@ def category_tree_view(request):
 @api_view(["GET"])
 def category_detail_view(request, category_slug):
     category = get_object_or_404(Category, slug=category_slug, is_active=True)
+    breadcrumbs = [
+        {"name": cat.name, "slug": cat.slug}
+        for cat in category.get_ancestors(include_self=True)
+    ]
     products_queryset = (
         category.products.filter(is_active=True)
+        .select_related("category")
         .prefetch_related(
+            "images",
             Prefetch(
-                "images",
-                queryset=ProductImage.objects.filter(is_main=True),
-                to_attr="main_image_preview",  # Сохраняем в отдельный атрибут для скорости
-            )
+                "sizes",
+                queryset=ProductSize.objects.filter(is_active=True).select_related(
+                    "size"
+                ),
+            ),
         )
         .order_by("-created_at")
     )
@@ -173,7 +180,6 @@ def category_detail_view(request, category_slug):
     # Пагинация из settings.py
     paginator = LimitOffsetPagination()
     page = paginator.paginate_queryset(products_queryset, request)
-
     serializer = ProductListSerializer(page, many=True, context={"request": request})
 
     return paginator.get_paginated_response(
@@ -182,6 +188,7 @@ def category_detail_view(request, category_slug):
                 "id": category.id,
                 "name": category.name,
                 "slug": category.slug,
+                "breadcrumbs": breadcrumbs,
             },
             "products": serializer.data,
         }
@@ -195,9 +202,11 @@ def product_detail_view(request, category_slug, product_slug):
         Product.objects.filter(
             is_active=True, category__slug=category_slug, slug=product_slug
         )
-        .select_related("specification")
+        .select_related("specification", "category")
         .prefetch_related(
-            Prefetch("images", queryset=ProductImage.objects.order_by("-is_main")),
+            "images",
+            # Уже делаем сортировку в ProductImage, поэтому не используем здесь:
+            # Prefetch("images", queryset=ProductImage.objects.order_by("-is_main", "id")),
             Prefetch(
                 "sizes",
                 queryset=ProductSize.objects.filter(is_active=True).select_related(
