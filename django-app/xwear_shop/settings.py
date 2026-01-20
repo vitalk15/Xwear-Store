@@ -29,7 +29,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "xwear",
+    "xwear.apps.XwearConfig",
     "api",
     "easy_thumbnails",
     "django_cleanup",
@@ -139,21 +139,34 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "media/"
 
+THUMBNAIL_BASEDIR = "thumbnails"
+THUMBNAIL_EXTENSION = "webp"
+THUMBNAIL_CACHE_DIMENSIONS = True
 THUMBNAIL_ALIASES = {
     "": {
-        "small": {"size": (100, 100), "crop": True},
-        # "small": {"size": (100, 100), "crop": 'scale'},
+        "product_small": {  # для превью в корзине или мини-карточек
+            "size": (105, 95),
+            "crop": "smart",
+            "quality": 85,
+        },
+        "product_medium": {  # основной размер для плитки товаров
+            "size": (320, 320),
+            "crop": "smart",
+            "quality": 90,
+        },
+        "product_large": {  # размер для детальной страницы товара
+            "size": (670, 490),
+            "quality": 95,
+        },
     },
 }
 
-# THUMBNAIL_NAMER = "easy_thumbnails.namers.default"
-
-THUMBNAIL_DEFAULT_OPTIONS = {
-    "quality": 90,
-    "format": "JPEG",
+THUMBNAIL_WIDGET_OPTIONS = {
+    "size": (100, 90),  # Размер превью в админке
+    "crop": "smart",  # Умная обрезка (фокус на деталях)
+    "quality": 85,
+    "format": "WEBP",
 }
-
-THUMBNAIL_BASEDIR = "thumbnails"
 
 
 # Настройки доступа с других доменов (CORS)
@@ -189,11 +202,11 @@ CORS_URLS_REGEX = r"^/api/.*$"
 # CSRF настройки для JWT + cookie
 # -------------------------------
 
-# если True, csrftoken в cookie отправляется только по HTTPS (для Production)
+# если True, csrftoken в cookies отправляется только по HTTPS (для Production)
 CSRF_COOKIE_SECURE = config("HTTPS_ONLY", default=True, cast=bool)
 # если False, JavaScript читает csrftoken из cookie для X-CSRFToken заголовка
 CSRF_COOKIE_HTTPONLY = False
-# csrftoken в сookie отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет переходы по ссылкам (Dev), 'None' — для кросс-доменных (редко))
+# csrftoken в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет переходы по ссылкам (Dev), 'None' — для кросс-доменных (редко))
 CSRF_COOKIE_SAMESITE = config("SAMESITE")
 
 
@@ -201,7 +214,7 @@ CSRF_COOKIE_SAMESITE = config("SAMESITE")
 # -----------------------
 
 SIMPLE_JWT = {
-    # задаём время жизни для acces-token (он храниться в LocalStorage)
+    # задаём время жизни для access-token (он храниться в LocalStorage)
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
     # задаём время жизни для refresh-token (он храниться в Cookie)
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -211,11 +224,11 @@ SIMPLE_JWT = {
     "AUTH_COOKIE_HTTP_ONLY": True,
     # если True, refresh-token в cookie отправляется только по HTTPS (для Production)
     "AUTH_COOKIE_SECURE": config("HTTPS_ONLY", default=True, cast=bool),
-    # refresh-token в сookie отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет GET-переходы (Dev), 'None' — для кросс-доменных (редко))
+    # refresh-token в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет GET-переходы (Dev), 'None' — для кросс-доменных (редко))
     "AUTH_COOKIE_SAMESITE": config("SAMESITE"),
     # если True - включаем обновление refresh-токена после истечения срока действия, а также при logout и последующем login - в этом случае старый refresh-токен продолжает работать до истечения срока вместе с новым (если False - refresh-token неизменный)
     "ROTATE_REFRESH_TOKENS": True,
-    # если True - старые или после logout refresh-токены аннулируются и поподают в blacklist (храниться в БД)
+    # если True - старые или после logout refresh-токены аннулируются и попадают в blacklist (храниться в БД)
     # "BLACKLIST_AFTER_ROTATION": True,
     # Обновление поля last_login в БД при входе пользователя (False - по умолчанию)
     "UPDATE_LAST_LOGIN": True,

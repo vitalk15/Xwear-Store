@@ -16,6 +16,8 @@ from .views import (
     password_reset_confirm_view,
     logout_view,
     category_tree_view,
+    product_detail_view,
+    category_detail_view,
 )
 
 
@@ -41,7 +43,14 @@ urlpatterns = [
     ),
     path("logout/", logout_view, name="logout"),
     path("categories/", category_tree_view, name="category_tree"),
-    # path("categories/<slug:slug>/", category_products_view, name="category_products"),
+    path(
+        "categories/<slug:category_slug>/", category_detail_view, name="category_detail"
+    ),
+    path(
+        "categories/<slug:category_slug>/<slug:product_slug>/",
+        product_detail_view,
+        name="product_detail",
+    ),
     # ---------------
     # Spectacular UI
     # ---------------
