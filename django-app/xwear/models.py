@@ -1,5 +1,6 @@
 # from django.utils.text import slugify
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from easy_thumbnails.fields import ThumbnailerImageField
@@ -96,6 +97,19 @@ class GenderChoices(models.TextChoices):
     UNISEX = "U", "Унисекс"
 
 
+class Brand(models.Model):
+    name = models.CharField(max_length=50, verbose_name="Название")
+    slug = models.SlugField(max_length=50, unique=True)
+
+    class Meta:
+        verbose_name = "Бренд"
+        verbose_name_plural = "Бренды"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class Size(models.Model):
     name = models.CharField(max_length=10, verbose_name="Размер")
     order = models.PositiveSmallIntegerField(default=0, verbose_name="Порядок")
@@ -116,7 +130,25 @@ class ProductSize(models.Model):
     size = models.ForeignKey(Size, on_delete=models.CASCADE, verbose_name="Размер")
     # stock = models.PositiveIntegerField(default=0, verbose_name="Остаток")
     price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="Цена")
+    discount_percent = models.PositiveIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Скидка %",
+    )
     is_active = models.BooleanField(default=True, verbose_name="В наличии")
+
+    @property
+    def final_price(self):
+        """Возвращает цену с учетом скидки если есть, округленную до целых. Иначе - обычную цену"""
+        if self.discount_percent > 0:
+            # Формула: NewPrice = Price * (1 - Discount / 100)
+            new_price = self.price * (1 - self.discount_percent / 100)
+            return round(new_price)
+        return self.price
+
+    @property
+    def has_discount(self):
+        return self.discount_percent > 0
 
     class Meta:
         unique_together = ["product", "size"]
@@ -159,7 +191,7 @@ class ProductImage(models.Model):
 class Product(models.Model):
     category = models.ForeignKey(
         Category,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         blank=True,
         null=True,
         related_name="products",
@@ -170,6 +202,14 @@ class Product(models.Model):
     description = models.TextField(blank=True, verbose_name="Описание")
     gender = models.CharField(
         max_length=1, choices=GenderChoices.choices, verbose_name="Пол"
+    )
+    brand = models.ForeignKey(
+        Brand,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="products",
+        verbose_name="Бренд",
     )
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 

@@ -147,16 +147,17 @@ THUMBNAIL_ALIASES = {
         "product_small": {  # для превью в корзине или мини-карточек
             "size": (105, 95),
             "crop": "smart",
-            "quality": 85,
+            "quality": 75,
         },
-        "product_medium": {  # основной размер для плитки товаров
+        "product_medium": {  # для плитки товаров
             "size": (320, 320),
             "crop": "smart",
-            "quality": 90,
+            "quality": 80,
         },
-        "product_large": {  # размер для детальной страницы товара
+        "product_large": {  # для детальной страницы товара
             "size": (670, 490),
-            "quality": 95,
+            "crop": "smart",
+            "quality": 90,
         },
     },
 }
@@ -164,7 +165,7 @@ THUMBNAIL_ALIASES = {
 THUMBNAIL_WIDGET_OPTIONS = {
     "size": (100, 90),  # Размер превью в админке
     "crop": "smart",  # Умная обрезка (фокус на деталях)
-    "quality": 85,
+    "quality": 75,
     "format": "WEBP",
 }
 

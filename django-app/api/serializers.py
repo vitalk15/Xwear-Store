@@ -8,6 +8,7 @@ from django.utils.encoding import force_str
 from easy_thumbnails.files import get_thumbnailer
 from xwear.models import (
     Category,
+    Brand,
     Product,
     ProductImage,
     ProductSize,
@@ -195,11 +196,33 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 
 class ProductSizeSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source="size.name", read_only=True)
+    size_name = serializers.CharField(source="size.name", read_only=True)
+    # final_price — метод-свойство модели (цена со скидкой или обычная)
+    final_price = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
+    # old_price — это исходная цена из поля price
+    old_price = serializers.DecimalField(
+        source="price", max_digits=6, decimal_places=2, read_only=True
+    )
+    # has_discount — метод-свойство модели
+    has_discount = serializers.BooleanField(read_only=True)
+
+    # Если планируем только отдавать данные (read-only), и не нужна специальная валидация на входе, можно использовать serializers.ReadOnlyField. Он просто берет значение «как есть»:
+    # size_name = serializers.ReadOnlyField(source="size.name")
+    # final_price = serializers.ReadOnlyField()
+    # old_price = serializers.ReadOnlyField(source="price")
+    # has_discount = serializers.ReadOnlyField()
 
     class Meta:
         model = ProductSize
-        fields = ["id", "name", "price", "is_active"]
+        fields = [
+            "id",
+            "size_name",
+            "final_price",
+            "old_price",
+            "discount_percent",
+            "has_discount",
+            "is_active",
+        ]
 
 
 class SpecificationSerializer(serializers.ModelSerializer):
@@ -214,20 +237,46 @@ class SpecificationSerializer(serializers.ModelSerializer):
         ]
 
 
+class BrandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Brand
+        fields = ["id", "name", "slug"]
+
+
 class ProductListSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.CharField(source="category.slug", read_only=True)
+    brand_name = serializers.CharField(source="brand.name", read_only=True)
     min_price = serializers.SerializerMethodField()
+    old_min_price = serializers.SerializerMethodField()
+    discount_percent = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
-    sizes = ProductSizeSerializer(
-        source='sizes.order_by("-size")', many=True, read_only=True
-    )
     # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
 
-    def get_min_price(self, obj):
-        active_prices = [s.price for s in obj.sizes.all() if s.is_active]
+    def _get_cheapest_size(self, obj):
+        """Вспомогательный метод для поиска самого дешевого активного размера"""
+        active_sizes = [s for s in obj.sizes.all() if s.is_active]
+        if not active_sizes:
+            return None
+        # Находим объект размера с минимальной ценой final_price
+        return min(active_sizes, key=lambda s: s.final_price)
 
-        return min(active_prices) if active_prices else 0
+    def get_min_price(self, obj):
+        size = self._get_cheapest_size(obj)
+        return size.final_price if size else 0
+
+    def get_old_min_price(self, obj):
+        size = self._get_cheapest_size(obj)
+        # Показываем старую цену только если на этот конкретный размер есть скидка
+        if size and size.has_discount:
+            return size.price
+        return None
+
+    def get_discount_percent(self, obj):
+        size = self._get_cheapest_size(obj)
+        if size and size.has_discount:
+            return size.discount_percent
+        return 0
 
     def get_main_image(self, obj):
         img_obj = obj.get_main_image_obj
@@ -248,9 +297,11 @@ class ProductListSerializer(serializers.ModelSerializer):
             "slug",
             "category_name",
             "category_slug",
+            "brand_name",
             "gender",
-            "sizes",
             "min_price",
+            "old_min_price",
+            "discount_percent",
             "main_image",
             "is_active",
         ]
@@ -259,6 +310,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.CharField(source="category.slug", read_only=True)
+    brand = BrandSerializer(read_only=True)
     sizes = ProductSizeSerializer(
         source='sizes.order_by("-size")', many=True, read_only=True
     )
@@ -280,6 +332,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "slug",
             "category_name",
             "category_slug",
+            "brand",
             "breadcrumbs",
             "description",
             "gender",

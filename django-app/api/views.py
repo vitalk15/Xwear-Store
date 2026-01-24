@@ -1,25 +1,25 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
-from django.db.models import Prefetch
+from django.db.models import Prefetch, F, ExpressionWrapper, DecimalField, Min, Max, Q
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from xwear.models import Category, Product, ProductImage, ProductSize
+from xwear.models import Category, Brand, Product, ProductSize
 from .serializers import (
     RegisterSerializer,
     ChangePasswordSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
     CategorySerializer,
+    BrandSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
 )
@@ -162,9 +162,25 @@ def category_detail_view(request, category_slug):
         {"name": cat.name, "slug": cat.slug}
         for cat in category.get_ancestors(include_self=True)
     ]
+
+    # Фильтрация для сайдбара
+    # 1. Получаем саму категорию и всех её потомков (для MPTT)
+    categories = category.get_descendants(include_self=True)
+
+    # 2. Базовый QuerySet с аннотацией цен
     products_queryset = (
-        category.products.filter(is_active=True)
-        .select_related("category")
+        Product.objects.filter(category__in=categories, is_active=True)
+        .annotate(
+            # Находим минимальную цену среди размеров для этого товара
+            annotated_price=Min(
+                ExpressionWrapper(
+                    F("sizes__price") * (1.0 - F("sizes__discount_percent") / 100.0),
+                    output_field=DecimalField(),
+                ),
+                filter=Q(sizes__is_active=True),
+            )
+        )
+        .select_related("brand", "category")
         .prefetch_related(
             "images",
             Prefetch(
@@ -175,6 +191,34 @@ def category_detail_view(request, category_slug):
             ),
         )
         .order_by("-created_at")
+        .distinct()  # distinct() важен при связи Many-to-Many
+    )
+
+    # 3. Применяем фильтры из URL
+    brand_slugs = request.query_params.getlist("brands[]")
+    if brand_slugs:
+        products_queryset = products_queryset.filter(brand__slug__in=brand_slugs)
+
+    size_names = request.query_params.getlist("sizes[]")
+    if size_names:
+        products_queryset = products_queryset.filter(
+            sizes__size__name__in=size_names
+        ).distinct()
+
+    min_p = request.query_params.get("min_price")
+    max_p = request.query_params.get("max_price")
+    if min_p:
+        products_queryset = products_queryset.filter(annotated_price__gte=min_p)
+    if max_p:
+        products_queryset = products_queryset.filter(annotated_price__lte=max_p)
+
+    # 4. Собираем данные для сайдбара фильтров (только то, что есть в этой категории)
+    available_brands = Brand.objects.filter(products__category__in=categories).distinct()
+    available_sizes = (
+        ProductSize.objects.filter(product__category__in=categories, is_active=True)
+        .values_list("size__name", flat=True)
+        .distinct()
+        .order_by("size__name")
     )
 
     # Пагинация из settings.py
@@ -190,6 +234,20 @@ def category_detail_view(request, category_slug):
                 "slug": category.slug,
                 "breadcrumbs": breadcrumbs,
             },
+            "filters": {
+                "brands": BrandSerializer(available_brands, many=True).data,
+                "sizes": list(available_sizes),
+                "price_range": {
+                    "min": products_queryset.aggregate(Min("annotated_price"))[
+                        "annotated_price__min"
+                    ]
+                    or 0,
+                    "max": products_queryset.aggregate(Max("annotated_price"))[
+                        "annotated_price__max"
+                    ]
+                    or 0,
+                },
+            },
             "products": serializer.data,
         }
     )
@@ -202,7 +260,7 @@ def product_detail_view(request, category_slug, product_slug):
         Product.objects.filter(
             is_active=True, category__slug=category_slug, slug=product_slug
         )
-        .select_related("specification", "category")
+        .select_related("category", "brand", "specification")
         .prefetch_related(
             "images",
             # Уже делаем сортировку в ProductImage, поэтому не используем здесь:

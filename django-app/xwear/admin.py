@@ -1,8 +1,11 @@
 from django.contrib import admin
+from django.utils.html import format_html
+from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
 from .models import (
     User,
     Category,
+    Brand,
     Product,
     ProductImage,
     Size,
@@ -15,15 +18,15 @@ from .utils import get_admin_thumb
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
     # строковое отображение записи в виде: email, время регистрации
-    list_display = ("email", "is_active", "date_joined", "last_login")
+    list_display = ["email", "is_active", "date_joined", "last_login"]
     # фильтрация
-    list_filter = ("is_active", "is_staff", "is_superuser")
+    list_filter = ["is_active", "is_staff", "is_superuser"]
     # поля для перехода в "карточку" записи
     list_display_links = ["email"]
     # редактирование поля в строковом отображении
     list_editable = ["is_active"]
     # поиск по именам, адресам эл.почты, настоящим именам и фамилиям
-    search_fields = ("email", "phone", "first_name", "last_name")
+    search_fields = ["email", "phone", "first_name", "last_name"]
     # порядок отображения полей пользователя
     fields = (
         ("email", "phone", "is_active"),
@@ -35,7 +38,7 @@ class UserAdmin(admin.ModelAdmin):
     )
 
     # делаем доступными только для чтения поля даты регистрации пользователя и последнего его входа на сайт.
-    readonly_fields = ("last_login", "date_joined")
+    readonly_fields = ["last_login", "date_joined"]
 
 
 @admin.register(Category)
@@ -87,10 +90,37 @@ class SizeFilter(admin.SimpleListFilter):
 class ProductSizeInline(admin.TabularInline):
     model = ProductSize
     extra = 3  # 3 пустых размера
-    fields = ["size", "price", "is_active"]
+    fields = ["size", "price", "discount_percent", "get_final_price", "is_active"]
+    # Это делает выбор размера быстрым поиском (требует search_fields в SizeAdmin)
+    autocomplete_fields = ["size"]
+    readonly_fields = ["get_final_price"]
+
+    @admin.display(description="Итоговая цена")
+    def get_final_price(self, obj):
+        # Проверка obj.pk нужна, чтобы не считать цену для пустых (extra) строк до их сохранения
+        if obj.pk and obj.price:
+            return f"{obj.final_price} ₽"
+        return "-"
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("size")
+
+
+class DiscountFilter(admin.SimpleListFilter):
+    title = "Наличие скидки"
+    parameter_name = "has_discount"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("yes", "Со скидкой"),
+            ("no", "Без скидки"),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(sizes__discount_percent__gt=0).distinct()
+        if self.value() == "no":
+            return queryset.filter(sizes__discount_percent=0).distinct()
 
 
 class SpecificationInline(admin.StackedInline):
@@ -107,15 +137,21 @@ class ProductAdmin(admin.ModelAdmin):
 
     list_display = [
         "name",
+        "brand",
         "category",
         "gender",
         "active_sizes_count",
+        "get_price_range",
         "image_main",
         "is_active",
     ]
     list_display_links = ["name", "image_main"]
-    list_filter = ["is_active", "gender", "category", SizeFilter]
-    search_fields = ["name", "description"]
+    list_filter = ["is_active", "gender", "brand", "category", SizeFilter, DiscountFilter]
+    search_fields = ["name"]
+
+    # Если категорий и брендов будет много (заменяет выбор из выпадающего списка на удобный поиск)
+    # search_fields = ["name", "brand__name", "category__name"]
+    # autocomplete_fields = ["brand", "category"]
 
     # Редактирование в списке
     list_editable = ["is_active"]
@@ -133,28 +169,70 @@ class ProductAdmin(admin.ModelAdmin):
     # Автозаполнение slug
     prepopulated_fields = {"slug": ("name",)}
 
+    @admin.display(description="Пол")
     def gender_display(self, obj):
         return obj.get_gender_display()
 
-    gender_display.short_description = "Пол"
+    # gender_display.short_description = "Пол"
 
+    @admin.display(description="Главное фото")
     def image_main(self, obj):
         main_img = obj.get_main_image_obj
-        return get_admin_thumb(main_img.image if main_img else None, size=(80, 80))
+        if main_img:
+            return get_admin_thumb(main_img.image, size=(80, 80))
+        return "-"
+        # return None
 
-    image_main.short_description = "Главное фото"
-
+    @admin.display(description="Доступно размеров")
     def active_sizes_count(self, obj):
         # Считаем в памяти Python из уже загруженного prefetch_related
         return len([s for s in obj.sizes.all() if s.is_active])
 
-    active_sizes_count.short_description = "Доступно размеров"
+    @admin.display(description="Диапазон цен")
+    def get_price_range(self, obj):
+        # Разброс цен для справки
+        prices = [s.final_price for s in obj.sizes.all() if s.is_active]
+        if prices:
+            return f"{min(prices)} - {max(prices)} ₽"
+        return "Цена не задана"
 
     # Оптимизация запросов
     def get_queryset(self, request):
         return (
             super()
             .get_queryset(request)
-            .select_related("category", "specification")
+            .select_related("category", "brand")
             .prefetch_related("sizes__size", "images")
         )
+
+
+class ProductInline(admin.TabularInline):
+    model = Product
+    # Указываем только самые важные поля для быстрого обзора
+    fields = ["name", "category", "get_edit_link", "is_active"]
+    readonly_fields = ["get_edit_link"]
+    extra = 0
+    show_change_link = True  # Встроенная ссылка на редактирование от Django
+
+    @admin.display(description="Действие")
+    def get_edit_link(self, obj):
+        if obj.pk:
+            # Создаем прямую ссылку на полную страницу редактирования товара
+            url = reverse("admin:xwear_product_change", args=[obj.pk])
+            return format_html('<a href="{}" class="button">Редактировать</a>', url)
+        return "-"
+
+
+@admin.register(Brand)
+class BrandAdmin(admin.ModelAdmin):
+    list_display = ["name", "slug", "get_products_count"]
+    prepopulated_fields = {"slug": ("name",)}
+    search_fields = ["name"]
+    inlines = [ProductInline]
+
+    @admin.display(description="Кол-во товаров")
+    def get_products_count(self, obj):
+        return obj.products.count()
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("products")
