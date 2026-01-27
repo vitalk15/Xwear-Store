@@ -1,4 +1,5 @@
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
 from django.utils.html import format_html
 from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
@@ -11,6 +12,7 @@ from .models import (
     Size,
     ProductSize,
     ProductSpecification,
+    SliderBanner,
 )
 from .utils import get_admin_thumb
 
@@ -131,8 +133,24 @@ class SpecificationInline(admin.StackedInline):
     max_num = 1
 
 
+class ProductAdminForm(forms.ModelForm):
+    # Добавляем виртуальное поле, которого нет в модели
+    set_discount_all_sizes = forms.IntegerField(
+        label="Установить скидку (%) на все размеры",
+        required=False,
+        min_value=0,
+        max_value=100,
+        help_text="Введите число, чтобы массово обновить скидку. Оставьте пустым, если не нужно менять.",
+    )
+
+    class Meta:
+        model = Product
+        fields = "__all__"
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+    form = ProductAdminForm
     inlines = [ProductImageInline, ProductSizeInline, SpecificationInline]
 
     list_display = [
@@ -160,9 +178,11 @@ class ProductAdmin(admin.ModelAdmin):
     fields = [
         "name",
         "slug",
+        "brand",
         "category",
         "description",
         "gender",
+        "set_discount_all_sizes",
         "is_active",
     ]
 
@@ -205,6 +225,21 @@ class ProductAdmin(admin.ModelAdmin):
             .prefetch_related("sizes__size", "images")
         )
 
+    def save_model(self, request, obj, form, change):
+        # 1. Сначала сохраняем сам товар
+        super().save_model(request, obj, form, change)
+
+        # 2. Проверяем, ввел ли менеджер значение в поле массовой скидки
+        discount_value = form.cleaned_data.get("set_discount_all_sizes")
+
+        if discount_value is not None:
+            # Обновляем все активные размеры этого товара одним запросом к базе
+            obj.sizes.filter(is_active=True).update(discount_percent=discount_value)
+
+            messages.info(
+                request, f"Скидка {discount_value}% применена ко всем размерам."
+            )
+
 
 class ProductInline(admin.TabularInline):
     model = Product
@@ -236,3 +271,26 @@ class BrandAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("products")
+
+
+@admin.register(SliderBanner)
+class SliderBannerAdmin(admin.ModelAdmin):
+    list_display = ("get_preview", "title", "order", "is_active")
+    list_editable = ("order", "is_active")
+    readonly_fields = ("get_preview_large",)
+
+    @admin.display(description="Превью")
+    def get_preview(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="width: 150px; height: auto;" />', obj.image.url
+            )
+        return "Нет изображения"
+
+    @admin.display(description="Текущее изображение")
+    def get_preview_large(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="max-width: 600px; height: auto;" />', obj.image.url
+            )
+        return "Нет изображения"

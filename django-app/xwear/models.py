@@ -4,7 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from easy_thumbnails.fields import ThumbnailerImageField
-from .utils import rename_image_prod, generate_unique_slug
+from .utils import get_upload_path, generate_unique_slug, validate_banner_image
 
 
 class UserManager(BaseUserManager):
@@ -160,8 +160,9 @@ class ProductImage(models.Model):
     product = models.ForeignKey(
         "Product", on_delete=models.CASCADE, related_name="images", verbose_name="Товар"
     )
-    # image = models.ImageField(upload_to=rename_image_prod, verbose_name="Фото")
-    image = ThumbnailerImageField(upload_to=rename_image_prod, verbose_name="Фото")
+    image = ThumbnailerImageField(
+        upload_to=get_upload_path("products", "prod"), verbose_name="Фото"
+    )
     is_main = models.BooleanField(default=False, verbose_name="Главное фото")
     alt = models.CharField(max_length=200, blank=True, verbose_name="Alt текст")
 
@@ -271,3 +272,23 @@ class ProductSpecification(models.Model):
 
     # def __str__(self):
     #     return f"Характеристики для {self.product.name}"
+
+
+class SliderBanner(models.Model):
+    title = models.CharField(max_length=100, verbose_name="Заголовок")
+    image = ThumbnailerImageField(
+        upload_to=get_upload_path("slider", "slide"),
+        validators=[validate_banner_image],
+        verbose_name="Изображение (min 1540x630)",
+    )
+    link = models.URLField(blank=True, verbose_name="Ссылка")
+    order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
+    is_active = models.BooleanField(default=True, verbose_name="Активен")
+
+    class Meta:
+        verbose_name = "Слайд"
+        verbose_name_plural = "Слайды"
+        ordering = ["order", "-id"]
+
+    def __str__(self):
+        return self.title

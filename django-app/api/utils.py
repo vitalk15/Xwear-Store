@@ -31,8 +31,11 @@ def get_thumbnail_data(image_field, aliases, request):
     for key, alias_name in aliases.items():
         try:
             thumb = thumbnailer.get_thumbnail({"alias": alias_name})
+            # Если request есть - строим полный путь, если нет - отдаем относительный
+            url = request.build_absolute_uri(thumb.url) if request else thumb.url
+
             data[key] = {
-                "url": request.build_absolute_uri(thumb.url),
+                "url": url,
                 "width": thumb.width,
                 "height": thumb.height,
             }

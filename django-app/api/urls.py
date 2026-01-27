@@ -18,6 +18,7 @@ from .views import (
     category_tree_view,
     product_detail_view,
     category_detail_view,
+    slider_banner_list_view,
 )
 
 
@@ -42,6 +43,7 @@ urlpatterns = [
         name="password_reset_confirm",
     ),
     path("logout/", logout_view, name="logout"),
+    path("slider/", slider_banner_list_view, name="slider-list"),
     path("categories/", category_tree_view, name="category_tree"),
     path(
         "categories/<slug:category_slug>/", category_detail_view, name="category_detail"

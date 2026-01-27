@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from xwear.models import Category, Brand, Product, ProductSize
+from xwear.models import Category, Brand, Product, ProductSize, SliderBanner
 from .serializers import (
     RegisterSerializer,
     ChangePasswordSerializer,
@@ -22,6 +22,7 @@ from .serializers import (
     BrandSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
+    SliderBannerSerializer,
 )
 
 User = get_user_model()
@@ -276,3 +277,12 @@ def product_detail_view(request, category_slug, product_slug):
 
     serializer = ProductDetailSerializer(product, context={"request": request})
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Слайдер
+@api_view(["GET"])
+def slider_banner_list_view(request):
+    banners = SliderBanner.objects.filter(is_active=True)
+    serializer = SliderBannerSerializer(banners, many=True, context={"request": request})
+
+    return Response(serializer.data)

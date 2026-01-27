@@ -143,7 +143,7 @@ THUMBNAIL_BASEDIR = "thumbnails"
 THUMBNAIL_EXTENSION = "webp"
 THUMBNAIL_CACHE_DIMENSIONS = True
 THUMBNAIL_ALIASES = {
-    "": {
+    "xwear.ProductImage.image": {
         "product_small": {  # для превью в корзине или мини-карточек
             "size": (105, 95),
             "crop": "smart",
@@ -156,6 +156,13 @@ THUMBNAIL_ALIASES = {
         },
         "product_large": {  # для детальной страницы товара
             "size": (670, 490),
+            "crop": "smart",
+            "quality": 90,
+        },
+    },
+    "xwear.SliderBanner.image": {
+        "slider_main": {
+            "size": (1540, 630),
             "crop": "smart",
             "quality": 90,
         },

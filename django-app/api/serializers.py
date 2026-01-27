@@ -13,6 +13,7 @@ from xwear.models import (
     ProductImage,
     ProductSize,
     ProductSpecification,
+    SliderBanner,
 )
 from .utils import get_thumbnail_data
 
@@ -164,30 +165,15 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
     def get_thumbnails(self, obj):
         request = self.context.get("request")
-        if not obj.image:
-            return None
-
-        thumbnailer = get_thumbnailer(obj.image)
-
         aliases = {
             "small": "product_small",
             "large": "product_large",
         }
+        data = get_thumbnail_data(obj.image, aliases, request)
 
-        data = {}
-        for key, alias_name in aliases.items():
-            try:
-                thumb = thumbnailer.get_thumbnail({"alias": alias_name})
-                data[key] = {
-                    "url": request.build_absolute_uri(thumb.url),
-                    "width": thumb.width,  # Берется из кэша БД (THUMBNAIL_CACHE_DIMENSIONS)
-                    "height": thumb.height,
-                }
-            except Exception:
-                # Если файл поврежден, просто пропускаем этот размер
-                continue
+        if data and obj.image:
+            data["original"] = request.build_absolute_uri(obj.image.url)
 
-        data["original"] = request.build_absolute_uri(obj.image.url)
         return data
 
     class Meta:
@@ -341,3 +327,18 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "specification",
             "is_active",
         ]
+
+
+class SliderBannerSerializer(serializers.ModelSerializer):
+    thumbnails = serializers.SerializerMethodField()
+
+    def get_thumbnails(self, obj):
+        request = self.context.get("request")
+        aliases = {
+            "main": "slider_main",
+        }
+        return get_thumbnail_data(obj.image, aliases, request)
+
+    class Meta:
+        model = SliderBanner
+        fields = ["id", "title", "link", "thumbnails"]

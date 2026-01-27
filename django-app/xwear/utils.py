@@ -1,23 +1,28 @@
 import os
 from uuid import uuid4
+from django.core.exceptions import ValidationError
+from django.core.files.images import get_image_dimensions
 from django.utils.text import slugify
 from django.utils.html import format_html
 from easy_thumbnails.files import get_thumbnailer
 
 
-# изменение имени изображения товара
-def rename_image_prod(instance, filename):
-    upload_to = "products"
-    ext = filename.split(".")[-1]
+# преобразование имени изображения с указанием префикса и папки сохранения
+# приём "фабрика функций"
+def get_upload_path(folder, prefix):
+    def wrapper(instance, filename):
+        ext = filename.split(".")[-1]
 
-    # 1. Если у объекта уже есть ID (редактирование), используем его
-    if instance.pk:
-        new_filename = f"prod_{instance.pk}.{ext}"
-    # 2. Если ID еще нет (новый товар), используем UUID
-    else:
-        new_filename = f"prod_{uuid4().hex[:8]}.{ext}"
+        # Используем ID если объект уже сохранен, иначе UUID
+        if instance.pk:
+            identifier = instance.pk
+        else:
+            identifier = uuid4().hex[:8]
 
-    return os.path.join(upload_to, new_filename)
+        new_filename = f"{prefix}_{identifier}.{ext}"
+        return os.path.join(folder, new_filename)
+
+    return wrapper
 
 
 # Генератор уникальных слагов
@@ -67,3 +72,15 @@ def get_admin_thumb(image_field, size=(100, 100)):
         )
     except Exception:
         return "Ошибка генерации превью"
+
+
+# валидация загружаемых изображений для баннера
+def validate_banner_image(image):
+    width, height = get_image_dimensions(image)
+    min_width = 1540
+    min_height = 630
+    if width < min_width or height < min_height:
+        raise ValidationError(
+            f"Размер слишком мал ({width}x{height})."
+            f"Для слайдера требуются изображения не менее {min_width}x{min_height} px."
+        )
