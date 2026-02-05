@@ -30,7 +30,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "xwear.apps.XwearConfig",
-    "api",
+    "accounts",
+    "orders",
     "easy_thumbnails",
     "django_cleanup",
     "mptt",
@@ -72,7 +73,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "xwear_shop.wsgi.application"
 
-AUTH_USER_MODEL = "xwear.User"
+AUTH_USER_MODEL = "accounts.User"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -143,20 +144,28 @@ THUMBNAIL_BASEDIR = "thumbnails"
 THUMBNAIL_EXTENSION = "webp"
 THUMBNAIL_CACHE_DIMENSIONS = True
 THUMBNAIL_ALIASES = {
-    "": {
+    "xwear.ProductImage.image": {
         "product_small": {  # для превью в корзине или мини-карточек
             "size": (105, 95),
             "crop": "smart",
-            "quality": 85,
+            "quality": 75,
         },
-        "product_medium": {  # основной размер для плитки товаров
+        "product_medium": {  # для плитки товаров
             "size": (320, 320),
+            "crop": "smart",
+            "quality": 80,
+        },
+        "product_large": {  # для детальной страницы товара
+            "size": (670, 490),
             "crop": "smart",
             "quality": 90,
         },
-        "product_large": {  # размер для детальной страницы товара
-            "size": (670, 490),
-            "quality": 95,
+    },
+    "xwear.SliderBanner.image": {
+        "slider_main": {
+            "size": (1540, 630),
+            "crop": "smart",
+            "quality": 90,
         },
     },
 }
@@ -164,7 +173,7 @@ THUMBNAIL_ALIASES = {
 THUMBNAIL_WIDGET_OPTIONS = {
     "size": (100, 90),  # Размер превью в админке
     "crop": "smart",  # Умная обрезка (фокус на деталях)
-    "quality": 85,
+    "quality": 75,
     "format": "WEBP",
 }
 
@@ -247,9 +256,9 @@ SIMPLE_JWT = {
     # параметр для хранения идентификаторов пользователей в сгенерированных токенах
     "USER_ID_CLAIM": "user_id",
     # Кастомный сериализатор, определяет, какие данные попадут в payload токена при login/register (по умолчанию {user_id, exp, iat}). Добавляем token_version
-    "TOKEN_OBTAIN_SERIALIZER": "api.serializers.CustomTokenObtainPairSerializer",
+    "TOKEN_OBTAIN_SERIALIZER": "accounts.serializers.CustomTokenObtainPairSerializer",
     # Проверка payload при каждом API запросе (кроме user_id проверка token_version), извлекает пользователя из токена.
-    "JWT_GET_USER_ID_FROM_PAYLOAD_HANDLER": "api.utils.jwt_get_user_id_from_payload_handler",
+    "JWT_GET_USER_ID_FROM_PAYLOAD_HANDLER": "accounts.utils.jwt_get_user_id_from_payload_handler",
 }
 
 
