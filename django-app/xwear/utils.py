@@ -1,5 +1,6 @@
 import os
 from uuid import uuid4
+from django.utils.deconstruct import deconstructible
 from django.core.exceptions import ValidationError
 from django.core.files.images import get_image_dimensions
 from django.utils.text import slugify
@@ -8,21 +9,46 @@ from easy_thumbnails.files import get_thumbnailer
 
 
 # преобразование имени изображения с указанием префикса и папки сохранения
-# приём "фабрика функций"
-def get_upload_path(folder, prefix):
-    def wrapper(instance, filename):
+# деконструируемый класс (используем вместо фабрики функции, так как выполнялся сброс миграций и при создании новых есть проблема с wrapper)
+@deconstructible
+class UploadToPath:
+    def __init__(self, folder, prefix):
+        self.folder = folder
+        self.prefix = prefix
+
+    def __call__(self, instance, filename):
+        """
+        Этот метод заменяет нашу старую функцию wrapper.
+        Django вызывает его, когда нужно получить путь.
+        """
         ext = filename.split(".")[-1]
 
-        # Используем ID если объект уже сохранен, иначе UUID
+        # Если объект сохранен - используем ID, иначе UUID
         if instance.pk:
             identifier = instance.pk
         else:
             identifier = uuid4().hex[:8]
 
-        new_filename = f"{prefix}_{identifier}.{ext}"
-        return os.path.join(folder, new_filename)
+        new_filename = f"{self.prefix}_{identifier}.{ext}"
+        return os.path.join(self.folder, new_filename)
 
-    return wrapper
+
+# преобразование имени изображения с указанием префикса и папки сохранения
+# приём "фабрика функций"
+# def get_upload_path(folder, prefix):
+#     def wrapper(instance, filename):
+#         ext = filename.split(".")[-1]
+
+#         # Используем ID если объект уже сохранен, иначе UUID
+#         if instance.pk:
+#             identifier = instance.pk
+#         else:
+#             identifier = uuid4().hex[:8]
+
+#         new_filename = f"{prefix}_{identifier}.{ext}"
+#         return os.path.join(folder, new_filename)
+
+#     return wrapper
 
 
 # Генератор уникальных слагов
@@ -54,6 +80,35 @@ def generate_unique_slug(model_instance, base_field="name", scope_field=None):
 
         slug = f"{slug_base}-{counter}"
         counter += 1
+
+
+# получение данных миниатюр
+def get_thumbnail_data(image_field, aliases, request):
+    """
+    Универсальная функция для получения словаря миниатюр.
+    Возвращает URL, ширину и высоту для каждого алиаса.
+    """
+    if not image_field:
+        return None
+
+    thumbnailer = get_thumbnailer(image_field)
+    data = {}
+
+    for key, alias_name in aliases.items():
+        try:
+            thumb = thumbnailer.get_thumbnail({"alias": alias_name})
+            # Если request есть - строим полный путь, если нет - отдаем относительный
+            url = request.build_absolute_uri(thumb.url) if request else thumb.url
+
+            data[key] = {
+                "url": url,
+                "width": thumb.width,
+                "height": thumb.height,
+            }
+        except Exception:
+            continue
+
+    return data
 
 
 # Генерация превью в админке

@@ -30,7 +30,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "xwear.apps.XwearConfig",
-    "api",
+    "accounts",
+    "orders",
     "easy_thumbnails",
     "django_cleanup",
     "mptt",
@@ -72,7 +73,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "xwear_shop.wsgi.application"
 
-AUTH_USER_MODEL = "xwear.User"
+AUTH_USER_MODEL = "accounts.User"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -255,9 +256,9 @@ SIMPLE_JWT = {
     # параметр для хранения идентификаторов пользователей в сгенерированных токенах
     "USER_ID_CLAIM": "user_id",
     # Кастомный сериализатор, определяет, какие данные попадут в payload токена при login/register (по умолчанию {user_id, exp, iat}). Добавляем token_version
-    "TOKEN_OBTAIN_SERIALIZER": "api.serializers.CustomTokenObtainPairSerializer",
+    "TOKEN_OBTAIN_SERIALIZER": "accounts.serializers.CustomTokenObtainPairSerializer",
     # Проверка payload при каждом API запросе (кроме user_id проверка token_version), извлекает пользователя из токена.
-    "JWT_GET_USER_ID_FROM_PAYLOAD_HANDLER": "api.utils.jwt_get_user_id_from_payload_handler",
+    "JWT_GET_USER_ID_FROM_PAYLOAD_HANDLER": "accounts.utils.jwt_get_user_id_from_payload_handler",
 }
 
 
