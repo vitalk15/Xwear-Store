@@ -1,15 +1,17 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
 from django.db.models import Prefetch, F, ExpressionWrapper, DecimalField, Min, Max, Q
 from django.shortcuts import get_object_or_404
-from xwear.models import Category, Brand, Product, ProductSize, SliderBanner
+from xwear.models import Category, Brand, Product, ProductSize, Favorite, SliderBanner
 from .serializers import (
     CategorySerializer,
     BrandSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
+    FavoriteSerializer,
     SliderBannerSerializer,
 )
 
@@ -151,6 +153,35 @@ def product_detail_view(request, category_slug, product_slug):
 
     serializer = ProductDetailSerializer(product, context={"request": request})
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Список избранных товаров пользователя
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def favorite_list(request):
+    favorites = Favorite.objects.filter(user=request.user).select_related(
+        "product", "product__brand"
+    )
+    serializer = FavoriteSerializer(favorites, many=True, context={"request": request})
+
+    return Response(serializer.data)
+
+
+# Добавление/удаление товара из избранного
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def favorite_toggle(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    favorite_qs = Favorite.objects.filter(user=request.user, product=product)
+
+    if favorite_qs.exists():
+        favorite_qs.delete()
+        return Response(
+            {"detail": "Удалено из избранного"}, status=status.HTTP_204_NO_CONTENT
+        )
+
+    Favorite.objects.create(user=request.user, product=product)
+    return Response({"detail": "Добавлено в избранное"}, status=status.HTTP_201_CREATED)
 
 
 # Слайдер

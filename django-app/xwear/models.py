@@ -1,4 +1,5 @@
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.conf import settings
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from easy_thumbnails.fields import ThumbnailerImageField
@@ -220,6 +221,31 @@ class ProductSpecification(models.Model):
 
     # def __str__(self):
     #     return f"Характеристики для {self.product.name}"
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favorites",
+        verbose_name="Пользователь",
+    )
+    product = models.ForeignKey(
+        "Product",
+        on_delete=models.CASCADE,
+        related_name="favorited_by",
+        verbose_name="Товар",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Добавлено")
+
+    class Meta:
+        # Это гарантирует, что пользователь не сможет добавить один и тот же товар в избранное дважды
+        unique_together = ("user", "product")
+        verbose_name = "Избранное"
+        verbose_name_plural = "Избранное"
+
+    def __str__(self):
+        return f"{self.user} -> {self.product.name}"
 
 
 class SliderBanner(models.Model):

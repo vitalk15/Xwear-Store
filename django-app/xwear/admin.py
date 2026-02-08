@@ -11,6 +11,7 @@ from .models import (
     Size,
     ProductSize,
     ProductSpecification,
+    Favorite,
     SliderBanner,
 )
 from .utils import get_admin_thumb
@@ -244,6 +245,14 @@ class BrandAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("products")
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ("user", "product", "created_at")
+    list_filter = ("user", "created_at")
+    search_fields = ("user__email", "product__name")
+    readonly_fields = ("created_at",)
 
 
 @admin.register(SliderBanner)
