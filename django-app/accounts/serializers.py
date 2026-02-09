@@ -28,7 +28,17 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data["email"], password=validated_data["password"]
         )
         return user
-        # return User.objects.create_user(**validated_data)
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "email", "first_name", "last_name", "phone", "date_joined")
+        read_only_fields = (
+            "id",
+            "email",
+            "date_joined",
+        )
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -53,7 +63,13 @@ class ChangePasswordSerializer(serializers.Serializer):
         pass
 
     def update(self, instance, validated_data):
-        pass
+        # instance — это request.user
+        instance.set_password(validated_data["new_password"])
+        instance.increment_token_version()  # инвалидация старых токенов (вместо blacklist)
+        # Метод модели increment_token_version сам делает save(update_fields),
+        # но так как мы еще меняли пароль, вызываем полный save()
+        instance.save()
+        return instance
 
 
 class PasswordResetSerializer(serializers.Serializer):
@@ -91,7 +107,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError("Неверный или истёкший токен")
 
         # Сохраняем user для view
-        self.user = user
+        self.instance = user
 
         # Валидация паролей
         if attrs["new_password"] != attrs["new_password_confirm"]:
@@ -103,10 +119,15 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         pass
 
     def update(self, instance, validated_data):
-        pass
+        instance.set_password(validated_data["new_password"])
+        instance.increment_token_version()  # Инвалидация всех JWT
+        # Метод модели increment_token_version сам делает save(update_fields),
+        # но так как мы еще меняли пароль, вызываем полный save()
+        instance.save()
+        return instance
 
 
-# кастомный сериализатор, добавляем в payload токена кроме user_id, exp, iat ещё token_version
+# кастомный сериализатор, добавляем в payload токена кроме user_id, exp, iat ещё token_version при login
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):

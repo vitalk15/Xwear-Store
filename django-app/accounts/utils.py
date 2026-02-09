@@ -1,15 +1,19 @@
-from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.urls import reverse
 
-User = get_user_model()
+
+refresh_lifetime = settings.SIMPLE_JWT.get("REFRESH_TOKEN_LIFETIME")
 
 
-# проверка user_id + token_version из payload при извлечении пользователя при api-запросе
-def jwt_get_user_id_from_payload_handler(payload):
-    user_id = payload.get("user_id")
-    token_version = payload.get("token_version")
-
-    try:
-        user = User.objects.get(id=user_id, token_version=token_version)
-        return user
-    except User.DoesNotExist:
-        return None
+# Установка Refresh-токена в куку.
+def set_refresh_cookie(response, refresh_token):
+    response.set_cookie(
+        key="refresh_token",
+        value=str(refresh_token),
+        httponly=settings.COOKIE_HTTP_ONLY,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        max_age=int(refresh_lifetime.total_seconds()),
+        path=reverse("token_refresh"),  # Кука летит ТОЛЬКО на '/api/auth/token/refresh/'
+    )
+    return response

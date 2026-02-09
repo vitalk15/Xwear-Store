@@ -2,21 +2,58 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 from django.conf import settings
+from .utils import set_refresh_cookie
 from .serializers import (
     RegisterSerializer,
     ChangePasswordSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
+    UserSerializer,
 )
 
 User = get_user_model()
+
+
+# Кастомная simplejwt-вьюха для логина
+# переопределяем так как нужно установить Refresh-токен в HttpOnly куку
+class CustomTokenObtainView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            refresh_token = response.data.get("refresh")
+            # Устанавливаем куку
+            set_refresh_cookie(response, refresh_token)
+            # Удаляем refresh из JSON-ответа
+            del response.data["refresh"]
+        return response
+
+
+# Кастомная simplejwt-вьюха обновления access-токена
+# переопределяем так как Refresh-токен установлен в HttpOnly куку, фронтенд не сможет достать его и отправить в теле запроса.
+class CustomTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        # Достаем токен из куки, если его нет в body
+        refresh_token = request.COOKIES.get("refresh_token")
+        if refresh_token:
+            request.data["refresh"] = refresh_token
+
+        response = super().post(request, *args, **kwargs)
+
+        # Если включена ротация (ROTATE_REFRESH_TOKENS: True)
+        if response.status_code == 200 and "refresh" in response.data:
+            set_refresh_cookie(response, response.data["refresh"])
+            del response.data["refresh"]
+
+        return response
 
 
 # регистрация пользователя с автоматической авторизацией (с выдачей токенов)
@@ -26,20 +63,22 @@ def register_view(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
+        # Генерируем новую пару токенов и добавляем token_version
         refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
-        return Response(
+        refresh["token_version"] = user.token_version
+
+        response = Response(
             {
+                "message": "Регистрация нового пользователя прошла успешно. Авторизация выполнена.",
                 "user": {
                     "id": user.id,
                     "email": user.email,
                 },
-                "tokens": {
-                    "access": str(refresh.access_token),
-                    "refresh": str(refresh),
-                },
+                "access": str(refresh.access_token),
             },
             status=status.HTTP_201_CREATED,
         )
+        return set_refresh_cookie(response, refresh)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -47,28 +86,26 @@ def register_view(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def change_password_view(request):
-    serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+    serializer = ChangePasswordSerializer(
+        instance=request.user, data=request.data, context={"request": request}
+    )
     if serializer.is_valid():
-        user = request.user
-        user.set_password(serializer.validated_data["new_password"])
-        user.increment_token_version()  # инвалидация старых токенов (вместо blacklist)
-        user.save()
+        # Метод save() вызовет update() в сериализаторе, где пароль сменится
+        # и версия токена увеличится.
+        user = serializer.save()
 
-        refresh = RefreshToken.for_user(user)
-        return Response(
+        # Генерируем новую пару токенов и добавляем token_version
+        refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
+        refresh["token_version"] = user.token_version
+
+        response = Response(
             {
-                "message": "Пароль успешно изменён",
-                "tokens": {
-                    "access": str(refresh.access_token),
-                    "refresh": str(refresh),
-                },
-                # "user": {
-                #     "id": user.id,
-                #     "email": user.email,
-                # },
+                "message": "Пароль успешно изменён. Старые сессии аннулированы.",
+                "access": str(refresh.access_token),
             },
             status=status.HTTP_200_OK,
         )
+        return set_refresh_cookie(response, refresh)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -103,21 +140,32 @@ def password_reset_request_view(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def password_reset_confirm_view(request, uid, token):
-    serializer = PasswordResetConfirmSerializer(data=request.data)
-    serializer.context["uid"] = uid
-    serializer.context["token"] = token
+    serializer = PasswordResetConfirmSerializer(
+        data=request.data, context={"uid": uid, "token": token}
+    )
 
     if serializer.is_valid():
-        user = serializer.user
-        user.set_password(serializer.validated_data["new_password"])
-        user.increment_token_version()  # Инвалидация старых JWT
-        user.save()
+        serializer.save()
 
-        return Response({"message": "Пароль сброшен успешно"})
+        response = Response(
+            {
+                "message": "Пароль успешно сброшен. Все активные сессии завершены. Войдите с новым паролем"
+            },
+            status=status.HTTP_200_OK,
+        )
+
+        refresh_path = reverse("token_refresh")
+        response.delete_cookie(
+            "refresh_token",
+            path=refresh_path,
+            samesite=settings.COOKIE_SAMESITE,
+        )
+
+        return response
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# выход пользователя с аннулированием старых токенов
+# выход пользователя с аннулированием старых токенов и удалением куки
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
@@ -125,7 +173,33 @@ def logout_view(request):
     user.increment_token_version()  # инвалидация старых токенов (вместо blacklist)
     user.save()
 
-    return Response(
-        {"message": "Выход выполнен."},
-        status=status.HTTP_205_RESET_CONTENT,
+    response = Response(
+        {"message": "Выход успешно выполнен со всех устройств."},
+        status=status.HTTP_200_OK,
     )
+
+    response.delete_cookie(
+        "refresh_token",
+        path=reverse("token_refresh"),
+        samesite=settings.COOKIE_SAMESITE,
+    )
+
+    return response
+
+
+# Просмотр и редактирование данных текущего пользователя
+@api_view(["GET", "PATCH"])
+@permission_classes([IsAuthenticated])
+def user_profile_view(request):
+    user = request.user
+
+    if request.method == "GET":
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+    if request.method == "PATCH":
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

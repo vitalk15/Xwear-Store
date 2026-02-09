@@ -208,33 +208,40 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 CORS_URLS_REGEX = r"^/api/.*$"
 
 
-# CSRF настройки для JWT + cookie
+# CSRF и Cookie настройки для JWT
 # -------------------------------
 
-# если True, csrftoken в cookies отправляется только по HTTPS (для Production)
-CSRF_COOKIE_SECURE = config("HTTPS_ONLY", default=True, cast=bool)
 # если False, JavaScript читает csrftoken из cookie для X-CSRFToken заголовка
 CSRF_COOKIE_HTTPONLY = False
+# если True, csrftoken в cookies отправляется только по HTTPS (для Production)
+CSRF_COOKIE_SECURE = config("HTTPS_ONLY", default=True, cast=bool)
 # csrftoken в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет переходы по ссылкам (Dev), 'None' — для кросс-доменных (редко))
 CSRF_COOKIE_SAMESITE = config("SAMESITE")
 
+# если True, refresh-token в cookie не доступен JS
+COOKIE_HTTP_ONLY = True
+# если True, refresh-token в cookie отправляется только по HTTPS (для Production)
+COOKIE_SECURE = config("HTTPS_ONLY", default=True, cast=bool)
+# refresh-token в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет GET-переходы (Dev), 'None' — для кросс-доменных (редко))
+COOKIE_SAMESITE = config("SAMESITE")
 
-# JWT для API авторизации
+
+# Security Headers
+# ------------------
+
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+
+# JWT для API-авторизации
 # -----------------------
 
 SIMPLE_JWT = {
     # задаём время жизни для access-token (он храниться в LocalStorage)
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
     # задаём время жизни для refresh-token (он храниться в Cookie)
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    # задаём имя для refresh-token в cookie
-    "AUTH_COOKIE": "refresh_token",
-    # если True, refresh-token в cookie не доступен JS
-    "AUTH_COOKIE_HTTP_ONLY": True,
-    # если True, refresh-token в cookie отправляется только по HTTPS (для Production)
-    "AUTH_COOKIE_SECURE": config("HTTPS_ONLY", default=True, cast=bool),
-    # refresh-token в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет GET-переходы (Dev), 'None' — для кросс-доменных (редко))
-    "AUTH_COOKIE_SAMESITE": config("SAMESITE"),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     # если True - включаем обновление refresh-токена после истечения срока действия, а также при logout и последующем login - в этом случае старый refresh-токен продолжает работать до истечения срока вместе с новым (если False - refresh-token неизменный)
     "ROTATE_REFRESH_TOKENS": True,
     # если True - старые или после logout refresh-токены аннулируются и попадают в blacklist (храниться в БД)
@@ -255,10 +262,8 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     # параметр для хранения идентификаторов пользователей в сгенерированных токенах
     "USER_ID_CLAIM": "user_id",
-    # Кастомный сериализатор, определяет, какие данные попадут в payload токена при login/register (по умолчанию {user_id, exp, iat}). Добавляем token_version
+    # Кастомный сериализатор, определяет, какие данные попадут в payload токена при login (по умолчанию {user_id, exp, iat}). Добавляем token_version
     "TOKEN_OBTAIN_SERIALIZER": "accounts.serializers.CustomTokenObtainPairSerializer",
-    # Проверка payload при каждом API запросе (кроме user_id проверка token_version), извлекает пользователя из токена.
-    "JWT_GET_USER_ID_FROM_PAYLOAD_HANDLER": "accounts.utils.jwt_get_user_id_from_payload_handler",
 }
 
 
@@ -266,9 +271,9 @@ SIMPLE_JWT = {
 # ----------------
 
 REST_FRAMEWORK = {
-    # использование JWT-аутентификации
+    # кастомная JWT-аутентификация
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "accounts.authentication.VersionedJWTAuthentication",
     ),
     # возвращает только JSON, отключает HTML-формы и браузерные страницы
     "DEFAULT_RENDERER_CLASSES": [
@@ -286,10 +291,12 @@ REST_FRAMEWORK = {
 # -------------------------------
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "XWEAR API",
+    "TITLE": "XWEAR Shop API",
     "DESCRIPTION": "Online clothing store",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_PATCH": True,
+    "SECURITY": [{"jwt": []}],
 }
 
 
