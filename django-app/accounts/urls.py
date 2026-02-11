@@ -12,6 +12,9 @@ from .views import (
     password_reset_confirm_view,
     logout_view,
     user_profile_view,
+    city_list_view,
+    address_list_create_view,
+    address_detail_view,
 )
 
 
@@ -31,4 +34,7 @@ urlpatterns = [
     ),
     path("logout/", logout_view, name="logout"),
     path("profile/", user_profile_view, name="user-profile"),
+    path("cities/", city_list_view, name="city-list"),
+    path("addresses/", address_list_create_view, name="address-list"),
+    path("addresses/<int:pk>/", address_detail_view, name="address-detail"),
 ]

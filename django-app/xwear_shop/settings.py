@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "xwear.apps.XwearConfig",
-    "accounts",
+    "accounts.apps.AccountsConfig",
     "orders",
     "easy_thumbnails",
     "django_cleanup",

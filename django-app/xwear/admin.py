@@ -102,7 +102,6 @@ class DiscountFilter(admin.SimpleListFilter):
 class SpecificationInline(admin.StackedInline):
     model = ProductSpecification
     can_delete = False
-    verbose_name = "Характеристики"
     # Ограничиваем количество, так как это OneToOne
     max_num = 1
 
@@ -234,10 +233,11 @@ class ProductInline(admin.TabularInline):
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
+    inlines = [ProductInline]
+
     list_display = ["name", "slug", "get_products_count"]
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ["name"]
-    inlines = [ProductInline]
 
     @admin.display(description="Кол-во товаров")
     def get_products_count(self, obj):

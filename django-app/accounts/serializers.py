@@ -5,40 +5,34 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
+from .models import Profile, Address, City
 
 User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    password_confirm = serializers.CharField(write_only=True)
+    password = serializers.CharField(
+        write_only=True, validators=[validate_password], style={"input_type": "password"}
+    )
+    password_confirm = serializers.CharField(
+        write_only=True, style={"input_type": "password"}
+    )
 
     class Meta:
         model = User
         fields = ("id", "email", "password", "password_confirm")
 
+    def validate_email(self, value):
+        return value.strip().lower()
+
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
-            raise serializers.ValidationError("Пароли не совпадают")
+            raise serializers.ValidationError({"password_confirm": "Пароли не совпадают"})
         return attrs
 
     def create(self, validated_data):
         validated_data.pop("password_confirm")
-        user = User.objects.create_user(
-            email=validated_data["email"], password=validated_data["password"]
-        )
-        return user
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("id", "email", "first_name", "last_name", "phone", "date_joined")
-        read_only_fields = (
-            "id",
-            "email",
-            "date_joined",
-        )
+        return User.objects.create_user(**validated_data)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -141,3 +135,71 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def update(self, instance, validated_data):
         pass
+
+
+class CitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = City
+        fields = ("id", "name", "delivery_cost")
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    # При чтении (GET) мы хотим видеть объект города целиком
+    # При записи (POST/PATCH) мы будем передавать только ID города
+    city_details = CitySerializer(source="city", read_only=True)
+
+    class Meta:
+        model = Address
+        fields = (
+            "id",
+            "city",
+            "city_details",
+            "street",
+            "house",
+            "apartment",
+            "is_default",
+        )
+
+    # 'city' автоматически будет работать как PrimaryKeyRelatedField для записи
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    addresses = AddressSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = ("first_name", "last_name", "phone", "addresses")
+
+    def validate_phone(self, value):
+        if value:
+            return value.strip()
+        return value
+
+
+class UserSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer()
+
+    class Meta:
+        model = User
+        fields = ("id", "email", "date_joined", "profile")
+        read_only_fields = ("id", "email", "date_joined")
+
+    def update(self, instance, validated_data):
+        """
+        Переопределяем метод update, чтобы при PATCH запросе на /user/
+        обновлялись данные внутри вложенного профиля.
+        """
+        # Извлекаем данные профиля из запроса, если они есть
+        profile_data = validated_data.pop("profile", None)
+
+        # Обновляем поля самого User (если вдруг решим разрешить менять что-то кроме пароля/email)
+        super().update(instance, validated_data)
+
+        # Если пришли данные для профиля, обновляем их
+        if profile_data:
+            profile = instance.profile
+            for attr, value in profile_data.items():
+                setattr(profile, attr, value)
+            profile.save()
+
+        return instance

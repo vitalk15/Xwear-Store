@@ -12,12 +12,15 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.conf import settings
 from .utils import set_refresh_cookie
+from .models import City, Address
 from .serializers import (
     RegisterSerializer,
     ChangePasswordSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
     UserSerializer,
+    CitySerializer,
+    AddressSerializer,
 )
 
 User = get_user_model()
@@ -203,3 +206,54 @@ def user_profile_view(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Получение списка городов для доставки
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def city_list_view(_request):
+    cities = City.objects.filter(is_active=True)
+    serializer = CitySerializer(cities, many=True)
+    return Response(serializer.data)
+
+
+# создание и получение списка адресов пользователя
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def address_list_create_view(request):
+    user_profile = request.user.profile
+
+    if request.method == "GET":
+        addresses = user_profile.addresses.all()
+        serializer = AddressSerializer(addresses, many=True)
+        return Response(serializer.data)
+
+    if request.method == "POST":
+        serializer = AddressSerializer(data=request.data)
+        if serializer.is_valid():
+            # При сохранении передаем профиль вручную, так как его нет в данных формы
+            serializer.save(profile=user_profile)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# редактирование и удаление адреса пользователя
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def address_detail_view(request, pk):
+    try:
+        # Важно: ищем адрес только среди адресов текущего пользователя!
+        address = request.user.profile.addresses.get(pk=pk)
+    except Address.DoesNotExist:
+        return Response({"detail": "Адрес не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "PATCH":
+        serializer = AddressSerializer(address, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == "DELETE":
+        address.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
