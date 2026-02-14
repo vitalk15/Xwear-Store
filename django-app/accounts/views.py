@@ -4,7 +4,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.mail import send_mail
+from smtplib import SMTPException  # Для отлова ошибок почтового сервера
+from django.db import transaction
+from django.db.models import Prefetch
+from django.core.mail import send_mail, BadHeaderError
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
@@ -65,23 +68,32 @@ class CustomTokenRefreshView(TokenRefreshView):
 def register_view(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.save()
-        # Генерируем новую пару токенов и добавляем token_version
-        refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
-        refresh["token_version"] = user.token_version
+        try:
+            # Оборачиваем в транзакцию: создастся либо всё (User+Profile), либо ничего
+            # Profile создаётся через сигнал при создании User
+            with transaction.atomic():
+                user = serializer.save()
+            # Генерируем новую пару токенов и добавляем token_version
+            refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
+            refresh["token_version"] = user.token_version
 
-        response = Response(
-            {
-                "message": "Регистрация нового пользователя прошла успешно. Авторизация выполнена.",
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
+            response = Response(
+                {
+                    "message": "Регистрация нового пользователя прошла успешно. Авторизация выполнена.",
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                    },
+                    "access": str(refresh.access_token),
                 },
-                "access": str(refresh.access_token),
-            },
-            status=status.HTTP_201_CREATED,
-        )
-        return set_refresh_cookie(response, refresh)
+                status=status.HTTP_201_CREATED,
+            )
+            return set_refresh_cookie(response, refresh)
+        except Exception:
+            return Response(
+                {"detail": "Ошибка при создании профиля"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -119,6 +131,7 @@ def password_reset_request_view(request):
     serializer = PasswordResetSerializer(data=request.data)
     if serializer.is_valid():
         email = serializer.validated_data["email"]
+
         try:
             user = User.objects.get(email=email)
             token = default_token_generator.make_token(user)
@@ -126,16 +139,31 @@ def password_reset_request_view(request):
             reset_url = f"{settings.RESET_URL}/reset-password/{uid}/{token}/"
 
             send_mail(
-                "Сброс пароля",
-                f"Перейдите по ссылке (действительна {settings.PASSWORD_RESET_TIMEOUT//3600} час(а)): {reset_url}",
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
+                subject="Сброс пароля",
+                message=f"Перейдите по ссылке (действительна {settings.PASSWORD_RESET_TIMEOUT//3600} час(а)): {reset_url}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
                 fail_silently=False,
             )
         except User.DoesNotExist:
+            # Если пользователя нет, делаем вид что всё ок (Security)
             pass
+        except (BadHeaderError, SMTPException):
+            # Если упал почтовый сервер — сообщаем об ошибке 500
+            return Response(
+                {"error": "Ошибка отправки email. Попробуйте позже."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-        return Response({"message": f"Ссылка отправлена на email: {email}"})
+        # Возвращаем "Успех" в любом случае, чтобы злоумышленники
+        # не могли проверять базу на наличие email (защита от перебора).
+        return Response(
+            {
+                "message": f"Cсылка для сброса пароля отправлена, если пользователь с email {email} существует."
+            },
+            status=status.HTTP_200_OK,
+        )
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -148,6 +176,7 @@ def password_reset_confirm_view(request, uid, token):
     )
 
     if serializer.is_valid():
+        # Внутри save() происходит user.set_password() и user.save()
         serializer.save()
 
         response = Response(
@@ -157,14 +186,19 @@ def password_reset_confirm_view(request, uid, token):
             status=status.HTTP_200_OK,
         )
 
-        refresh_path = reverse("token_refresh")
-        response.delete_cookie(
-            "refresh_token",
-            path=refresh_path,
-            samesite=settings.COOKIE_SAMESITE,
-        )
+        try:
+            refresh_path = reverse("token_refresh")
+            response.delete_cookie(
+                "refresh_token",
+                path=refresh_path,
+                samesite=settings.COOKIE_SAMESITE,
+            )
+        except Exception:
+            # Если reverse не сработал (редкость), не ломаем ответ пользователю
+            pass
 
         return response
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -194,7 +228,15 @@ def logout_view(request):
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def user_profile_view(request):
-    user = request.user
+    user = (
+        User.objects.select_related("profile")
+        .prefetch_related(
+            Prefetch(
+                "profile__addresses", queryset=Address.objects.select_related("city")
+            )
+        )
+        .get(id=request.user.id)
+    )
 
     if request.method == "GET":
         serializer = UserSerializer(user)
@@ -224,7 +266,7 @@ def address_list_create_view(request):
     user_profile = request.user.profile
 
     if request.method == "GET":
-        addresses = user_profile.addresses.all()
+        addresses = user_profile.addresses.select_related("city").all()
         serializer = AddressSerializer(addresses, many=True)
         return Response(serializer.data)
 
@@ -243,7 +285,7 @@ def address_list_create_view(request):
 def address_detail_view(request, pk):
     try:
         # Важно: ищем адрес только среди адресов текущего пользователя!
-        address = request.user.profile.addresses.get(pk=pk)
+        address = request.user.profile.addresses.select_related("city").get(pk=pk)
     except Address.DoesNotExist:
         return Response({"detail": "Адрес не найден"}, status=status.HTTP_404_NOT_FOUND)
 
