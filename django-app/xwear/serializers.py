@@ -6,6 +6,7 @@ from .models import (
     ProductImage,
     ProductSize,
     ProductSpecification,
+    Favorite,
     SliderBanner,
 )
 from .utils import get_thumbnail_data
@@ -205,6 +206,16 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "specification",
             "is_active",
         ]
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    # При получении списка избранного будем разворачивать данные о товаре
+    product_details = ProductListSerializer(source="product", read_only=True)
+
+    class Meta:
+        model = Favorite
+        fields = ["id", "product", "product_details", "created_at"]
+        read_only_fields = ["id", "created_at"]
 
 
 class SliderBannerSerializer(serializers.ModelSerializer):

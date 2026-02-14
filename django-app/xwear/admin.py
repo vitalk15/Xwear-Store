@@ -11,6 +11,7 @@ from .models import (
     Size,
     ProductSize,
     ProductSpecification,
+    Favorite,
     SliderBanner,
 )
 from .utils import get_admin_thumb
@@ -101,7 +102,6 @@ class DiscountFilter(admin.SimpleListFilter):
 class SpecificationInline(admin.StackedInline):
     model = ProductSpecification
     can_delete = False
-    verbose_name = "Характеристики"
     # Ограничиваем количество, так как это OneToOne
     max_num = 1
 
@@ -233,10 +233,11 @@ class ProductInline(admin.TabularInline):
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
+    inlines = [ProductInline]
+
     list_display = ["name", "slug", "get_products_count"]
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ["name"]
-    inlines = [ProductInline]
 
     @admin.display(description="Кол-во товаров")
     def get_products_count(self, obj):
@@ -244,6 +245,14 @@ class BrandAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("products")
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ("user", "product", "created_at")
+    list_filter = ("user", "created_at")
+    search_fields = ("user__email", "product__name")
+    readonly_fields = ("created_at",)
 
 
 @admin.register(SliderBanner)
