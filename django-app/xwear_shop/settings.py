@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "xwear.apps.XwearConfig",
     "accounts.apps.AccountsConfig",
-    "orders",
+    "orders.apps.OrdersConfig",
     "easy_thumbnails",
     "django_cleanup",
     "mptt",
