@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from xwear.models import Product
+from xwear.models import Product, ProductSize
 from accounts.models import City
 
 
@@ -32,7 +32,9 @@ class CartItem(models.Model):
     cart = models.ForeignKey(
         Cart, on_delete=models.CASCADE, related_name="items", verbose_name="Корзина"
     )
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name="Товар")
+    product_size = models.ForeignKey(
+        ProductSize, on_delete=models.CASCADE, verbose_name="Товар и размер"
+    )
     quantity = models.PositiveIntegerField(default=1, verbose_name="Количество")
 
     class Meta:
@@ -40,11 +42,11 @@ class CartItem(models.Model):
         verbose_name_plural = "Товары в корзине"
 
     def __str__(self):
-        return f"{self.product.name} (x{self.quantity}) в корзине {self.cart.user.email}"
+        return f"{self.product_size.product.name} ({self.product_size.size.name}) x {self.quantity}"
 
     @property
     def total_item_price(self):
-        return self.product.price * self.quantity
+        return self.product_size.final_price * self.quantity
 
 
 # --- Заказы ---
@@ -115,6 +117,7 @@ class OrderItem(models.Model):
 
     # Снимки данных на момент покупки
     product_name = models.CharField(max_length=50, verbose_name="Название товара")
+    size_name = models.CharField(max_length=10, verbose_name="Размер")
     price_at_purchase = models.DecimalField(
         max_digits=10,
         decimal_places=2,

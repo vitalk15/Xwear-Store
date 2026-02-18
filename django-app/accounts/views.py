@@ -1,10 +1,10 @@
+from smtplib import SMTPException  # Для отлова ошибок почтового сервера
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
-from smtplib import SMTPException  # Для отлова ошибок почтового сервера
 from django.db import transaction
 from django.db.models import Prefetch
 from django.core.mail import send_mail, BadHeaderError
@@ -69,8 +69,8 @@ def register_view(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         try:
-            # Оборачиваем в транзакцию: создастся либо всё (User+Profile), либо ничего
-            # Profile создаётся через сигнал при создании User
+            # Оборачиваем в транзакцию: создастся либо всё (User+Profile+Cart), либо ничего
+            # Profile создаётся через сигнал при создании User (также Cart)
             with transaction.atomic():
                 user = serializer.save()
             # Генерируем новую пару токенов и добавляем token_version
