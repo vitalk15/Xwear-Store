@@ -146,21 +146,21 @@ class CitySerializer(serializers.ModelSerializer):
 class AddressSerializer(serializers.ModelSerializer):
     # При чтении (GET) мы хотим видеть объект города целиком
     # При записи (POST/PATCH) мы будем передавать только ID города
-    city_details = CitySerializer(source="city", read_only=True)
+    city_name = serializers.CharField(source="city.name", read_only=True)
+    address_simple = serializers.ReadOnlyField()
 
     class Meta:
         model = Address
         fields = (
             "id",
-            "city",
-            "city_details",
-            "street",
+            "city",  # ID города (нужен для записи/выбора)
+            "city_name",  # Название города (для отображения)
+            "street",  # Поля для форм редактирования
             "house",
             "apartment",
             "is_default",
+            "address_simple",  # Готовая строка для истории заказов или чеков
         )
-
-    # 'city' автоматически будет работать как PrimaryKeyRelatedField для записи
 
 
 class ProfileSerializer(serializers.ModelSerializer):

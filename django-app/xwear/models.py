@@ -88,7 +88,7 @@ class ProductSize(models.Model):
 
     @property
     def final_price(self):
-        """Возвращает цену с учетом скидки если есть, округленную до целых. Иначе - обычную цену"""
+        # Возвращает цену с учетом скидки если есть, округленную до целых. Иначе - обычную цену
         if self.discount_percent > 0:
             # Формула: NewPrice = Price * (1 - Discount / 100)
             new_price = self.price * (1 - self.discount_percent / 100)
