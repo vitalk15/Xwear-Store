@@ -1,10 +1,17 @@
+from django.shortcuts import get_object_or_404
+from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from .models import Cart, CartItem
-from .serializers import CartSerializer, CartItemSerializer
+from accounts.models import Address
+from .utils import send_order_confirmation_email
+from .models import Cart, CartItem, Order, OrderItem
+from .serializers import (
+    CartSerializer,
+    CartItemSerializer,
+    OrderSerializer,
+)
 
 
 # Получение корзины текущего пользователя
@@ -80,3 +87,134 @@ def cart_remove_item(request, pk):
     item = get_object_or_404(CartItem, pk=pk, cart__user=request.user)
     item.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# Оформление заказа из корзины
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def order_create(request):
+    user = request.user
+    cart = user.cart
+
+    # Если применяем остатки, этот код не используем
+    # -------------------------------------------------
+    cart_items = cart.items.select_related("product_size__product", "product_size__size")
+
+    # 1. Проверяем, не пуста ли корзина
+    if not cart_items.exists():
+        return Response(
+            {"error": "Ваша корзина пуста"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # 2. Валидация перед созданием заказа
+    for item in cart_items:
+        product = item.product_size.product
+        if not product.is_active:
+            return Response(
+                {"error": f"К сожалению, товар '{product.name}' больше недоступен."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    # ------------------------------------------------------------
+
+    # 3. Получаем данные адреса из запроса
+    address_id = request.data.get("address_id")
+
+    if not address_id:
+        return Response(
+            {"error": "Необходимо указать адрес доставки"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Ищем адрес именно этого пользователя
+    address_obj = get_object_or_404(Address, id=address_id, profile__user=user.profile)
+
+    city = address_obj.city
+    delivery_cost = city.delivery_cost
+    final_total = cart.total_price + delivery_cost
+
+    try:
+        # Атомарная транзакция: либо всё, либо ничего
+        with transaction.atomic():
+            # Если будем использовать остатки товара (stock в ProductSize)
+            # ------------------------------------------------------------
+            # Блокируем строки ProductSize в базе данных для этого заказа
+            # .select_for_update() гарантирует, что никто другой не изменит остатки, пока транзакция не завершиться
+            # cart_items = cart.items.select_related(
+            #     "product_size__product",
+            #     "product_size__size"
+            # ).select_for_update()
+
+            # if not cart_items.exists():
+            #     return Response(
+            #         {"error": "Ваша корзина пуста"}, status=status.HTTP_400_BAD_REQUEST
+            #     )
+
+            # for item in cart_items:
+            #     ps = item.product_size
+
+            #     # Проверка активности и остатков
+            #     if not ps.product.is_active or ps.stock < item.quantity:
+            #         return Response(
+            #             {
+            #                 "error": f"Товар {ps.product.name} (размер {ps.size.name}) недоступен."
+            #             },
+            #             status=status.HTTP_400_BAD_REQUEST,
+            #         )
+
+            #     # Списываем остатки
+            #     ps.stock -= item.quantity
+            #     ps.save()
+
+            # -----------------------------------------------------------
+
+            # 4. Создаем объект заказа
+            order = Order.objects.create(
+                user=user,
+                city=city,
+                address_text=address_obj.address_simple,
+                delivery_cost=delivery_cost,
+                total_price=final_total,
+                status="processing",
+            )
+
+            # 5. Переносим товары из корзины в OrderItem (делаем снимки)
+            order_items = [
+                OrderItem(
+                    order=order,
+                    product=item.product_size.product,
+                    product_name=item.product_size.product.name,  # Снимок имени
+                    size_name=item.product_size.size.name,  # Снимок размера
+                    price_at_purchase=item.product_size.final_price,  # Снимок цены
+                    quantity=item.quantity,
+                )
+                for item in cart_items
+            ]
+
+            # Массовое создание для экономии запросов к БД
+            OrderItem.objects.bulk_create(order_items)
+
+            # 6. Очищаем корзину
+            cart_items.delete()
+
+            # 7. Отправка Email (после успешного коммита транзакции)
+            transaction.on_commit(lambda: send_order_confirmation_email(order))
+
+            # 8. Возвращаем созданный заказ
+            serializer = OrderSerializer(order, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response(
+            {"error": f"Ошибка при оформлении заказа: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# Список всех заказов текущего пользователя
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def order_list(request):
+    orders = request.user.orders.all().prefetch_related("items")
+    serializer = OrderSerializer(orders, many=True, context={"request": request})
+    return Response(serializer.data)

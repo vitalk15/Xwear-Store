@@ -58,6 +58,38 @@ class CartItemSerializer(serializers.ModelSerializer):
             "total_item_price",
         ]
 
+    # Проверяем, активен ли товар и есть ли он в наличии
+    def validate_product_size(self, value):
+        # value — это объект ProductSize, так как PrimaryKeyRelatedField его уже нашел
+        product = value.product
+
+        if not product.is_active:
+            raise serializers.ValidationError(
+                "Этот товар временно недоступен для заказа."
+            )
+
+        # Для поля остатка в ProductSize
+        # if value.stock <= 0:
+        #     raise serializers.ValidationError("Данного размера нет в наличии.")
+
+        return value
+
+    # Валидация количества товаров в корзине и их остатков
+    # def validate(self, data):
+    #     product_size = data.get("product_size")
+    #     requested_quantity = data.get("quantity")
+
+    #     # Если это PATCH, ищем объект в self.instance
+    #     if not product_size and self.instance:
+    #         product_size = self.instance.product_size
+
+    #     if product_size.stock < requested_quantity:
+    #         raise serializers.ValidationError(
+    #             {"quantity": f"На складе осталось всего {product_size.stock} шт."}
+    #         )
+
+    #     return data
+
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
@@ -106,5 +138,6 @@ class OrderSerializer(serializers.ModelSerializer):
             "total_price",
             "delivery_cost",
             "created_at",
+            "updated_at",
             "items",
         ]

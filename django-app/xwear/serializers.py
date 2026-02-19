@@ -77,6 +77,8 @@ class ProductSizeSerializer(serializers.ModelSerializer):
     # old_price = serializers.ReadOnlyField(source="price")
     # has_discount = serializers.ReadOnlyField()
 
+    is_available = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductSize
         fields = [
@@ -86,8 +88,15 @@ class ProductSizeSerializer(serializers.ModelSerializer):
             "old_price",
             "discount_percent",
             "has_discount",
-            "is_active",
+            "is_available",
         ]
+
+    # Если будем использовать остатки
+    # def get_is_available(self, obj):
+    #     return obj.stock > 0 and obj.product.is_active
+
+    def get_is_available(self, obj):
+        return obj.product.is_active
 
 
 class SpecificationSerializer(serializers.ModelSerializer):

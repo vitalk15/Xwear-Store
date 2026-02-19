@@ -127,8 +127,9 @@ class Address(models.Model):
         verbose_name_plural = "Адреса доставки"
         ordering = ["-is_default", "-created_at"]  # Сначала основной, потом новые
 
-    def __str__(self):
-        addr = f"г. {self.city} | ул. {self.street}, {self.house}"
+    @property
+    def address_simple(self):
+        addr = f"ул. {self.street}, д. {self.house}"
         if self.apartment:
             addr += f", кв. {self.apartment}"
         return addr
@@ -143,3 +144,6 @@ class Address(models.Model):
                 is_default=False
             )
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"г. {self.city} | {self.address_simple}"
