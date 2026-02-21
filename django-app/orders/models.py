@@ -49,14 +49,46 @@ class CartItem(models.Model):
         return self.product_size.final_price * self.quantity
 
 
+# --- Адреса ПВЗ ---
+
+
+class PickupPoint(models.Model):
+    city = models.ForeignKey(
+        "accounts.City",
+        on_delete=models.CASCADE,
+        related_name="pickup_points",
+        verbose_name="Город",
+    )
+    address = models.CharField(max_length=255, verbose_name="Адрес (улица, дом)")
+    working_hours = models.CharField(
+        max_length=255,
+        help_text="Напр: Будни 9:00-22:00, Сб-Вс 10:00-20:00",
+        verbose_name="Время работы",
+    )
+    is_active = models.BooleanField(default=True, verbose_name="Активен")
+
+    class Meta:
+        verbose_name = "Пункт выдачи"
+        verbose_name_plural = "Пункты выдачи"
+
+    def __str__(self):
+        return f"{self.city.name}, {self.address}"
+
+
 # --- Заказы ---
 
 
 class Order(models.Model):
+    DELIVERY_METHODS = [
+        ("pickup", "Самовывоз"),
+        ("delivery", "Доставка"),
+    ]
+
     STATUS_CHOICES = [
         ("processing", "В обработке"),
-        ("paid", "Оплачен"),
-        ("shipped", "Отправлен"),
+        ("paid", "Оплачен"),  # не используется (возможно понадобится позже)
+        ("ready", "Готов к получению"),  # только Самовывоз
+        ("shipped", "Отправлен"),  # только Доставка
         ("completed", "Завершен"),
         ("canceled", "Отменен"),
     ]
@@ -67,15 +99,30 @@ class Order(models.Model):
         related_name="orders",
         verbose_name="Пользователь",
     )
+    delivery_method = models.CharField(
+        max_length=20,
+        choices=DELIVERY_METHODS,
+        default="pickup",
+        verbose_name="Способ получения",
+    )
+    pickup_point = models.ForeignKey(
+        PickupPoint,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Пункт выдачи",
+    )
+
+    # Поля для снимка данных
     city = models.ForeignKey(
         City, on_delete=models.PROTECT, verbose_name="Город доставки"
     )
-    # Данные адреса храним строкой (снимок на момент заказа)
-    address_text = models.TextField(verbose_name="Адрес доставки (улица, дом, кв)")
+    address_text = models.TextField(verbose_name="Адрес доставки / ПВЗ")
+
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="new",
+        default="processing",
         verbose_name="Статус",
     )
     total_price = models.DecimalField(
@@ -89,6 +136,7 @@ class Order(models.Model):
         default=0,
         verbose_name="Стоимость доставки",
     )
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 

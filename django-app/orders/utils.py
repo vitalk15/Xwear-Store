@@ -10,6 +10,7 @@ def send_order_confirmation_email(order):
         f"Ваш заказ №{order.id} успешно принят в обработку.\n"
         f"Сумма заказа: {order.total_price} руб. (включая доставку {order.delivery_cost} руб.)\n"
         f"Адрес доставки: {order.city.name}, {order.address_text}\n\n"
+        f"С вами свяжется менеджер для уточнения деталей доставки.\n\n"
         f"Спасибо, что выбрали XWEAR!"
     )
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [order.user.email])

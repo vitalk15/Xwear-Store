@@ -2,14 +2,14 @@ from rest_framework import serializers
 from xwear.utils import get_thumbnail_data
 from xwear.models import Product, ProductSize
 from accounts.serializers import CitySerializer
-from .models import Cart, CartItem, Order, OrderItem
+from .models import Cart, CartItem, Order, OrderItem, PickupPoint
 
 
 # --- КОРЗИНА ---
 
 
 class ProductCartSerializer(serializers.ModelSerializer):
-    """Данные о самом товаре для корзины"""
+    # Данные о самом товаре для корзины
 
     main_image = serializers.SerializerMethodField()
 
@@ -103,6 +103,12 @@ class CartSerializer(serializers.ModelSerializer):
 # --- ЗАКАЗЫ ---
 
 
+class PickupPointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PickupPoint
+        fields = "__all__"
+
+
 class OrderItemSerializer(serializers.ModelSerializer):
     # Если товар еще существует, можем показать его актуальное фото
     # Если удален — product_info будет None, но product_name останется!
@@ -125,6 +131,9 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     city_details = CitySerializer(source="city", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    delivery_method_display = serializers.CharField(
+        source="get_delivery_method_display", read_only=True
+    )
 
     class Meta:
         model = Order
@@ -132,6 +141,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "id",
             "status",
             "status_display",
+            "delivery_method",
+            "delivery_method_display",
             "city",
             "city_details",
             "address_text",

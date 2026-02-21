@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from accounts.models import Address
 from .utils import send_order_confirmation_email
-from .models import Cart, CartItem, Order, OrderItem
+from .models import Cart, CartItem, Order, OrderItem, PickupPoint
 from .serializers import (
     CartSerializer,
     CartItemSerializer,
@@ -95,8 +95,9 @@ def cart_remove_item(request, pk):
 def order_create(request):
     user = request.user
     cart = user.cart
+    delivery_method = request.data.get("delivery_method")
 
-    # Если применяем остатки, этот код не используем
+    # Если применяем остатки, используем не этот код, а код в транзакции
     # -------------------------------------------------
     cart_items = cart.items.select_related("product_size__product", "product_size__size")
 
@@ -106,7 +107,7 @@ def order_create(request):
             {"error": "Ваша корзина пуста"}, status=status.HTTP_400_BAD_REQUEST
         )
 
-    # 2. Валидация перед созданием заказа
+    # 2. Валидация доступности товара перед созданием заказа
     for item in cart_items:
         product = item.product_size.product
         if not product.is_active:
@@ -117,21 +118,46 @@ def order_create(request):
 
     # ------------------------------------------------------------
 
-    # 3. Получаем данные адреса из запроса
-    address_id = request.data.get("address_id")
+    # 3. Получаем данные адреса (доставки или ПВЗ) и стоимости из запроса
+    if delivery_method == "delivery":
+        address_id = request.data.get("address_id")
 
-    if not address_id:
-        return Response(
-            {"error": "Необходимо указать адрес доставки"},
-            status=status.HTTP_400_BAD_REQUEST,
+        if not address_id:
+            return Response(
+                {"error": "Необходимо указать адрес доставки"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Ищем адрес именно этого пользователя
+        address_obj = get_object_or_404(
+            Address, id=address_id, profile__user=user.profile
         )
+        city = address_obj.city
 
-    # Ищем адрес именно этого пользователя
-    address_obj = get_object_or_404(Address, id=address_id, profile__user=user.profile)
+        if not city.is_active:
+            return Response(
+                {"error": "Доставка в этот город недоступна"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    city = address_obj.city
-    delivery_cost = city.delivery_cost
-    final_total = cart.total_price + delivery_cost
+        address_text = address_obj.address_simple
+        delivery_cost = city.delivery_cost
+        pickup_point = None
+    else:
+        pickup_id = request.data.get("pickup_point_id")
+
+        if not pickup_id:
+            return Response(
+                {"error": "Необходимо указать адрес ПВЗ"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pickup_point = get_object_or_404(PickupPoint, id=pickup_id, is_active=True)
+        city = pickup_point.city
+        address_text = f"ПВЗ: {pickup_point.address} ({pickup_point.working_hours})"
+        delivery_cost = 0
+
+    total_price = cart.total_price + delivery_cost
 
     try:
         # Атомарная транзакция: либо всё, либо ничего
@@ -171,10 +197,12 @@ def order_create(request):
             # 4. Создаем объект заказа
             order = Order.objects.create(
                 user=user,
+                delivery_method=delivery_method,
+                pickup_point=pickup_point,
                 city=city,
-                address_text=address_obj.address_simple,
+                address_text=address_text,
                 delivery_cost=delivery_cost,
-                total_price=final_total,
+                total_price=total_price,
                 status="processing",
             )
 
