@@ -8,14 +8,14 @@ from .models import Cart, Order
 
 # сигнал для автоматического создания корзины пользователя при его создании
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_user_cart(_sender, instance, created, **_kwargs):
+def create_user_cart(sender, instance, created, **kwargs):
     if created:
         Cart.objects.create(user=instance)
 
 
 # сигнал для отслеживания изменения статуса заказа и отправки соответствующих писем
 @receiver(post_save, sender=Order)
-def order_status_changed(_sender, instance, created, **_kwargs):
+def order_status_changed(sender, instance, created, **kwargs):
     def send():
         # При создании заказа
         if created:

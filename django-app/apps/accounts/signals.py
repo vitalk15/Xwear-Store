@@ -5,13 +5,13 @@ from .models import User, Profile
 
 # сигнал для автоматического создания профиля при создании пользователя
 @receiver(post_save, sender=User)
-def create_user_profile(_sender, instance, created, **_kwargs):
+def create_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
 
 
 # Если профиль уже есть, но нужно обновить связь
 @receiver(post_save, sender=User)
-def save_user_profile(_sender, instance, **_kwargs):
+def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, "profile"):
         instance.profile.save()
