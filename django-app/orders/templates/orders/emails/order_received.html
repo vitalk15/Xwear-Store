@@ -1,0 +1,13 @@
+{% extends "emails/base_order.html" %}
+{% block order_body %}
+<p>Ваш заказ №{{ order.id }} успешно принят в обработку!</p>
+<p>Способ получения: <strong>{{ order.get_delivery_method_display }}</strong></p>
+
+{% if order.delivery_method == 'delivery' %}
+    <p>В ближайшее время наш менеджер свяжется с вами для уточнения деталей доставки.</p>
+    <p>Адрес доставки: {{ order.address_text }}</p>
+{% else %}
+    <p>Мы сообщим вам отдельным письмом, как только ваш заказ прибудет в пункт выдачи и будет готов к получению.</p>
+    <p>Выбранный ПВЗ: {{ order.address_text }}</p>
+{% endif %}
+{% endblock %}

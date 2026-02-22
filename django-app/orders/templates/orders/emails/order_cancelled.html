@@ -1,0 +1,5 @@
+{% extends "emails/base_order.html" %}
+{% block order_body %}
+<p>Ваш заказ №{{ order.id }} был отменен.</p>
+<p>Если у вас есть вопросы, свяжитесь с нами.</p>
+{% endblock %}

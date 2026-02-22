@@ -1,0 +1,12 @@
+{% extends "emails/base_layout.html" %}
+
+{% block main_content %}
+    <h2>Заказ №{{ order.id }}</h2>
+    <p>Здравствуйте, {{ order.user.first_name|default:"клиент" }}!</p>
+    
+    {% block order_body %}{% endblock %}
+    
+    <div style="background: #f9f9f9; padding: 10px; margin-top: 20px;">
+        <p><strong>Итоговая сумма к оплате:</strong> {{ order.total_price }} руб.</p>
+    </div>
+{% endblock %}

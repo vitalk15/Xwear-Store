@@ -7,13 +7,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
 from django.db.models import Prefetch
-from django.core.mail import send_mail, BadHeaderError
+from django.core.mail import BadHeaderError
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.conf import settings
+from core.utils import send_custom_email
 from .utils import set_refresh_cookie
 from .models import City, Address
 from .serializers import (
@@ -109,6 +110,14 @@ def change_password_view(request):
         # и версия токена увеличится.
         user = serializer.save()
 
+        # Отправляем уведомление на email
+        send_custom_email(
+            subject="Пароль изменен",
+            template_name="accounts/emails/password_changed.html",
+            context={"user": user},
+            to_email=user.email,
+        )
+
         # Генерируем новую пару токенов и добавляем token_version
         refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
         refresh["token_version"] = user.token_version
@@ -138,13 +147,18 @@ def password_reset_request_view(request):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             reset_url = f"{settings.RESET_URL}/reset-password/{uid}/{token}/"
 
-            send_mail(
+            # Отправляем письмо
+            send_custom_email(
                 subject="Сброс пароля",
-                message=f"Перейдите по ссылке (действительна {settings.PASSWORD_RESET_TIMEOUT//3600} час(а)): {reset_url}",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
+                template_name="accounts/emails/password_reset.html",
+                context={
+                    "reset_url": reset_url,
+                    "user": user,
+                    "timeout": settings.PASSWORD_RESET_TIMEOUT // 3600,
+                },
+                to_email=user.email,
             )
+
         except User.DoesNotExist:
             # Если пользователя нет, делаем вид что всё ок (Security)
             pass
@@ -158,9 +172,7 @@ def password_reset_request_view(request):
         # Возвращаем "Успех" в любом случае, чтобы злоумышленники
         # не могли проверять базу на наличие email (защита от перебора).
         return Response(
-            {
-                "message": f"Cсылка для сброса пароля отправлена, если пользователь с email {email} существует."
-            },
+            {"message": f"Инструкции для сброса пароля отправлены на email: {email}."},
             status=status.HTTP_200_OK,
         )
 

@@ -1,0 +1,6 @@
+{% extends "emails/base_order.html" %}
+{% block order_body %}
+<p>Ваш заказ №{{ order.id }} готов к выдаче!</p>
+<p>Вы можете забрать его в течении 3 дней в ПВЗ по адресу: <strong>{{ order.address_text }}</strong></p>
+<p>Часы работы: {{ order.pickup_point.working_hours }}</p>
+{% endblock %}

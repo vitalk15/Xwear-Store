@@ -145,6 +145,18 @@ class Order(models.Model):
         verbose_name_plural = "Заказы"
         ordering = ["-created_at"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Запоминаем статус, который был в базе
+        self.__original_status = self.status
+
+    def save(self, *args, **kwargs):
+        # Проверяем, изменился ли статус
+        self.status_changed = self.status != self.__original_status
+        super().save(*args, **kwargs)
+        # Обновляем состояние после сохранения
+        self.__original_status = self.status
+
     def __str__(self):
         return f"Заказ #{self.id} ({self.user.email})"
 

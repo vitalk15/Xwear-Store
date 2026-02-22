@@ -160,7 +160,7 @@ def order_create(request):
     total_price = cart.total_price + delivery_cost
 
     try:
-        # Атомарная транзакция: либо всё, либо ничего
+        # Атомарная транзакция: либо выполняется всё, либо ничего
         with transaction.atomic():
             # Если будем использовать остатки товара (stock в ProductSize)
             # ------------------------------------------------------------
@@ -225,10 +225,7 @@ def order_create(request):
             # 6. Очищаем корзину
             cart_items.delete()
 
-            # 7. Отправка Email (после успешного коммита транзакции)
-            transaction.on_commit(lambda: send_order_confirmation_email(order))
-
-            # 8. Возвращаем созданный заказ
+            # 7. Возвращаем созданный заказ
             serializer = OrderSerializer(order, context={"request": request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
