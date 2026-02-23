@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
 from xwear.models import Product, ProductSize
-from accounts.models import City
 
 
 # --- Корзина ---
@@ -54,7 +53,7 @@ class CartItem(models.Model):
 
 class PickupPoint(models.Model):
     city = models.ForeignKey(
-        "accounts.City",
+        "core.City",
         on_delete=models.CASCADE,
         related_name="pickup_points",
         verbose_name="Город",
@@ -115,7 +114,7 @@ class Order(models.Model):
 
     # Поля для снимка данных
     city = models.ForeignKey(
-        City, on_delete=models.PROTECT, verbose_name="Город доставки"
+        "core.City", on_delete=models.PROTECT, verbose_name="Город доставки"
     )
     address_text = models.TextField(verbose_name="Адрес доставки / ПВЗ")
 

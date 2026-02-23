@@ -5,7 +5,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
-from .models import Profile, Address, City
+from core.serializers import CitySerializer
+from core.models import City
+from .models import Profile, Address
 
 User = get_user_model()
 
@@ -137,24 +139,22 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         pass
 
 
-class CitySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = City
-        fields = ("id", "name", "delivery_cost")
-
-
 class AddressSerializer(serializers.ModelSerializer):
     # При чтении (GET) мы хотим видеть объект города целиком
-    # При записи (POST/PATCH) мы будем передавать только ID города
-    city_name = serializers.CharField(source="city.name", read_only=True)
+    city = CitySerializer(read_only=True)
+    # Это поле позволит нам отправлять ID города при создании (POST)
+    # Мы привязываем его к полю модели 'city' через аргумент source
+    city_id = serializers.PrimaryKeyRelatedField(
+        queryset=City.objects.all(), source="city", write_only=True
+    )
     address_simple = serializers.ReadOnlyField()
 
     class Meta:
         model = Address
         fields = (
             "id",
-            "city",  # ID города (нужен для записи/выбора)
-            "city_name",  # Название города (для отображения)
+            "city",  # Для отображения
+            "city_id",  # Для записи
             "street",  # Поля для форм редактирования
             "house",
             "apartment",

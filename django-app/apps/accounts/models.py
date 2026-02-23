@@ -81,22 +81,6 @@ class Profile(models.Model):
         verbose_name_plural = "Профили пользователей"
 
 
-class City(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name="Название города")
-    is_active = models.BooleanField(default=True, verbose_name="Доступен для доставки")
-    delivery_cost = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0, verbose_name="Стоимость доставки"
-    )
-
-    class Meta:
-        verbose_name = "Город"
-        verbose_name_plural = "Города"
-        ordering = ["name"]
-
-    def __str__(self):
-        return self.name
-
-
 class Address(models.Model):
     profile = models.ForeignKey(
         Profile,
@@ -105,9 +89,9 @@ class Address(models.Model):
         verbose_name="Профиль",
     )
     city = models.ForeignKey(
-        City,
+        "core.City",
         on_delete=models.PROTECT,  # Не даем удалить город, если на него ссылаются адреса
-        related_name="addresses",
+        related_name="user_addresses",
         verbose_name="Город",
     )
     street = models.CharField(max_length=100, verbose_name="Улица")
@@ -140,9 +124,9 @@ class Address(models.Model):
         снимаем флаг is_default со всех остальных адресов этого профиля.
         """
         if self.is_default:
-            Address.objects.filter(profile=self.profile, is_default=True).update(
-                is_default=False
-            )
+            Address.objects.filter(profile=self.profile, is_default=True).exclude(
+                pk=self.pk
+            ).update(is_default=False)
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from xwear.utils import get_thumbnail_data
 from xwear.models import Product, ProductSize
-from accounts.serializers import CitySerializer
+from core.serializers import CitySerializer
 from .models import Cart, CartItem, Order, OrderItem, PickupPoint
 
 
@@ -106,7 +106,7 @@ class CartSerializer(serializers.ModelSerializer):
 class PickupPointSerializer(serializers.ModelSerializer):
     class Meta:
         model = PickupPoint
-        fields = "__all__"
+        fields = ["id", "city", "address", "working_hours", "is_active"]
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

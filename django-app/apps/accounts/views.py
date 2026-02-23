@@ -16,14 +16,13 @@ from django.urls import reverse
 from django.conf import settings
 from core.utils import send_custom_email
 from .utils import set_refresh_cookie
-from .models import City, Address
+from .models import Address
 from .serializers import (
     RegisterSerializer,
     ChangePasswordSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
     UserSerializer,
-    CitySerializer,
     AddressSerializer,
 )
 
@@ -260,15 +259,6 @@ def user_profile_view(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-# Получение списка городов для доставки
-@api_view(["GET"])
-@permission_classes([AllowAny])
-def city_list_view(_request):
-    cities = City.objects.filter(is_active=True)
-    serializer = CitySerializer(cities, many=True)
-    return Response(serializer.data)
 
 
 # создание и получение списка адресов пользователя
