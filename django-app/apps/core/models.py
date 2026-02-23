@@ -10,7 +10,7 @@ class City(models.Model):
 
     class Meta:
         verbose_name = "Город"
-        verbose_name_plural = "Список городов"
+        verbose_name_plural = "Города"
         ordering = ["name"]
 
     def __str__(self):

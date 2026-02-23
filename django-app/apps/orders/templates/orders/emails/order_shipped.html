@@ -1,4 +1,4 @@
-{% extends "emails/base_order.html" %}
+{% extends "orders/emails/base_order.html" %}
 {% block order_body %}
 <p>Ваш заказ №{{ order.id }} был передан в службу доставки.</p>
 <p>Доставка осуществляется по адресу: {{ order.address_text }}</p>

@@ -1,4 +1,4 @@
-{% extends "emails/base_order.html" %}
+{% extends "orders/emails/base_order.html" %}
 {% block order_body %}
 <p>Ваш заказ №{{ order.id }} успешно принят в обработку!</p>
 <p>Способ получения: <strong>{{ order.get_delivery_method_display }}</strong></p>
