@@ -22,6 +22,8 @@ ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS", default="localhost", cast=lambda v: [s.strip() for s in v.split(",")]
 )
 
+SITE_URL = config("SITE_URL", default="http://127.0.0.1:8000")
+
 
 # Application definition
 
@@ -63,7 +65,7 @@ ROOT_URLCONF = "xwear_shop.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

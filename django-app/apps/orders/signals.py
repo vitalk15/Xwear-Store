@@ -3,6 +3,7 @@ from django.dispatch import receiver
 from django.db import transaction
 from django.conf import settings
 from core.utils import send_custom_email
+from .utils import get_order_email_context
 from .models import Cart, Order
 
 
@@ -17,12 +18,14 @@ def create_user_cart(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Order)
 def order_status_changed(sender, instance, created, **kwargs):
     def send():
+        context = get_order_email_context(instance)
+
         # При создании заказа
         if created:
             send_custom_email(
                 subject=f"Заказ №{instance.id} принят",
                 template_name="orders/emails/order_received.html",
-                context={"order": instance},
+                context=context,
                 to_email=instance.user.email,
             )
             return
@@ -33,7 +36,7 @@ def order_status_changed(sender, instance, created, **kwargs):
                 send_custom_email(
                     subject=f"Ваш заказ №{instance.id} отправлен",
                     template_name="orders/emails/order_shipped.html",
-                    context={"order": instance},
+                    context=context,
                     to_email=instance.user.email,
                 )
             elif (
@@ -43,14 +46,14 @@ def order_status_changed(sender, instance, created, **kwargs):
                 send_custom_email(
                     subject=f"Заказ №{instance.id} готов к выдаче",
                     template_name="orders/emails/order_ready.html",
-                    context={"order": instance},
+                    context=context,
                     to_email=instance.user.email,
                 )
             elif instance.status == "cancelled":
                 send_custom_email(
                     subject=f"Заказ №{instance.id} отменен",
                     template_name="orders/emails/order_cancelled.html",
-                    context={"order": instance},
+                    context=context,
                     to_email=instance.user.email,
                 )
 
