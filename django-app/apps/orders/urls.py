@@ -10,4 +10,6 @@ urlpatterns = [
     # Заказы
     path("orders/checkout/", views.order_create, name="order-checkout"),
     path("orders/", views.order_list, name="order-list"),
+    # Список ПВЗ
+    path("pickup-points/", views.pickup_point_list, name="pickup-point-list"),
 ]

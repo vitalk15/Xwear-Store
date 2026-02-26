@@ -23,7 +23,7 @@ class CartAdmin(admin.ModelAdmin):
 
 @admin.register(PickupPoint)
 class PickupPointAdmin(admin.ModelAdmin):
-    list_display = ("city", "address", "working_hours", "is_active")
+    list_display = ("city", "address", "phone", "work_schedule", "is_active")
     list_editable = ["is_active"]
     list_filter = ("city", "is_active")
 

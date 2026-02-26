@@ -59,11 +59,22 @@ class PickupPoint(models.Model):
         verbose_name="Город",
     )
     address = models.CharField(max_length=255, verbose_name="Адрес (улица, дом)")
-    working_hours = models.CharField(
+    work_schedule = models.CharField(
         max_length=255,
-        help_text="Напр: Будни 9:00-22:00, Сб-Вс 10:00-20:00",
-        verbose_name="Время работы",
+        help_text="Напр: Пн-Пт 10:00-22:00, Сб-Вс 10:00-20:00",
+        default="Пн-Вс 10:00-21:00",
+        verbose_name="Режим работы",
     )
+    phone = models.CharField(max_length=20, verbose_name="Телефон ПВЗ", blank=True)
+
+    # Координаты для карты
+    lat = models.DecimalField(
+        max_digits=9, decimal_places=6, verbose_name="Широта", null=True, blank=True
+    )
+    lon = models.DecimalField(
+        max_digits=9, decimal_places=6, verbose_name="Долгота", null=True, blank=True
+    )
+
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
     class Meta:
@@ -71,7 +82,7 @@ class PickupPoint(models.Model):
         verbose_name_plural = "Пункты выдачи"
 
     def __str__(self):
-        return f"{self.city.name}, {self.address}"
+        return f"{self.city}, {self.address}"
 
 
 # --- Заказы ---

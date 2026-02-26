@@ -1,8 +1,9 @@
+from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from accounts.models import Address
 from .models import Cart, CartItem, Order, OrderItem, PickupPoint
@@ -10,7 +11,9 @@ from .serializers import (
     CartSerializer,
     CartItemSerializer,
     OrderSerializer,
+    PickupPointSerializer,
 )
+from .utils import calculate_order_totals
 
 
 # Получение корзины текущего пользователя
@@ -108,10 +111,11 @@ def order_create(request):
 
     # 2. Валидация доступности товара перед созданием заказа
     for item in cart_items:
-        product = item.product_size.product
-        if not product.is_active:
+        if not item.product_size.product.is_active:
             return Response(
-                {"error": f"К сожалению, товар '{product.name}' больше недоступен."},
+                {
+                    "error": f"К сожалению, товар '{item.product_size.product.name}' больше недоступен."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -123,7 +127,7 @@ def order_create(request):
 
         if not address_id:
             return Response(
-                {"error": "Необходимо указать адрес доставки"},
+                {"error": "Укажите адрес доставки"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -140,23 +144,19 @@ def order_create(request):
             )
 
         address_text = address_obj.address_simple
-        delivery_cost = city.delivery_cost
         pickup_point = None
     else:
         pickup_id = request.data.get("pickup_point_id")
 
         if not pickup_id:
             return Response(
-                {"error": "Необходимо указать адрес ПВЗ"},
+                {"error": "Укажите адрес ПВЗ"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         pickup_point = get_object_or_404(PickupPoint, id=pickup_id, is_active=True)
         city = pickup_point.city
-        address_text = f"ПВЗ: {pickup_point.address} ({pickup_point.working_hours})"
-        delivery_cost = 0
-
-    total_price = cart.total_price + delivery_cost
+        address_text = f"ПВЗ: {pickup_point.address} ({pickup_point.work_schedule})"
 
     try:
         # Атомарная транзакция: либо выполняется всё, либо ничего
@@ -200,31 +200,52 @@ def order_create(request):
                 pickup_point=pickup_point,
                 city=city,
                 address_text=address_text,
-                delivery_cost=delivery_cost,
-                total_price=total_price,
+                total_price=0,  # рассчитывается ниже
+                delivery_cost=0,  # рассчитывается ниже
                 status="processing",
             )
 
-            # 5. Переносим товары из корзины в OrderItem (делаем снимки)
-            order_items = [
-                OrderItem(
-                    order=order,
-                    product=item.product_size.product,
-                    product_name=item.product_size.product.name,  # Снимок имени
-                    size_name=item.product_size.size.name,  # Снимок размера
-                    price_at_purchase=item.product_size.final_price,  # Снимок цены
-                    quantity=item.quantity,
+            # 5. Переносим товары из корзины в OrderItem (делаем снимки) и считаем промежуточную сумму
+            items_sum = Decimal("0.00")
+            order_items = []
+
+            for item in cart_items:
+                price = item.product_size.final_price
+                items_sum += price * item.quantity
+
+                order_items.append(
+                    OrderItem(
+                        order=order,
+                        product=item.product_size.product,
+                        product_name=item.product_size.product.name,  # Снимок названия
+                        size_name=item.product_size.size.name,  # Снимок размера
+                        price_at_purchase=price,  # Снимок цены
+                        quantity=item.quantity,  # Снимок кол-ва
+                    )
                 )
-                for item in cart_items
-            ]
+            # order_items = [
+            #     OrderItem(
+            #         order=order,
+            #         product=item.product_size.product,
+            #         product_name=item.product_size.product.name,  # Снимок имени
+            #         size_name=item.product_size.size.name,  # Снимок размера
+            #         price_at_purchase=item.product_size.final_price,  # Снимок цены
+            #         quantity=item.quantity,
+            #     )
+            #     for item in cart_items
+            # ]
 
             # Массовое создание для экономии запросов к БД
             OrderItem.objects.bulk_create(order_items)
 
-            # 6. Очищаем корзину
+            # 6. ФИНАЛЬНЫЙ РАСЧЕТ
+            order = calculate_order_totals(order, items_sum)
+            order.save()
+
+            # 7. Очищаем корзину
             cart_items.delete()
 
-            # 7. Возвращаем созданный заказ
+            # 8. Возвращаем созданный заказ
             serializer = OrderSerializer(order, context={"request": request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -241,4 +262,13 @@ def order_create(request):
 def order_list(request):
     orders = request.user.orders.all().prefetch_related("items")
     serializer = OrderSerializer(orders, many=True, context={"request": request})
+    return Response(serializer.data)
+
+
+# Список ПВЗ
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def pickup_point_list(request):
+    points = PickupPoint.objects.select_related("city").all()
+    serializer = PickupPointSerializer(points, many=True)
     return Response(serializer.data)

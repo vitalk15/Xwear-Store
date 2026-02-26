@@ -104,9 +104,20 @@ class CartSerializer(serializers.ModelSerializer):
 
 
 class PickupPointSerializer(serializers.ModelSerializer):
+    city_name = serializers.CharField(source="city.name", read_only=True)
+
     class Meta:
         model = PickupPoint
-        fields = ["id", "city", "address", "working_hours", "is_active"]
+        fields = [
+            "id",
+            "city_name",
+            "address",
+            "work_schedule",
+            "phone",
+            "lat",
+            "lon",
+            "is_active",
+        ]
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
