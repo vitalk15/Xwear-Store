@@ -22,7 +22,10 @@ ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS", default="localhost", cast=lambda v: [s.strip() for s in v.split(",")]
 )
 
+# SITE_URL используется для статического контента
 SITE_URL = config("SITE_URL", default="http://127.0.0.1:8000")
+# FRONTEND_URL используется для всех ссылок, по которым пользователь должен кликнуть.
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
 
 
 # Application definition

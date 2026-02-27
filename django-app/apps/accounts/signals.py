@@ -33,7 +33,7 @@ def send_activation_email_signal(sender, instance, created, **kwargs):
         token = account_activation_token_generator.make_token(instance)
         uid = urlsafe_base64_encode(force_bytes(instance.pk))
 
-        activation_link = f"{settings.SITE_URL}/activate/{uid}/{token}/"
+        activation_link = f"{settings.FRONTEND_URL}/activate/{uid}/{token}/"
 
         context = {
             "user_name": instance.email.split("@")[0],

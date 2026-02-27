@@ -1,4 +1,3 @@
-from smtplib import SMTPException  # Для отлова ошибок почтового сервера
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -7,17 +6,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
 from django.db.models import Prefetch
-from django.core.mail import BadHeaderError
-from django.utils.http import urlsafe_base64_encode
 from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_bytes
 from django.utils.encoding import force_str
-from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.conf import settings
-from core.utils import send_custom_email
-from .utils import set_refresh_cookie, account_activation_token_generator
 from .models import Address
 from .serializers import (
     RegisterSerializer,
@@ -26,6 +19,12 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     UserSerializer,
     AddressSerializer,
+)
+from .utils import (
+    set_refresh_cookie,
+    account_activation_token_generator,
+    send_password_reset_email,
+    send_password_changed_notification,
 )
 
 User = get_user_model()
@@ -184,12 +183,7 @@ def change_password_view(request):
         user = serializer.save()
 
         # Отправляем уведомление на email
-        send_custom_email(
-            subject="Пароль изменен",
-            template_name="accounts/emails/password_changed.html",
-            context={"user": user},
-            to_email=user.email,
-        )
+        send_password_changed_notification(user)
 
         # Генерируем новую пару токенов и добавляем token_version
         refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
@@ -213,37 +207,20 @@ def password_reset_request_view(request):
     serializer = PasswordResetSerializer(data=request.data)
     if serializer.is_valid():
         email = serializer.validated_data["email"]
+        user = User.objects.filter(email=email).first()
+        # user = User.objects.get(email=email)
 
-        try:
-            user = User.objects.get(email=email)
-            token = default_token_generator.make_token(user)
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            reset_url = f"{settings.SITE_URL}/reset-password/{uid}/{token}/"
+        if user:
+            try:
+                # генерируем ссылку для сброса пароля и отправляем письмо
+                send_password_reset_email(user)
+            except Exception:
+                return Response(
+                    {"error": "Ошибка отправки email. Попробуйте позже."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
-            # Отправляем письмо
-            send_custom_email(
-                subject="Сброс пароля",
-                template_name="accounts/emails/password_reset.html",
-                context={
-                    "reset_url": reset_url,
-                    "user": user,
-                    "timeout_minutes": settings.PASSWORD_RESET_TIMEOUT // 60,
-                },
-                to_email=user.email,
-            )
-
-        except User.DoesNotExist:
-            # Если пользователя нет, делаем вид что всё ок (Security)
-            pass
-        except (BadHeaderError, SMTPException):
-            # Если упал почтовый сервер — сообщаем об ошибке 500
-            return Response(
-                {"error": "Ошибка отправки email. Попробуйте позже."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # Возвращаем "Успех" в любом случае, чтобы злоумышленники
-        # не могли проверять базу на наличие email (защита от перебора).
+        # Всегда возвращаем успех, чтобы не выдавать наличие email в базе
         return Response(
             {"message": f"Инструкции для сброса пароля отправлены на email: {email}."},
             status=status.HTTP_200_OK,
