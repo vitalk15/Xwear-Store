@@ -7,6 +7,7 @@ from .views import (
     CustomTokenObtainView,
     CustomTokenRefreshView,
     register_view,
+    activate_view,
     change_password_view,
     password_reset_request_view,
     password_reset_confirm_view,
@@ -24,6 +25,7 @@ urlpatterns = [
     path("token/refresh/", CustomTokenRefreshView.as_view(), name="token_refresh"),
     # path("token/blacklist/", TokenBlacklistView.as_view(), name="token_blacklist"),  # для Blacklist
     path("register/", register_view, name="register"),
+    path("activate/", activate_view, name="activate"),
     path("change-password/", change_password_view, name="change_password"),
     path("password-reset/", password_reset_request_view, name="password_reset"),
     path(

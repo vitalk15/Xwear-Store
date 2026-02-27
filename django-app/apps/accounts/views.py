@@ -9,13 +9,15 @@ from django.db import transaction
 from django.db.models import Prefetch
 from django.core.mail import BadHeaderError
 from django.utils.http import urlsafe_base64_encode
+from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_bytes
+from django.utils.encoding import force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.conf import settings
 from core.utils import send_custom_email
-from .utils import set_refresh_cookie
+from .utils import set_refresh_cookie, account_activation_token_generator
 from .models import Address
 from .serializers import (
     RegisterSerializer,
@@ -63,38 +65,110 @@ class CustomTokenRefreshView(TokenRefreshView):
 
 
 # регистрация пользователя с автоматической авторизацией (с выдачей токенов)
+# @api_view(["POST"])
+# @permission_classes([AllowAny])
+# def register_view(request):
+#     serializer = RegisterSerializer(data=request.data)
+#     if serializer.is_valid():
+#         try:
+#             # Оборачиваем в транзакцию: создастся либо всё (User+Profile+Cart), либо ничего
+#             # Profile создаётся через сигнал при создании User (также Cart)
+#             with transaction.atomic():
+#                 user = serializer.save()
+#             # Генерируем новую пару токенов и добавляем token_version
+#             refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
+#             refresh["token_version"] = user.token_version
+
+#             response = Response(
+#                 {
+#                     "message": "Регистрация нового пользователя прошла успешно. Авторизация выполнена.",
+#                     "user": {
+#                         "id": user.id,
+#                         "email": user.email,
+#                     },
+#                     "access": str(refresh.access_token),
+#                 },
+#                 status=status.HTTP_201_CREATED,
+#             )
+#             return set_refresh_cookie(response, refresh)
+#         except Exception:
+#             return Response(
+#                 {"detail": "Ошибка при создании профиля"},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             )
+#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# регистрация пользователя c подтверждением почты
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register_view(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
-        try:
-            # Оборачиваем в транзакцию: создастся либо всё (User+Profile+Cart), либо ничего
-            # Profile создаётся через сигнал при создании User (также Cart)
-            with transaction.atomic():
-                user = serializer.save()
-            # Генерируем новую пару токенов и добавляем token_version
-            refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
-            refresh["token_version"] = user.token_version
+        # Создаем пользователя. Флаг is_active=False должен стоять в сериализаторе
+        # или здесь принудительно.
+        user = serializer.save(is_active=False)
 
-            response = Response(
-                {
-                    "message": "Регистрация нового пользователя прошла успешно. Авторизация выполнена.",
-                    "user": {
-                        "id": user.id,
-                        "email": user.email,
-                    },
-                    "access": str(refresh.access_token),
-                },
-                status=status.HTTP_201_CREATED,
-            )
-            return set_refresh_cookie(response, refresh)
-        except Exception:
-            return Response(
-                {"detail": "Ошибка при создании профиля"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        # Сигнал отправит письмо
+        return Response(
+            {
+                "message": "Регистрация прошла успешно. Пожалуйста, проверьте почту для активации аккаунта.",
+                "email": user.email,
+            },
+            status=status.HTTP_201_CREATED,
+        )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# активация и одновременная авторизация пользователя (с выдачей токенов) после подтверждения почты
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def activate_view(request):
+    uid_b64 = request.data.get("uid")
+    token = request.data.get("token")
+
+    if not uid_b64 or not token:
+        return Response(
+            {"error": "Неполные данные для активации"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        # Декодируем ID пользователя
+        uid = force_str(urlsafe_base64_decode(uid_b64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and account_activation_token_generator.check_token(user, token):
+        if not user.is_active:
+            # Оборачиваем в транзакцию: либо активируется юзер и автоматически создаются для него Profile и Cart, либо ничего не меняется
+            with transaction.atomic():
+                user.is_active = True
+                user.save()
+                # В этот момент сработали сигналы: создались Profile и Cart
+
+        # Сразу авторизуем пользователя (генерируем новую пару токенов и добавляем token_version)
+        refresh = RefreshToken.for_user(user)  # используется TOKEN_OBTAIN_SERIALIZER!
+        refresh["token_version"] = user.token_version
+
+        response = Response(
+            {
+                "message": "Аккаунт успешно активирован и выполнен вход.",
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                },
+                "access": str(refresh.access_token),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+        return set_refresh_cookie(response, refresh)
+
+    return Response(
+        {"error": "Ссылка активации недействительна или просрочена"},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
 # смена пароля авторизованным пользователем с аннулированием старых токенов и выдачей новых
@@ -144,7 +218,7 @@ def password_reset_request_view(request):
             user = User.objects.get(email=email)
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
-            reset_url = f"{settings.RESET_URL}/reset-password/{uid}/{token}/"
+            reset_url = f"{settings.SITE_URL}/reset-password/{uid}/{token}/"
 
             # Отправляем письмо
             send_custom_email(
@@ -153,7 +227,7 @@ def password_reset_request_view(request):
                 context={
                     "reset_url": reset_url,
                     "user": user,
-                    "timeout": settings.PASSWORD_RESET_TIMEOUT // 3600,
+                    "timeout_minutes": settings.PASSWORD_RESET_TIMEOUT // 60,
                 },
                 to_email=user.email,
             )

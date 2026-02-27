@@ -7,11 +7,18 @@ from .utils import get_order_email_context
 from .models import Cart, Order
 
 
-# сигнал для автоматического создания корзины пользователя при его создании
+# # сигнал для автоматического создания корзины пользователя при его создании
+# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
+# def create_user_cart(sender, instance, created, **kwargs):
+#     if created:
+#         Cart.objects.create(user=instance)
+
+
+# Создаем корзину только если пользователь активен и её еще нет
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_cart(sender, instance, created, **kwargs):
-    if created:
-        Cart.objects.create(user=instance)
+    if instance.is_active:
+        Cart.objects.get_or_create(user=instance)
 
 
 # сигнал для отслеживания изменения статуса заказа и отправки соответствующих писем

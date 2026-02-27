@@ -1,0 +1,22 @@
+{% extends "core/emails/base_layout.html" %}
+
+{% block main_content %}
+<div style="text-align: center; padding: 20px;">
+    <h2>Подтверждение почты</h2>
+    <p>Здравствуйте, {{ user_name }}. Мы рады, что вы с нами.</p>
+    <p>Чтобы завершить регистрацию и получить доступ к личному кабинету, подтвердите свой адрес электронной почты:</p>
+    
+    <div style="margin: 30px 0;">
+        <a href="{{ activation_link }}" 
+           style="background-color: #000; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+            ПОДТВЕРДИТЬ ПОЧТУ
+        </a>
+    </div>
+    
+    <p>Ссылка действительна {{ timeout_hours }} часов.</p>
+    
+    <p style="font-size: 12px; color: #888;">
+        Если вы не регистрировались на нашем сайте, просто проигнорируйте это письмо.
+    </p>
+</div>
+{% endblock %}

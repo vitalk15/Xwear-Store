@@ -15,6 +15,10 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError("Требуется email")
         email = self.normalize_email(email)
+
+        # По умолчанию ставим False, (для обычных юзеров)
+        extra_fields.setdefault("is_active", False)
+
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -23,6 +27,7 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
         return self.create_user(email, password, **extra_fields)
 
 
@@ -34,7 +39,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     # для инвалидации старых токенов (вместо blacklist)
     token_version = models.PositiveIntegerField(default=1)
 
-    is_active = models.BooleanField(default=True, verbose_name="Активный")
+    is_active = models.BooleanField(default=False, verbose_name="Активный")
     is_staff = models.BooleanField(default=False, verbose_name="Персонал")
     date_joined = models.DateTimeField(auto_now_add=True, verbose_name="Дата регистрации")
     last_login = models.DateTimeField(

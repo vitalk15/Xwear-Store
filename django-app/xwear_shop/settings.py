@@ -327,8 +327,11 @@ SPECTACULAR_SETTINGS = {
 #     },
 # }
 
-# Срок жизни reset-токена
-PASSWORD_RESET_TIMEOUT = 3600  # 1 час
+# Срок действия ссылки активации юзера (в сек)
+ACCOUNT_ACTIVATION_TIMEOUT = 172800  # 48 часов
+
+# Срок жизни reset-токена (в сек) - используем для сброса пароля юзера
+PASSWORD_RESET_TIMEOUT = 900  # 15 мин
 
 # Адрес для reset-ссылки
 RESET_URL = config("RESET_URL", default="http://localhost:5173")
