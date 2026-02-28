@@ -59,7 +59,7 @@ def get_order_email_context(order):
         "order": order,
         "items": items_data,
         "items_total": items_total,  # Сумма товаров без доставки
-        "site_url": settings.SITE_URL,
+        # "site_url": settings.SITE_URL,
         "user_name": order.user.first_name or "клиент",
         "contacts": contacts,
         "payment_info": config.payment_info,

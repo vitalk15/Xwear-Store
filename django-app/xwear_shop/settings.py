@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 from datetime import timedelta
@@ -49,7 +50,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     # 'rest_framework_simplejwt',  # НЕ обязательно для базового JWT
-    # 'rest_framework_simplejwt.token_blacklist',  # Только для blacklist
+    # 'rest_framework_simplejwt.token_blacklist',  # Только для blacklist (если используем, то убираем кастомный token_version)
 ]
 
 MIDDLEWARE = [
@@ -311,24 +312,31 @@ SPECTACULAR_SETTINGS = {
 
 # Логирование
 # -----------
-# LOGGING = {
-#     "version": 1,
-#     "disable_existing_loggers": False,
-#     "handlers": {
-#         "file": {
-#             "level": "INFO",
-#             "class": "logging.FileHandler",
-#             "filename": "/var/log/django/shop.log",
-#         },
-#     },
-#     "loggers": {
-#         "django": {
-#             "handlers": ["file"],
-#             "level": "INFO",
-#             "propagate": True,
-#         },
-#     },
-# }
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs/management.log"),
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "management_commands": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
 
 # Срок действия ссылки активации юзера (в сек)
 ACCOUNT_ACTIVATION_TIMEOUT = 172800  # 48 часов

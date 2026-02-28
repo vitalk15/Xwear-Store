@@ -208,7 +208,6 @@ def password_reset_request_view(request):
     if serializer.is_valid():
         email = serializer.validated_data["email"]
         user = User.objects.filter(email=email).first()
-        # user = User.objects.get(email=email)
 
         if user:
             try:
