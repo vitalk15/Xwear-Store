@@ -289,6 +289,18 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
+    # ограничение частоты запросов c одного IP
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    # правила ограничения
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/day",
+        "user": "1000/day",
+        "register_scope": "3/hour",  # Лимит на регистрацию c одного IP
+        "password_reset_scope": "3/day",  # Лимит на сброс пароля c одного IP
+    },
     # "spectacular"
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # Пагинация
@@ -312,31 +324,51 @@ SPECTACULAR_SETTINGS = {
 
 # Логирование
 # -----------
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         },
     },
     "handlers": {
-        "file": {
+        "file_errors": {
+            "level": "ERROR",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs/errors.log"),
+            "formatter": "verbose",
+        },
+        "file_info": {
             "level": "INFO",
             "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs/management.log"),
-            "formatter": "verbose",
+            "filename": os.path.join(BASE_DIR, "logs/info.log"),
+            "formatter": "standard",
+        },
+        "console": {
+            "class": "logging.StreamHandler",
         },
     },
     "loggers": {
-        "management_commands": {
-            "handlers": ["file"],
+        # Главный логгер Django
+        "django": {
+            "handlers": ["console", "file_errors"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        # Наш логгер для команд и вьюх
+        "apps": {
+            "handlers": ["console", "file_info", "file_errors"],
             "level": "INFO",
             "propagate": True,
         },
     },
 }
+
+
+# Email (SMTP)
+# -------------
 
 # Срок действия ссылки активации юзера (в сек)
 ACCOUNT_ACTIVATION_TIMEOUT = 172800  # 48 часов
@@ -344,14 +376,9 @@ ACCOUNT_ACTIVATION_TIMEOUT = 172800  # 48 часов
 # Срок жизни reset-токена (в сек) - используем для сброса пароля юзера
 PASSWORD_RESET_TIMEOUT = 900  # 15 мин
 
-# Адрес для reset-ссылки
-RESET_URL = config("RESET_URL", default="http://localhost:5173")
-
 # Email для разработки (консоль)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# Email (SMTP)
-# -------------
 # EMAIL_BACKEND = config(
 #     "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
 # )

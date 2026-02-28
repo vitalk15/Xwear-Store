@@ -1,4 +1,5 @@
-from rest_framework.decorators import api_view, permission_classes
+import logging
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -11,6 +12,13 @@ from django.utils.encoding import force_str
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.conf import settings
+from .utils import (
+    set_refresh_cookie,
+    account_activation_token_generator,
+    send_password_reset_email,
+    send_password_changed_notification,
+)
+from .throttles import RegisterThrottle, PasswordResetThrottle
 from .models import Address
 from .serializers import (
     RegisterSerializer,
@@ -20,12 +28,8 @@ from .serializers import (
     UserSerializer,
     AddressSerializer,
 )
-from .utils import (
-    set_refresh_cookie,
-    account_activation_token_generator,
-    send_password_reset_email,
-    send_password_changed_notification,
-)
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -101,6 +105,7 @@ class CustomTokenRefreshView(TokenRefreshView):
 # регистрация пользователя c подтверждением почты
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([RegisterThrottle])
 def register_view(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
@@ -203,6 +208,7 @@ def change_password_view(request):
 # запрос ссылки для сброса пароля на email
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([PasswordResetThrottle])
 def password_reset_request_view(request):
     serializer = PasswordResetSerializer(data=request.data)
     if serializer.is_valid():
@@ -213,7 +219,13 @@ def password_reset_request_view(request):
             try:
                 # генерируем ссылку для сброса пароля и отправляем письмо
                 send_password_reset_email(user)
-            except Exception:
+            except Exception as e:
+                logger.error(
+                    "Ошибка отправки email для сброса пароля: %s",
+                    e,
+                    exc_info=True,
+                )
+
                 return Response(
                     {"error": "Ошибка отправки email. Попробуйте позже."},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -248,15 +260,17 @@ def password_reset_confirm_view(request, uid, token):
         )
 
         try:
-            refresh_path = reverse("token_refresh")
             response.delete_cookie(
                 "refresh_token",
-                path=refresh_path,
+                path=reverse("token_refresh"),
                 samesite=settings.COOKIE_SAMESITE,
             )
-        except Exception:
-            # Если reverse не сработал (редкость), не ломаем ответ пользователю
-            pass
+        except Exception as e:
+            logger.error(
+                "Ошибка удаления refresh-токена из cookie при сбросе пароля: %s",
+                e,
+                exc_info=True,
+            )
 
         return response
 
@@ -276,11 +290,18 @@ def logout_view(request):
         status=status.HTTP_200_OK,
     )
 
-    response.delete_cookie(
-        "refresh_token",
-        path=reverse("token_refresh"),
-        samesite=settings.COOKIE_SAMESITE,
-    )
+    try:
+        response.delete_cookie(
+            "refresh_token",
+            path=reverse("token_refresh"),
+            samesite=settings.COOKIE_SAMESITE,
+        )
+    except Exception as e:
+        logger.error(
+            "Ошибка удаления refresh-токена из cookie при logout: %s",
+            e,
+            exc_info=True,
+        )
 
     return response
 

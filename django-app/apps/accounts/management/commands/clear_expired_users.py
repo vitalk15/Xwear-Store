@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.conf import settings
 
-logger = logging.getLogger("management_commands")
+logger = logging.getLogger("apps")
 
 User = get_user_model()
 
@@ -29,17 +29,18 @@ class Command(BaseCommand):
         if count > 0:
             # 3. Формируем список email для логов (чтобы знать, кого удалили)
             emails = list(expired_users.values_list("email", flat=True))
+            emails_str = ", ".join(emails)
 
             # 4. Удаляем неактивных пользователей
             # (Вместе с ними удалятся записи из связанных таблиц, если есть)
             expired_users.delete()
 
-            message = f"Удалено {count} неактивных пользователей: {', '.join(emails)}"
-
             # Пишем в консоль
-            self.stdout.write(self.style.SUCCESS(message))
+            self.stdout.write(
+                self.style.SUCCESS(f"Удалено {count} неактивных пользователей")
+            )
             # Пишем в лог-файл
-            logger.info(message)
+            logger.info("Удалено %s неактивных пользователей: %s", count, emails_str)
         else:
             self.stdout.write(
                 self.style.SUCCESS(

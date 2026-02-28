@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -14,6 +15,8 @@ from .serializers import (
     PickupPointSerializer,
 )
 from .utils import calculate_order_totals
+
+logger = logging.getLogger(__name__)
 
 
 # Получение корзины текущего пользователя
@@ -250,6 +253,11 @@ def order_create(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     except Exception as e:
+        logger.error(
+            "Ошибка при оформлении заказа: %s",
+            e,
+            exc_info=True,
+        )
         return Response(
             {"error": f"Ошибка при оформлении заказа: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
