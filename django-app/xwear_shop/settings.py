@@ -294,12 +294,16 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    # правила ограничения
+    # правила ограничения частоты запросов
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/day",
-        "user": "1000/day",
-        "register_scope": "3/hour",  # Лимит на регистрацию c одного IP
-        "password_reset_scope": "3/day",  # Лимит на сброс пароля c одного IP
+        "anon": config("THROTTLE_ANON", default="100/day"),
+        "user": config("THROTTLE_USER", default="1000/day"),
+        "register_scope": config(
+            "THROTTLE_REGISTER", default="3/hour"
+        ),  # Лимит на регистрацию c одного IP
+        "password_reset_scope": config(
+            "THROTTLE_PASSWORD_RESET", default="3/day"
+        ),  # Лимит на сброс пароля c одного IP
     },
     # "spectacular"
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -325,6 +329,12 @@ SPECTACULAR_SETTINGS = {
 # Логирование
 # -----------
 
+LOG_BASE_DIR = config("LOG_BASE_DIR", default="logs")
+
+# Создаем папку для логов автоматически, если её нет
+if not os.path.exists(LOG_BASE_DIR):
+    os.makedirs(LOG_BASE_DIR)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -337,13 +347,13 @@ LOGGING = {
         "file_errors": {
             "level": "ERROR",
             "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs/errors.log"),
+            "filename": os.path.join(LOG_BASE_DIR, "errors.log"),
             "formatter": "verbose",
         },
         "file_info": {
             "level": "INFO",
             "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs/info.log"),
+            "filename": os.path.join(LOG_BASE_DIR, "info.log"),
             "formatter": "standard",
         },
         "console": {
@@ -371,10 +381,12 @@ LOGGING = {
 # -------------
 
 # Срок действия ссылки активации юзера (в сек)
-ACCOUNT_ACTIVATION_TIMEOUT = 172800  # 48 часов
+ACCOUNT_ACTIVATION_TIMEOUT = config(
+    "ACCOUNT_ACTIVATION_TIMEOUT", default=172800, cast=int
+)
 
 # Срок жизни reset-токена (в сек) - используем для сброса пароля юзера
-PASSWORD_RESET_TIMEOUT = 900  # 15 мин
+PASSWORD_RESET_TIMEOUT = config("PASSWORD_RESET_TIMEOUT", default=900, cast=int)
 
 # Email для разработки (консоль)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
