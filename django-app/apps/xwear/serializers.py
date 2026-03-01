@@ -62,7 +62,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSizeSerializer(serializers.ModelSerializer):
     size_name = serializers.CharField(source="size.name", read_only=True)
-    # final_price — метод-свойство модели (цена со скидкой или обычная)
+    # final_price — цена со скидкой или обычная
     final_price = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
     # old_price — это исходная цена из поля price
     old_price = serializers.DecimalField(
@@ -79,6 +79,13 @@ class ProductSizeSerializer(serializers.ModelSerializer):
 
     is_available = serializers.SerializerMethodField()
 
+    # Если будем использовать остатки
+    # def get_is_available(self, obj):
+    #     return obj.stock > 0 and obj.product.is_active
+
+    def get_is_available(self, obj):
+        return obj.product.is_active
+
     class Meta:
         model = ProductSize
         fields = [
@@ -90,13 +97,6 @@ class ProductSizeSerializer(serializers.ModelSerializer):
             "has_discount",
             "is_available",
         ]
-
-    # Если будем использовать остатки
-    # def get_is_available(self, obj):
-    #     return obj.stock > 0 and obj.product.is_active
-
-    def get_is_available(self, obj):
-        return obj.product.is_active
 
 
 class SpecificationSerializer(serializers.ModelSerializer):

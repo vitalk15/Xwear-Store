@@ -65,20 +65,22 @@ class SizeFilter(admin.SimpleListFilter):
 
 class ProductSizeInline(admin.TabularInline):
     model = ProductSize
-    extra = 3  # 3 пустых размера
-    fields = ["size", "price", "discount_percent", "get_final_price", "is_active"]
+    extra = 1  # 1 пустой размер
+    fields = ["size", "price", "discount_percent", "display_final_price", "is_active"]
     # Это делает выбор размера быстрым поиском (требует search_fields в SizeAdmin)
     autocomplete_fields = ["size"]
-    readonly_fields = ["get_final_price"]
+    readonly_fields = ["display_final_price"]
 
-    @admin.display(description="Итоговая цена")
-    def get_final_price(self, obj):
-        # Проверка obj.pk нужна, чтобы не считать цену для пустых (extra) строк до их сохранения
-        if obj.pk and obj.price:
-            return f"{obj.final_price} ₽"
+    @admin.display(description="Итоговая цена (после сохранения)")
+    def display_final_price(self, obj):
+        if obj.final_price:
+            return format_html(
+                '<strong style="color: #28a745;">{} </strong>', obj.final_price
+            )
         return "-"
 
     def get_queryset(self, request):
+        # Оптимизируем запрос, чтобы не тянуть размеры по одному
         return super().get_queryset(request).select_related("size")
 
 
@@ -212,6 +214,9 @@ class ProductAdmin(admin.ModelAdmin):
             messages.info(
                 request, f"Скидка {discount_value}% применена ко всем размерам."
             )
+
+    class Media:
+        js = ("admin/js/product_admin.js",)
 
 
 class ProductInline(admin.TabularInline):

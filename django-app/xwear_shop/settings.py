@@ -136,7 +136,17 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
+# URL, по которому статика будет доступна в браузере
 STATIC_URL = "static/"
+
+# Путь к статике в процессе разработки
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+# КУДА Django соберет всю статику при деплое (команда collectstatic)
+# В разработке обычно не используется
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -348,7 +358,7 @@ LOGGING = {
             "level": "ERROR",
             "class": "logging.FileHandler",
             "filename": os.path.join(LOG_BASE_DIR, "errors.log"),
-            "formatter": "verbose",
+            "formatter": "standard",
         },
         "file_info": {
             "level": "INFO",

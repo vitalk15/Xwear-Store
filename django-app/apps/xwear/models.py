@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from django.db import models
@@ -84,16 +85,32 @@ class ProductSize(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Скидка %",
     )
+
+    final_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Итоговая цена",
+        blank=True,
+        editable=False,  # Скрываем из админки (пользователь не должен менять её вручную)
+        default=0,  # Временный дефолт для старых записей
+    )
+
     is_active = models.BooleanField(default=True, verbose_name="В наличии")
 
-    @property
-    def final_price(self):
-        # Возвращает цену с учетом скидки если есть, округленную до целых. Иначе - обычную цену
+    def save(self, *args, **kwargs):
+        # 1. Рассчитываем итоговую цену перед сохранением
         if self.discount_percent > 0:
-            # Формула: NewPrice = Price * (1 - Discount / 100)
-            new_price = self.price * (1 - self.discount_percent / 100)
-            return round(new_price)
-        return self.price
+            # Формула: Цена * (1 - Скидка / 100)
+            discount_multiplier = Decimal("1") - (
+                Decimal(self.discount_percent) / Decimal("100")
+            )
+            new_price = self.price * discount_multiplier
+            self.final_price = Decimal(round(new_price))
+        else:
+            self.final_price = self.price
+
+        # 2. Вызываем оригинальный метод save() для записи в БД
+        super().save(*args, **kwargs)
 
     @property
     def has_discount(self):
@@ -231,7 +248,7 @@ class Favorite(models.Model):
         verbose_name="Пользователь",
     )
     product = models.ForeignKey(
-        "Product",
+        Product,
         on_delete=models.CASCADE,
         related_name="favorited_by",
         verbose_name="Товар",
