@@ -5,10 +5,10 @@ from django.core.exceptions import ValidationError
 from django.core.files.images import get_image_dimensions
 from django.utils.text import slugify
 from django.utils.html import format_html
-from django.db.models import F, ExpressionWrapper, DecimalField, Min, Q
+from django.db.models import Prefetch, F, ExpressionWrapper, DecimalField, Min, Max, Q
 from django.db.models.functions import Round
 from easy_thumbnails.files import get_thumbnailer
-from .models import Product
+from .models import Product, Brand, ProductSize
 
 
 # преобразование имени изображения с указанием префикса и папки сохранения
@@ -144,25 +144,100 @@ def validate_banner_image(image):
         )
 
 
+# Формула для вычисления финальной цены одного размера
+# Это SQL-аналог @property final_price
+FINAL_PRICE_EXPR = Round(
+    ExpressionWrapper(
+        F("sizes__price") * (1.0 - F("sizes__discount_percent") / 100.0),
+        output_field=DecimalField(),
+    )
+)
+
+
+# Собирает данные для сайдбара (бренды, размеры, диапазон цен),
+# слайдер цены и список брендов в фильтре должны показывать все возможности категории
+def get_category_sidebar_filters(categories):
+    sidebar_data_qs = Product.objects.filter(category__in=categories, is_active=True)
+
+    price_stats = sidebar_data_qs.annotate(
+        p=Min(FINAL_PRICE_EXPR, filter=Q(sizes__is_active=True))
+    ).aggregate(min_p=Min("p"), max_p=Max("p"))
+
+    brands = Brand.objects.filter(products__category__in=categories).distinct()
+    sizes = (
+        ProductSize.objects.filter(product__category__in=categories, is_active=True)
+        .values_list("size__name", flat=True)
+        .distinct()
+        .order_by("size__name")
+    )
+
+    return {
+        "brands": brands,
+        "sizes": list(sizes),
+        "price_range": {
+            "min": price_stats["min_p"] or 0,
+            "max": price_stats["max_p"] or 0,
+        },
+    }
+
+
+# Возвращает отфильтрованный QuerySet товаров
+def get_filtered_products(categories, query_params):
+    # Используем одну аннотацию для всех вычислений
+    queryset = (
+        Product.objects.filter(category__in=categories, is_active=True)
+        .annotate(
+            # Находим минимальную цену среди размеров для этого товара
+            annotated_min_final_price=Min(
+                FINAL_PRICE_EXPR, filter=Q(sizes__is_active=True)
+            )
+        )
+        .select_related("brand", "category")
+        .prefetch_related(
+            "images",
+            Prefetch(
+                "sizes",
+                queryset=ProductSize.objects.filter(is_active=True).select_related(
+                    "size"
+                ),
+            ),
+        )
+        .order_by("-created_at")
+    )
+
+    # Применяем фильтры (из URL)
+    brand_slugs = query_params.getlist("brands[]")
+    if brand_slugs:
+        queryset = queryset.filter(brand__slug__in=brand_slugs)
+
+    size_names = query_params.getlist("sizes[]")
+    if size_names:
+        # Если фильтруем по размерам, нужен distinct, так как у товара много размеров
+        queryset = queryset.filter(
+            sizes__size__name__in=size_names, sizes__is_active=True
+        ).distinct()
+
+    min_p = query_params.get("min_price")
+    max_p = query_params.get("max_price")
+    if min_p:
+        queryset = queryset.filter(annotated_min_final_price__gte=min_p)
+    if max_p:
+        queryset = queryset.filter(annotated_min_final_price__lte=max_p)
+
+    return queryset
+
+
+# Показ рекомендаций
 def get_similar_products(product, limit=8):
     """
     Возвращает товары из той же подкатегории в ценовом диапазоне +/- 20%.
     Если находит меньше 4, добивает список другими товарами из этой категории.
     """
-    # Формула для вычисления финальной цены одного размера
-    # Это SQL-аналог @property final_price
-    sql_final_price = ExpressionWrapper(
-        F("sizes__price") * (1.0 - F("sizes__discount_percent") / 100.0),
-        output_field=DecimalField(),
-    )
-    # Округляем, как в свойстве
-    sql_final_price_rounded = Round(sql_final_price)
-
     # 1. Находим минимальную финальную цену текущего товара
     # Используем агрегацию
     current_min_data = (
         product.sizes.filter(is_active=True)
-        .annotate(computed_final=sql_final_price_rounded)
+        .annotate(computed_final=FINAL_PRICE_EXPR)
         .aggregate(min_p=Min("computed_final"))
     )
 
@@ -181,7 +256,7 @@ def get_similar_products(product, limit=8):
         .annotate(
             # Аннотируем каждый товар в базе его минимальной ценой
             annotated_min_final_price=Min(
-                sql_final_price_rounded, filter=Q(sizes__is_active=True)
+                FINAL_PRICE_EXPR, filter=Q(sizes__is_active=True)
             )
         )
         .filter(annotated_min_final_price__range=(min_range, max_range))
@@ -211,7 +286,7 @@ def get_similar_products(product, limit=8):
                 # ВАЖНО: Мы все равно делаем аннотацию цены, чтобы наш
                 # ProductListSerializer не упал и корректно отдал min_price на фронтенд!
                 annotated_min_final_price=Min(
-                    sql_final_price_rounded, filter=Q(sizes__is_active=True)
+                    FINAL_PRICE_EXPR, filter=Q(sizes__is_active=True)
                 )
             )
             .select_related("brand", "category")
