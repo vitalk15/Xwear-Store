@@ -1,0 +1,34 @@
+{% extends "core/emails/base_layout.html" %}
+
+{% block main_content %}
+    <h2 style="color: #333;">Заказ №{{ order.id }}</h2>
+    <p>Здравствуйте, {{ user_name }}!</p>
+    
+    {% block order_body %}{% endblock %}
+
+    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 25px; border: 1px solid #eee;">
+        <table style="width: 100%; font-size: 14px; color: #555;">
+            <tr>
+                <td style="padding: 5px 0;">Итоговая сумма товаров:</td>
+                <td style="text-align: right; padding: 5px 0;">{{ items_total }} руб.</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0;">Стоимость доставки:</td>
+                <td style="text-align: right; padding: 5px 0;">
+                    {% if order.delivery_cost > 0 %}
+                        {{ order.delivery_cost }} руб.
+                    {% else %}
+                        <span style="color: #27ae60; font-weight: bold;">Бесплатно</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr style="font-size: 18px; color: #000; font-weight: bold;">
+                <td style="padding-top: 15px; border-top: 1px solid #ddd;">К оплате:</td>
+                <td style="padding-top: 15px; border-top: 1px solid #ddd; text-align: right;">
+                    {{ order.total_price }} руб.
+                </td>
+            </tr>
+        </table>
+        <p>{{ payment_info }}</p>
+    </div>
+{% endblock %}

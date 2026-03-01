@@ -1,3 +1,5 @@
+import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
@@ -5,6 +7,8 @@ from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Добавляем папку apps в пути поиска Python
+sys.path.insert(0, str(BASE_DIR / "apps"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -19,6 +23,11 @@ ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS", default="localhost", cast=lambda v: [s.strip() for s in v.split(",")]
 )
 
+# SITE_URL используется для статического контента
+SITE_URL = config("SITE_URL", default="http://127.0.0.1:8000")
+# FRONTEND_URL используется для всех ссылок, по которым пользователь должен кликнуть.
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
+
 
 # Application definition
 
@@ -29,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "core.apps.CoreConfig",
     "xwear.apps.XwearConfig",
     "accounts.apps.AccountsConfig",
     "orders.apps.OrdersConfig",
@@ -40,7 +50,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     # 'rest_framework_simplejwt',  # НЕ обязательно для базового JWT
-    # 'rest_framework_simplejwt.token_blacklist',  # Только для blacklist
+    # 'rest_framework_simplejwt.token_blacklist',  # Только для blacklist (если используем, то убираем кастомный token_version)
 ]
 
 MIDDLEWARE = [
@@ -126,7 +136,17 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
+# URL, по которому статика будет доступна в браузере
 STATIC_URL = "static/"
+
+# Путь к статике в процессе разработки
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+# КУДА Django соберет всю статику при деплое (команда collectstatic)
+# В разработке обычно не используется
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -279,6 +299,22 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
+    # ограничение частоты запросов c одного IP
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    # правила ограничения частоты запросов
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": config("THROTTLE_ANON", default="100/day"),
+        "user": config("THROTTLE_USER", default="1000/day"),
+        "register_scope": config(
+            "THROTTLE_REGISTER", default="3/hour"
+        ),  # Лимит на регистрацию c одного IP
+        "password_reset_scope": config(
+            "THROTTLE_PASSWORD_RESET", default="3/day"
+        ),  # Лимит на сброс пароля c одного IP
+    },
     # "spectacular"
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # Пагинация
@@ -302,36 +338,69 @@ SPECTACULAR_SETTINGS = {
 
 # Логирование
 # -----------
-# LOGGING = {
-#     "version": 1,
-#     "disable_existing_loggers": False,
-#     "handlers": {
-#         "file": {
-#             "level": "INFO",
-#             "class": "logging.FileHandler",
-#             "filename": "/var/log/django/shop.log",
-#         },
-#     },
-#     "loggers": {
-#         "django": {
-#             "handlers": ["file"],
-#             "level": "INFO",
-#             "propagate": True,
-#         },
-#     },
-# }
 
-# Срок жизни reset-токена
-PASSWORD_RESET_TIMEOUT = 3600  # 1 час
+LOG_BASE_DIR = config("LOG_BASE_DIR", default="logs")
 
-# Адрес для reset-ссылки
-RESET_URL = config("RESET_URL", default="http://localhost:5173")
+# Создаем папку для логов автоматически, если её нет
+if not os.path.exists(LOG_BASE_DIR):
+    os.makedirs(LOG_BASE_DIR)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "file_errors": {
+            "level": "ERROR",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(LOG_BASE_DIR, "errors.log"),
+            "formatter": "standard",
+        },
+        "file_info": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(LOG_BASE_DIR, "info.log"),
+            "formatter": "standard",
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        # Главный логгер Django
+        "django": {
+            "handlers": ["console", "file_errors"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        # Наш логгер для команд и вьюх
+        "apps": {
+            "handlers": ["console", "file_info", "file_errors"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
+
+
+# Email (SMTP)
+# -------------
+
+# Срок действия ссылки активации юзера (в сек)
+ACCOUNT_ACTIVATION_TIMEOUT = config(
+    "ACCOUNT_ACTIVATION_TIMEOUT", default=172800, cast=int
+)
+
+# Срок жизни reset-токена (в сек) - используем для сброса пароля юзера
+PASSWORD_RESET_TIMEOUT = config("PASSWORD_RESET_TIMEOUT", default=900, cast=int)
 
 # Email для разработки (консоль)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# Email (SMTP)
-# -------------
 # EMAIL_BACKEND = config(
 #     "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
 # )
