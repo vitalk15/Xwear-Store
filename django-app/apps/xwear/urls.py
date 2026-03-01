@@ -6,6 +6,7 @@ from .views import (
     slider_banner_list_view,
     favorite_list,
     favorite_toggle,
+    product_recommendations_view,
 )
 
 
@@ -19,6 +20,11 @@ urlpatterns = [
         "categories/<slug:category_slug>/<slug:product_slug>/",
         product_detail_view,
         name="product_detail",
+    ),
+    path(
+        "categories/<slug:category_slug>/<slug:product_slug>/recommendations/",
+        product_recommendations_view,
+        name="product_recommendations",
     ),
     path("favorites/", favorite_list, name="favorite-list"),
     path("favorites/toggle/<int:pk>/", favorite_toggle, name="favorite-toggle"),

@@ -136,6 +136,12 @@ class ProductListSerializer(serializers.ModelSerializer):
         return min(active_sizes, key=lambda s: s.final_price)
 
     def get_min_price(self, obj):
+        # Если мы пришли из вьюхи рекомендаций, цена уже посчитана в БД
+        annotated_price = getattr(obj, "annotated_min_final_price", None)
+        if annotated_price is not None:
+            return annotated_price
+
+        # В остальных случаях используем
         size = self._get_cheapest_size(obj)
         return size.final_price if size else 0
 

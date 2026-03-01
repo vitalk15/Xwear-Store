@@ -5,7 +5,10 @@ from django.core.exceptions import ValidationError
 from django.core.files.images import get_image_dimensions
 from django.utils.text import slugify
 from django.utils.html import format_html
+from django.db.models import F, ExpressionWrapper, DecimalField, Min, Q
+from django.db.models.functions import Round
 from easy_thumbnails.files import get_thumbnailer
+from .models import Product
 
 
 # преобразование имени изображения с указанием префикса и папки сохранения
@@ -139,3 +142,84 @@ def validate_banner_image(image):
             f"Размер слишком мал ({width}x{height})."
             f"Для слайдера требуются изображения не менее {min_width}x{min_height} px."
         )
+
+
+def get_similar_products(product, limit=8):
+    """
+    Возвращает товары из той же подкатегории в ценовом диапазоне +/- 20%.
+    Если находит меньше 4, добивает список другими товарами из этой категории.
+    """
+    # Формула для вычисления финальной цены одного размера
+    # Это SQL-аналог @property final_price
+    sql_final_price = ExpressionWrapper(
+        F("sizes__price") * (1.0 - F("sizes__discount_percent") / 100.0),
+        output_field=DecimalField(),
+    )
+    # Округляем, как в свойстве
+    sql_final_price_rounded = Round(sql_final_price)
+
+    # 1. Находим минимальную финальную цену текущего товара
+    # Используем агрегацию
+    current_min_data = (
+        product.sizes.filter(is_active=True)
+        .annotate(computed_final=sql_final_price_rounded)
+        .aggregate(min_p=Min("computed_final"))
+    )
+
+    current_min_price = current_min_data["min_p"]
+
+    if current_min_price is None:
+        return []
+
+    # 2. Расчет диапазона +/- 20%
+    min_range = float(current_min_price) * 0.8
+    max_range = float(current_min_price) * 1.2
+
+    # 3. Запрос с аннотацией - ищем похожие: та же категория + цена в диапазоне + активен + не сам этот товар. Ограничиваем количество и обязательно добавляем prefetch_related('sizes'), так как сериализатор вызывает obj.sizes.all()
+    similar_qs = (
+        Product.objects.filter(is_active=True, category=product.category)
+        .annotate(
+            # Аннотируем каждый товар в базе его минимальной ценой
+            annotated_min_final_price=Min(
+                sql_final_price_rounded, filter=Q(sizes__is_active=True)
+            )
+        )
+        .filter(annotated_min_final_price__range=(min_range, max_range))
+        .exclude(id=product.id)
+        .select_related("brand", "category")
+        .prefetch_related("sizes")
+        .order_by("?")[:limit]
+    )
+
+    # Выполняем запрос и превращаем в список (чтобы посчитать количество)
+    similar_products = list(similar_qs)
+
+    # Добор
+    if len(similar_products) < 4:
+        # Собираем ID тех товаров, что уже лежат в similar_products,
+        # плюс ID самого текущего товара, чтобы не показать его в рекомендациях
+        exclude_ids = [product.id] + [p.id for p in similar_products]
+
+        # Сколько еще товаров нам нужно добрать до лимита?
+        needed_count = limit - len(similar_products)
+
+        # Резервный запрос: та же категория, но БЕЗ фильтра по цене
+        fallback_qs = (
+            Product.objects.filter(is_active=True, category=product.category)
+            .exclude(id__in=exclude_ids)
+            .annotate(
+                # ВАЖНО: Мы все равно делаем аннотацию цены, чтобы наш
+                # ProductListSerializer не упал и корректно отдал min_price на фронтенд!
+                annotated_min_final_price=Min(
+                    sql_final_price_rounded, filter=Q(sizes__is_active=True)
+                )
+            )
+            .select_related("brand", "category")
+            .prefetch_related("sizes")
+            .order_by("?")[:needed_count]
+        )
+
+        # Добавляем найденные "резервные" товары к основному списку
+        similar_products.extend(list(fallback_qs))
+
+    return similar_products

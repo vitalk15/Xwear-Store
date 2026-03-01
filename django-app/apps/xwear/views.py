@@ -4,8 +4,10 @@ from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
 from django.db.models import Prefetch, F, ExpressionWrapper, DecimalField, Min, Max, Q
+from django.db.models.functions import Round
 from django.shortcuts import get_object_or_404
-from xwear.models import Category, Brand, Product, ProductSize, Favorite, SliderBanner
+from .utils import get_similar_products
+from .models import Category, Brand, Product, ProductSize, Favorite, SliderBanner
 from .serializers import (
     CategorySerializer,
     BrandSerializer,
@@ -35,6 +37,8 @@ def category_tree_view(request):
 @api_view(["GET"])
 def category_detail_view(request, category_slug):
     category = get_object_or_404(Category, slug=category_slug, is_active=True)
+
+    # MPTT breadcrumbs
     breadcrumbs = [
         {"name": cat.name, "slug": cat.slug}
         for cat in category.get_ancestors(include_self=True)
@@ -44,16 +48,22 @@ def category_detail_view(request, category_slug):
     # 1. Получаем саму категорию и всех её потомков (для MPTT)
     categories = category.get_descendants(include_self=True)
 
-    # 2. Базовый QuerySet с аннотацией цен
+    # 2. Определяем формулу финальной цены
+    final_price_expression = Round(
+        ExpressionWrapper(
+            F("sizes__price") * (1.0 - F("sizes__discount_percent") / 100.0),
+            output_field=DecimalField(),
+        )
+    )
+
+    # 3. Базовый QuerySet
+    # Используем одну аннотацию для всех вычислений
     products_queryset = (
         Product.objects.filter(category__in=categories, is_active=True)
         .annotate(
             # Находим минимальную цену среди размеров для этого товара
-            annotated_price=Min(
-                ExpressionWrapper(
-                    F("sizes__price") * (1.0 - F("sizes__discount_percent") / 100.0),
-                    output_field=DecimalField(),
-                ),
+            annotated_min_final_price=Min(
+                final_price_expression,
                 filter=Q(sizes__is_active=True),
             )
         )
@@ -68,28 +78,16 @@ def category_detail_view(request, category_slug):
             ),
         )
         .order_by("-created_at")
-        .distinct()  # distinct() важен при связи Many-to-Many
     )
 
-    # 3. Применяем фильтры из URL
-    brand_slugs = request.query_params.getlist("brands[]")
-    if brand_slugs:
-        products_queryset = products_queryset.filter(brand__slug__in=brand_slugs)
+    # 4. Собираем данные для сайдбара ДО применения фильтров
+    # Это важно: слайдер цены и список брендов должны показывать все возможности категории
+    sidebar_data_qs = Product.objects.filter(category__in=categories, is_active=True)
 
-    size_names = request.query_params.getlist("sizes[]")
-    if size_names:
-        products_queryset = products_queryset.filter(
-            sizes__size__name__in=size_names
-        ).distinct()
+    price_stats = sidebar_data_qs.annotate(
+        p=Min(final_price_expression, filter=Q(sizes__is_active=True))
+    ).aggregate(min_p=Min("p"), max_p=Max("p"))
 
-    min_p = request.query_params.get("min_price")
-    max_p = request.query_params.get("max_price")
-    if min_p:
-        products_queryset = products_queryset.filter(annotated_price__gte=min_p)
-    if max_p:
-        products_queryset = products_queryset.filter(annotated_price__lte=max_p)
-
-    # 4. Собираем данные для сайдбара фильтров (только то, что есть в этой категории)
     available_brands = Brand.objects.filter(products__category__in=categories).distinct()
     available_sizes = (
         ProductSize.objects.filter(product__category__in=categories, is_active=True)
@@ -98,9 +96,30 @@ def category_detail_view(request, category_slug):
         .order_by("size__name")
     )
 
+    # 5. Применяем фильтры из URL
+    brand_slugs = request.query_params.getlist("brands[]")
+    if brand_slugs:
+        products_queryset = products_queryset.filter(brand__slug__in=brand_slugs)
+
+    size_names = request.query_params.getlist("sizes[]")
+    if size_names:
+        # Если фильтруем по размерам, нужен distinct, так как у товара много размеров
+        products_queryset = products_queryset.filter(
+            sizes__size__name__in=size_names, sizes__is_active=True
+        ).distinct()
+
+    min_p = request.query_params.get("min_price")
+    max_p = request.query_params.get("max_price")
+    if min_p:
+        products_queryset = products_queryset.filter(annotated_min_final_price__gte=min_p)
+    if max_p:
+        products_queryset = products_queryset.filter(annotated_min_final_price__lte=max_p)
+
     # Пагинация из settings.py
     paginator = LimitOffsetPagination()
     page = paginator.paginate_queryset(products_queryset, request)
+
+    # Передаем контекст для формирования полных ссылок на изображения
     serializer = ProductListSerializer(page, many=True, context={"request": request})
 
     return paginator.get_paginated_response(
@@ -115,14 +134,8 @@ def category_detail_view(request, category_slug):
                 "brands": BrandSerializer(available_brands, many=True).data,
                 "sizes": list(available_sizes),
                 "price_range": {
-                    "min": products_queryset.aggregate(Min("annotated_price"))[
-                        "annotated_price__min"
-                    ]
-                    or 0,
-                    "max": products_queryset.aggregate(Max("annotated_price"))[
-                        "annotated_price__max"
-                    ]
-                    or 0,
+                    "min": price_stats["min_p"] or 0,
+                    "max": price_stats["max_p"] or 0,
                 },
             },
             "products": serializer.data,
@@ -190,4 +203,23 @@ def slider_banner_list_view(request):
     banners = SliderBanner.objects.filter(is_active=True)
     serializer = SliderBannerSerializer(banners, many=True, context={"request": request})
 
+    return Response(serializer.data)
+
+
+# Рекомендации товаров
+@api_view(["GET"])
+def product_recommendations_view(request, category_slug, product_slug):
+    # Находим основной товар
+    product = get_object_or_404(
+        Product.objects.filter(
+            is_active=True, category__slug=category_slug, slug=product_slug
+        )
+    )
+
+    # Получаем рекомендации
+    recommendations = get_similar_products(product)
+
+    serializer = ProductListSerializer(
+        recommendations, many=True, context={"request": request}
+    )
     return Response(serializer.data)
