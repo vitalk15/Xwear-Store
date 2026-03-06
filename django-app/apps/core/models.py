@@ -58,8 +58,8 @@ class ContactSettings(models.Model):
         verbose_name = "Контакты и соцсети"
         verbose_name_plural = "Контакты и соцсети"
 
-    # def __str__(self):
-    #     return "Контакты сайта"
+    def __str__(self):
+        return "Контакты сайта"
 
 
 class CommercialConfig(models.Model):
@@ -84,3 +84,6 @@ class CommercialConfig(models.Model):
     class Meta:
         verbose_name = "Условия доставки и оплаты"
         verbose_name_plural = "Условия доставки и оплаты"
+
+    def __str__(self):
+        return "Доставка и оплата"

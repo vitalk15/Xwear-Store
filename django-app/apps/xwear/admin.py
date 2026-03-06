@@ -3,6 +3,8 @@ from django.contrib import admin, messages
 from django.utils.html import format_html
 from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
+
+# from mptt.forms import TreeNodeChoiceField
 from .models import (
     Category,
     Brand,
@@ -107,8 +109,16 @@ class SpecificationInline(admin.StackedInline):
     # Ограничиваем количество, так как это OneToOne
     max_num = 1
 
+    class Media:
+        # Прячем заголовок h3 внутри инлайна (появляется при StackedInline)
+        css = {"all": ("admin/css/hide_inline_header.css",)}
+
 
 class ProductAdminForm(forms.ModelForm):
+    # Указываем специальное поле для выбора категории
+    # level_indicator — это символы, которые будут показывать вложенность
+    # category = TreeNodeChoiceField(queryset=Category.objects.all(), level_indicator="---")
+
     # Добавляем виртуальное поле, которого нет в модели
     set_discount_all_sizes = forms.IntegerField(
         label="Установить скидку (%) на все размеры",
@@ -143,7 +153,7 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ["name"]
 
     # Если категорий и брендов будет много (заменяет выбор из выпадающего списка на удобный поиск)
-    # search_fields = ["name", "brand__name", "category__name"]
+    # search_fields = ["name", "brand__name", "category__name"] # в BrandAdmin и CategoryAdmin это уже указано
     # autocomplete_fields = ["brand", "category"]
 
     # Редактирование в списке
@@ -255,9 +265,29 @@ class BrandAdmin(admin.ModelAdmin):
 @admin.register(Favorite)
 class FavoriteAdmin(admin.ModelAdmin):
     list_display = ("user", "product", "created_at")
-    list_filter = ("user", "created_at")
+    list_filter = ("user", "product__brand", "created_at")
     search_fields = ("user__email", "product__name")
-    readonly_fields = ("created_at",)
+    readonly_fields = (
+        "user",
+        "product",
+        "created_at",
+    )
+
+    def has_view_permission(self, request, obj=None):
+        # Разрешаем просмотр избранного
+        return True
+
+    def has_change_permission(self, request, obj=None):
+        # Запрещаем изменение
+        return False
+
+    def has_add_permission(self, request):
+        # Запрещаем добавлять товар в избранное
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Запрещаем удалять из избранного
+        return False
 
 
 @admin.register(SliderBanner)

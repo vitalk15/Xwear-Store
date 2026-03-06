@@ -26,8 +26,10 @@ class Category(MPTTModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.name
-        # return f"{self.parent} -> {self.name}"
+        # return self.name
+        # Добавляем отступы в зависимости от уровня вложенности
+        indent = "--" * self.level
+        return f"{indent} {self.name}" if self.level > 0 else self.name.upper()
 
     class MPTTMeta:
         order_insertion_by = ["name"]
@@ -162,7 +164,7 @@ class Product(models.Model):
         blank=True,
         null=True,
         related_name="products",
-        verbose_name="Категория товара",
+        verbose_name="Категория",
     )
     name = models.CharField(max_length=50, verbose_name="Наименование")
     slug = models.SlugField(max_length=50, blank=True, verbose_name="Слаг")

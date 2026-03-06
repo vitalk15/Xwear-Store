@@ -30,8 +30,8 @@ def category_tree_view(request):
     # Строим дерево в памяти с помощью mptt метода - это исключает N+1 запросов в сериализаторе
     tree = queryset.get_cached_trees()
 
-    # без корневой mptt-категории
-    categories = [node for node in tree if node.level == 1]
+    # без корневой mptt-категории [node for node in tree if node.level == 1]
+    categories = [node for node in tree if node.level == 0]
     serializer = CategorySerializer(categories, many=True, context={"request": request})
     return Response(serializer.data)
 

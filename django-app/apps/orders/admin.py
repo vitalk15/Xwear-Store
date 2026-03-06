@@ -8,14 +8,39 @@ class CartItemInline(admin.TabularInline):
     extra = 0
     readonly_fields = ("product_size", "quantity", "total_item_price")
 
+    # Запрещаем админу добавлять товары в чужую корзину
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    # Запрещаем админу удалять товары из корзины
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(Cart)
 class CartAdmin(admin.ModelAdmin):
     inlines = [CartItemInline]
 
-    list_display = ("id", "user", "total_price")
-    fields = ("user", "total_price")
+    list_display = ("user", "total_price")
     readonly_fields = ("user", "total_price")
+    search_fields = ("user__email",)
+
+    def has_view_permission(self, request, obj=None):
+        # Разрешаем просмотр карточки корзины
+        return True
+
+    def has_change_permission(self, request, obj=None):
+        # ЗАПРЕЩАЕМ изменение.
+        # Это уберет кнопку "Сохранить" и "Сохранить и продолжить"
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Запрещаем удалять корзину
+        return False
+
+    def has_add_permission(self, request):
+        # Запрещаем создавать корзину
+        return False
 
 
 # --- ЗАКАЗЫ ---

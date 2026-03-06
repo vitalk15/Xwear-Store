@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, Profile, Address
 
 
@@ -15,6 +16,15 @@ class ProfileAdmin(admin.ModelAdmin):
 
     list_display = ["user", "phone", "first_name", "last_name"]
     search_fields = ["user__email", "phone"]
+    readonly_fields = ("user",)
+
+    # Разрешаем просмотр и редактирование, но не создание/удаление
+    def has_add_permission(self, request):
+        return False
+
+    # Запрещаем удаление профиля
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class ProfileInline(admin.StackedInline):
@@ -22,9 +32,16 @@ class ProfileInline(admin.StackedInline):
     can_delete = False  # Нельзя удалить профиль отдельно от юзера
     fields = (("first_name", "last_name"), "phone")
 
+    verbose_name = "Персональные данные"
+    verbose_name_plural = "Персональные данные"
+
+    class Media:
+        # Прячем заголовок h3 внутри инлайна (появляется при StackedInline)
+        css = {"all": ("admin/css/hide_inline_header.css",)}
+
 
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(BaseUserAdmin):
     inlines = [ProfileInline]
 
     # строковое отображение записи в виде: email, время регистрации
@@ -42,18 +59,38 @@ class UserAdmin(admin.ModelAdmin):
         "profile__first_name",
         "profile__last_name",
     ]
-    # порядок отображения полей пользователя
-    fields = (
-        ("email", "is_active"),
-        ("is_staff", "is_superuser"),
-        "groups",
-        "user_permissions",
-        ("last_login", "date_joined"),
+
+    fieldsets = (
+        (
+            None,
+            {"fields": ("email", "password")},
+        ),
+        (
+            "Права доступа",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
+        (
+            "Даты",
+            {"fields": ("last_login", "date_joined")},
+        ),
     )
 
-    # делаем доступными только для чтения поля даты регистрации пользователя и последнего его входа на сайт.
     readonly_fields = ["last_login", "date_joined"]
+    list_select_related = ["profile"]  # Оптимизация
+    ordering = ("email",)  # BaseUserAdmin требует сортировку
 
     @admin.display(description="Телефон")
     def get_phone(self, obj):
         return obj.profile.phone if hasattr(obj, "profile") else "-"
+
+    # Запрещаем удалять пользователей, мы их деактивируем (is_active=False)
+    # def has_delete_permission(self, request, obj=None):
+    #     return False
