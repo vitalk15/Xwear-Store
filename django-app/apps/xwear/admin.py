@@ -1,10 +1,12 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from django.contrib import admin, messages
 from django.utils.html import format_html
 from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
 
 # from mptt.forms import TreeNodeChoiceField
+from core.admin import ReadOnlyAdminMixin
 from .models import (
     Category,
     Brand,
@@ -28,6 +30,10 @@ class CategoryAdmin(DjangoMpttAdmin):
     list_filter = ["is_active", "level"]
     list_editable = ["is_active"]
     search_fields = ["name"]
+
+    # Это ускорит работу __str__, так как родители будут в памяти
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("parent")
 
 
 class ProductImageInline(admin.TabularInline):
@@ -118,6 +124,10 @@ class ProductAdminForm(forms.ModelForm):
     # Указываем специальное поле для выбора категории
     # level_indicator — это символы, которые будут показывать вложенность
     # category = TreeNodeChoiceField(queryset=Category.objects.all(), level_indicator="---")
+    # Фильтруем категории так, чтобы можно было выбрать только "листья" (leaf nodes)
+    # category = TreeNodeChoiceField(
+    #     queryset=Category.objects.filter(children__isnull=True), level_indicator="--"
+    # )
 
     # Добавляем виртуальное поле, которого нет в модели
     set_discount_all_sizes = forms.IntegerField(
@@ -131,6 +141,20 @@ class ProductAdminForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = "__all__"
+
+    # метод проверки данных поля формы
+    def clean_category(self):
+        category = self.cleaned_data.get("category")
+
+        # Проверяем, является ли категория "листом" (т.е. нет ли у неё детей)
+        # В django-mptt для этого есть встроенный метод is_leaf_node()
+        if category and not category.is_leaf_node():
+            raise ValidationError(
+                f"Категория '{category.name}' является групповой. "
+                "Пожалуйста, выберите конечную подкатегорию."
+            )
+
+        return category
 
 
 @admin.register(Product)
@@ -153,8 +177,9 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ["name"]
 
     # Если категорий и брендов будет много (заменяет выбор из выпадающего списка на удобный поиск)
-    # search_fields = ["name", "brand__name", "category__name"] # в BrandAdmin и CategoryAdmin это уже указано
+    # search_fields = ["name", "brand__name", "category__name"] # в BrandAdmin и CategoryAdmin name уже указано
     # autocomplete_fields = ["brand", "category"]
+    autocomplete_fields = ["category"]
 
     # Редактирование в списке
     list_editable = ["is_active"]
@@ -263,7 +288,7 @@ class BrandAdmin(admin.ModelAdmin):
 
 
 @admin.register(Favorite)
-class FavoriteAdmin(admin.ModelAdmin):
+class FavoriteAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
     list_display = ("user", "product", "created_at")
     list_filter = ("user", "product__brand", "created_at")
     search_fields = ("user__email", "product__name")
@@ -272,22 +297,6 @@ class FavoriteAdmin(admin.ModelAdmin):
         "product",
         "created_at",
     )
-
-    def has_view_permission(self, request, obj=None):
-        # Разрешаем просмотр избранного
-        return True
-
-    def has_change_permission(self, request, obj=None):
-        # Запрещаем изменение
-        return False
-
-    def has_add_permission(self, request):
-        # Запрещаем добавлять товар в избранное
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        # Запрещаем удалять из избранного
-        return False
 
 
 @admin.register(SliderBanner)

@@ -28,8 +28,24 @@ class Category(MPTTModel):
     def __str__(self):
         # return self.name
         # Добавляем отступы в зависимости от уровня вложенности
+        # indent = "--" * self.level
+        # return f"{indent} {self.name}" if self.level > 0 else self.name.upper()
+
+        # корневая категория
+        if self.is_root_node():
+            return self.name.upper()
+
+        # категория 1 lvl
+        # if self.level == 1:
+        #     return f"{self.parent.name.upper()} > {self.name}"
+
+        # для глубоких категорий
         indent = "--" * self.level
-        return f"{indent} {self.name}" if self.level > 0 else self.name.upper()
+        return (
+            f"{indent} {self.parent.name} / {self.name}"
+            if self.level > 1
+            else f"{indent} {self.name}"
+        )
 
     class MPTTMeta:
         order_insertion_by = ["name"]

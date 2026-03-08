@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from core.admin import NoDeleteAddMixin
 from .models import User, Profile, Address
 
 
@@ -11,20 +12,12 @@ class AddressInline(admin.TabularInline):
 
 
 @admin.register(Profile)
-class ProfileAdmin(admin.ModelAdmin):
+class ProfileAdmin(NoDeleteAddMixin, admin.ModelAdmin):
     inlines = [AddressInline]
 
     list_display = ["user", "phone", "first_name", "last_name"]
     search_fields = ["user__email", "phone"]
     readonly_fields = ("user",)
-
-    # Разрешаем просмотр и редактирование, но не создание/удаление
-    def has_add_permission(self, request):
-        return False
-
-    # Запрещаем удаление профиля
-    def has_delete_permission(self, request, obj=None):
-        return False
 
 
 class ProfileInline(admin.StackedInline):
