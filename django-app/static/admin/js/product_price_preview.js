@@ -13,10 +13,10 @@ document.addEventListener('change', function (e) {
 			const discount = parseFloat(discountInput.value) || 0
 
 			// Считаем итоговую цену (аналог нашей логики на Python)
-			const final = Math.round(price * (1 - discount / 100))
+			const final = price * (1 - discount / 100)
 
 			// Обновляем текст
-			finalPriceDisplay.innerHTML = `<strong style="color: #d9534f;">${final} (превью)</strong>`
+			finalPriceDisplay.innerHTML = `<strong style="color: #d9534f;">${final.toFixed(2)} (превью)</strong>`
 		}
 	}
 })

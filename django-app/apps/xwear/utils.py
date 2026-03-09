@@ -1,4 +1,6 @@
 import os
+import string
+import random
 from uuid import uuid4
 from django.utils.deconstruct import deconstructible
 from django.core.exceptions import ValidationError
@@ -290,3 +292,18 @@ def get_similar_products(product, limit=8):
         similar_products.extend(list(fallback_qs))
 
     return similar_products
+
+
+# генерация артикула для товара
+def generate_unique_article(instance):
+    # # BRAND - CATEGORY_ID - PRODUCT_ID - RANDOM
+    brand_code = (
+        instance.product.brand.name[:3].upper() if instance.product.brand else "GEN"
+    )
+    cat_id = instance.product.category.id
+    prod_id = instance.product.id
+
+    # случайный хвост для уникальности
+    random_suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+
+    return f"{brand_code}-{cat_id}-{prod_id}-{random_suffix}"

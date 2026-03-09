@@ -5,6 +5,7 @@ from .models import (
     Product,
     ProductImage,
     ProductSize,
+    Material,
     ProductSpecification,
     Favorite,
     SliderBanner,
@@ -99,7 +100,18 @@ class ProductSizeSerializer(serializers.ModelSerializer):
         ]
 
 
+class MaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Material
+        fields = ["id", "name"]
+
+
 class SpecificationSerializer(serializers.ModelSerializer):
+    # Показываем названия вместо ID
+    material_outer = MaterialSerializer(read_only=True)
+    material_inner = MaterialSerializer(read_only=True)
+    material_sole = MaterialSerializer(read_only=True)
+
     class Meta:
         model = ProductSpecification
         fields = [

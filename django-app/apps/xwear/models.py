@@ -1,10 +1,15 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from easy_thumbnails.fields import ThumbnailerImageField
-from .utils import UploadToPath, generate_unique_slug, validate_banner_image
+from .utils import (
+    UploadToPath,
+    generate_unique_slug,
+    validate_banner_image,
+    generate_unique_article,
+)
 
 
 class Category(MPTTModel):
@@ -26,7 +31,6 @@ class Category(MPTTModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        # return self.name
         # Добавляем отступы в зависимости от уровня вложенности
         # indent = "--" * self.level
         # return f"{indent} {self.name}" if self.level > 0 else self.name.upper()
@@ -57,12 +61,6 @@ class Category(MPTTModel):
             "parent",
             "slug",
         ]  # уникальная комбинация род.категории и слага
-
-
-class GenderChoices(models.TextChoices):
-    MALE = "M", "Мужской"
-    FEMALE = "F", "Женский"
-    UNISEX = "U", "Унисекс"
 
 
 class Brand(models.Model):
@@ -123,7 +121,7 @@ class ProductSize(models.Model):
                 Decimal(self.discount_percent) / Decimal("100")
             )
             new_price = self.price * discount_multiplier
-            self.final_price = Decimal(round(new_price))
+            self.final_price = new_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         else:
             self.final_price = self.price
 
@@ -174,6 +172,11 @@ class ProductImage(models.Model):
 
 
 class Product(models.Model):
+    class GenderChoices(models.TextChoices):
+        MALE = "M", "Мужской"
+        FEMALE = "F", "Женский"
+        UNISEX = "U", "Унисекс"
+
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
@@ -225,30 +228,91 @@ class Product(models.Model):
         ]
 
 
+class Material(models.Model):
+    class MaterialType(models.TextChoices):
+        OUTER = "OUTER", "Материал верха"
+        INNER = "INNER", "Материал подкладки"
+        SOLE = "SOLE", "Материал подошвы"
+
+    name = models.CharField(max_length=100, verbose_name="Название")
+    material_type = models.CharField(
+        max_length=10, choices=MaterialType.choices, verbose_name="Тип материала"
+    )
+
+    class Meta:
+        verbose_name = "Материал"
+        verbose_name_plural = "Материалы"
+        unique_together = (
+            "name",
+            "material_type",
+        )  # Чтобы не было двух одинаковых "Кож" для верха
+
+    def __str__(self):
+        return f"{self.name} ({self.get_type_display()})"
+
+
 class ProductSpecification(models.Model):
+    class SeasonChoices(models.TextChoices):
+        WINTER = "WINTER", "Зима"
+        SUMMER = "SUMMER", "Лето"
+        AUTUMN_SPRING = "AUTUMN_SPRING", "Демисезон"
+        ALL_SEASON = "ALL_SEASON", "Всесезонный"
+
     product = models.OneToOneField(
         Product,
         on_delete=models.CASCADE,
         related_name="specification",
         verbose_name="Характеристики",
     )
-    article = models.CharField(max_length=50, verbose_name="Артикул", unique=True)
-    season = models.CharField(max_length=50, verbose_name="Сезон")
+    article = models.CharField(
+        max_length=50,
+        verbose_name="Артикул",
+        unique=True,
+        blank=True,
+        help_text="Оставьте пустым для автогенерации (BRAND-CAT-ID-RANDOM) или введите вручную.",
+    )
+    season = models.CharField(
+        max_length=20,
+        choices=SeasonChoices.choices,
+        verbose_name="Сезон",
+    )
 
     # Состав (общие и специфические поля)
-    material_outer = models.CharField(max_length=255, verbose_name="Материал верха")
-    material_inner = models.CharField(
-        max_length=255,
+    material_outer = models.ForeignKey(
+        Material,
+        on_delete=models.PROTECT,
+        limit_choices_to={"material_type": "OUTER"},  # Фильтр только для верха
+        related_name="outer_material",
+        verbose_name="Материал верха",
+    )
+    material_inner = models.ForeignKey(
+        Material,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={"material_type": "INNER"},  # Фильтр только для подкладки
+        related_name="inner_material",
         verbose_name="Материал подкладки",
-        blank=True,
-        null=True,
     )
-    material_sole = models.CharField(
-        max_length=255,
+    material_sole = models.ForeignKey(
+        Material,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={"material_type": "SOLE"},  # Фильтр только для подошвы
+        related_name="sole_material",
         verbose_name="Материал подошвы",
-        blank=True,
-        null=True,
     )
+
+    def save(self, *args, **kwargs):
+        if not self.article:
+            # Генерируем, пока не найдем уникальный (на всякий случай)
+            new_article = generate_unique_article(self)
+            while ProductSpecification.objects.filter(article=new_article).exists():
+                new_article = generate_unique_article(self)
+            self.article = new_article
+
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Характеристики товара"

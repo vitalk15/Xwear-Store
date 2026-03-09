@@ -144,7 +144,7 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-# КУДА Django соберет всю статику при деплое (команда collectstatic)
+# КУДА Django соберет всю статику при деплое (команда python manage.py collectstatic)
 # В разработке обычно не используется
 STATIC_ROOT = BASE_DIR / "staticfiles"
 

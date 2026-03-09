@@ -87,7 +87,14 @@ def product_detail_view(request, category_slug, product_slug):
         Product.objects.filter(
             is_active=True, category__slug=category_slug, slug=product_slug
         )
-        .select_related("category", "brand", "specification")
+        .select_related(
+            "category",
+            "brand",
+            "specification",
+            "specification__material_outer",
+            "specification__material_inner",
+            "specification__material_sole",
+        )
         .prefetch_related(
             "images",
             # Уже делаем сортировку в ProductImage, поэтому не используем здесь:

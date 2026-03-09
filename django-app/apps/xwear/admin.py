@@ -14,6 +14,7 @@ from .models import (
     ProductImage,
     Size,
     ProductSize,
+    Material,
     ProductSpecification,
     Favorite,
     SliderBanner,
@@ -79,7 +80,7 @@ class ProductSizeInline(admin.TabularInline):
     autocomplete_fields = ["size"]
     readonly_fields = ["display_final_price"]
 
-    @admin.display(description="Итоговая цена (после сохранения)")
+    @admin.display(description="Итоговая цена")
     def display_final_price(self, obj):
         if obj.final_price:
             return format_html(
@@ -109,11 +110,33 @@ class DiscountFilter(admin.SimpleListFilter):
             return queryset.filter(sizes__discount_percent=0).distinct()
 
 
+@admin.register(Material)
+class MaterialAdmin(admin.ModelAdmin):
+    list_display = ("name", "material_type")
+    list_filter = ("material_type",)
+
+    # Поиск по названию (обязательно для работы autocomplete_fields)
+    search_fields = ("name",)
+
+    # Сортировка: сначала по типу, потом по алфавиту
+    ordering = ("material_type", "name")
+
+
 class SpecificationInline(admin.StackedInline):
     model = ProductSpecification
     can_delete = False
     # Ограничиваем количество, так как это OneToOne
     max_num = 1
+
+    autocomplete_fields = ["material_outer", "material_inner", "material_sole"]
+
+    # Динамический подход для полей только для чтения (если данных ещё нет, можно ввести вручную)
+    def get_readonly_fields(self, request, obj=None):
+        # obj здесь — это родительский объект Product
+        # Нам нужно проверить, создан ли уже объект характеристик
+        if hasattr(obj, "specification") and obj.specification.article:
+            return ("article",)
+        return ()
 
     class Media:
         # Прячем заголовок h3 внутри инлайна (появляется при StackedInline)
@@ -251,7 +274,10 @@ class ProductAdmin(admin.ModelAdmin):
             )
 
     class Media:
-        js = ("admin/js/product_admin.js",)
+        js = (
+            "admin/js/product_gender_auto.js",
+            "admin/js/product_price_preview.js",
+        )
 
 
 class ProductInline(admin.TabularInline):
