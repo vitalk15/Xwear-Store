@@ -147,28 +147,26 @@ class ProductImage(models.Model):
     )
     is_main = models.BooleanField(default=False, verbose_name="Главное фото")
     alt = models.CharField(max_length=200, blank=True, verbose_name="Alt текст")
+    position = models.PositiveIntegerField(default=0, db_index=True)
 
     def save(self, *args, **kwargs):
-        # Если ставим is_main=True, сбрасываем у всех остальных фото этого товара
-        if self.is_main:
-            ProductImage.objects.filter(product=self.product, id__ne=self.id).update(
-                is_main=False  # __ne - не равно (альтернатива .exclude(id=self.id))
+        # Проверка на позицию, если это НОВОЕ фото
+        if self.position is None:
+            # Пытаемся поставить в конец списка
+            last_image = (
+                ProductImage.objects.filter(product=self.product)
+                .order_by("-position")
+                .first()
             )
-        super().save(*args, **kwargs)
+            self.position = (last_image.position + 1) if last_image else 0
 
-    def delete(self, *args, **kwargs):
-        # Если удаляем главное фото, первое другое фото становиться главным
-        if self.is_main:
-            other_main = self.product.images.filter(is_main=False).first()
-            if other_main:
-                other_main.is_main = True
-                other_main.save()
-        super().delete(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Фото товара"
         verbose_name_plural = "Фото товаров"
-        ordering = ["-is_main", "id"]
+        # ordering = ["-is_main"]
+        ordering = ["position"]
 
 
 class Product(models.Model):
@@ -203,8 +201,7 @@ class Product(models.Model):
 
     @property
     def get_main_image_obj(self):
-        images = list(self.images.all())
-        return images[0] if images else None
+        return self.images.first()
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -245,10 +242,10 @@ class Material(models.Model):
         unique_together = (
             "name",
             "material_type",
-        )  # Чтобы не было двух одинаковых "Кож" для верха
+        )
 
     def __str__(self):
-        return f"{self.name} ({self.get_type_display()})"
+        return f"{self.name} ({self.get_material_type_display()})"
 
 
 class ProductSpecification(models.Model):

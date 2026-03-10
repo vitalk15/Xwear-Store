@@ -4,6 +4,10 @@ from django.contrib import admin, messages
 from django.utils.html import format_html
 from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
+from adminsortable2.admin import (
+    SortableAdminBase,
+    SortableInlineAdminMixin,
+)
 
 # from mptt.forms import TreeNodeChoiceField
 from core.admin import ReadOnlyAdminMixin
@@ -37,16 +41,20 @@ class CategoryAdmin(DjangoMpttAdmin):
         return super().get_queryset(request).select_related("parent")
 
 
-class ProductImageInline(admin.TabularInline):
+class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
     model = ProductImage
     extra = 1  # 1 пустая строка для изображения
     fields = ["image", "is_main", "alt", "image_preview"]
-    readonly_fields = ["image_preview"]
+    readonly_fields = ["image_preview", "is_main"]
+    verbose_name_plural = "Фото товара (Верхнее фото автоматически становится главным - перетащите для изменения)"
 
     def image_preview(self, obj):
         return get_admin_thumb(obj.image)
 
     image_preview.short_description = "Превью"
+
+    class Media:
+        js = ("admin/js/image_preview.js",)
 
 
 @admin.register(Size)
@@ -181,7 +189,7 @@ class ProductAdminForm(forms.ModelForm):
 
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     form = ProductAdminForm
     inlines = [ProductImageInline, ProductSizeInline, SpecificationInline]
 
@@ -232,7 +240,7 @@ class ProductAdmin(admin.ModelAdmin):
     def image_main(self, obj):
         main_img = obj.get_main_image_obj
         if main_img:
-            return get_admin_thumb(main_img.image, size=(80, 80))
+            return get_admin_thumb(main_img.image)
         return "-"
         # return None
 

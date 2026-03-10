@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "django_cleanup",
     "mptt",
     "django_mptt_admin",
+    "adminsortable2",
     "rest_framework",
     "corsheaders",
     "drf_spectacular",

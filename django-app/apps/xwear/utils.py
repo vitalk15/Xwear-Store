@@ -2,6 +2,7 @@ import os
 import string
 import random
 from uuid import uuid4
+from django.conf import settings
 from django.utils.deconstruct import deconstructible
 from django.core.exceptions import ValidationError
 from django.core.files.images import get_image_dimensions
@@ -115,20 +116,32 @@ def get_thumbnail_data(image_field, aliases, request):
 
 
 # Генерация превью в админке
-def get_admin_thumb(image_field, size=(100, 100)):
+def get_admin_thumb(image_field):
     if not image_field:
         return "Нет фото"
     try:
-        # options = {"size": size, "crop": "smart", "quality": 85}
         thumbnailer = get_thumbnailer(image_field)
-        thumb_url = thumbnailer.get_thumbnail().url
+        options = getattr(settings, "THUMBNAIL_WIDGET_OPTIONS", {})
+        thumb_url = thumbnailer.get_thumbnail(options).url
+        width, height = options.get("size", (100, 100))
+        # return format_html(
+        #     '<img src="{0}" style="width: {1}px; height: {2}px; object-fit: cover; object-position: center; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);" />',
+        #     thumb_url,
+        #     width,
+        #     height,
+        # )
         return format_html(
-            '<img src="{}" style="width: {}px; height: {}px; object-fit: cover; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);" />',
+            '<div style="width: {1}px; height: {2}px; display: flex; align-items: center; '
+            "justify-content: center; background: #f8f9fa; border-radius: 4px; overflow: hidden; "
+            'box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #ddd;">'
+            '<img src="{0}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />'
+            "</div>",
             thumb_url,
-            size[0],
-            size[1],
+            width,
+            height,
         )
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG: Thumbnail error: {e}")
         return "Ошибка генерации превью"
 
 
@@ -173,7 +186,7 @@ def get_category_sidebar_filters(categories):
     }
 
 
-# Возвращает отфильтрованный QuerySet товаров для сайдбара
+# Возвращает отфильтрованный QuerySet товаров для фильтров сайдбара
 def get_filtered_products(categories, query_params):
     from .models import Product, ProductSize
 
@@ -297,13 +310,24 @@ def get_similar_products(product, limit=8):
 # генерация артикула для товара
 def generate_unique_article(instance):
     # # BRAND - CATEGORY_ID - PRODUCT_ID - RANDOM
-    brand_code = (
-        instance.product.brand.name[:3].upper() if instance.product.brand else "GEN"
-    )
-    cat_id = instance.product.category.id
-    prod_id = instance.product.id
 
-    # случайный хвост для уникальности
-    random_suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    # Проверяем, привязан ли товар и есть ли у него категория
+    if not instance.product or not instance.product.category:
+        return None
 
-    return f"{brand_code}-{cat_id}-{prod_id}-{random_suffix}"
+    try:
+        brand_code = (
+            instance.product.brand.name[:3].upper() if instance.product.brand else "GEN"
+        )
+        cat_id = instance.product.category.id
+        prod_id = instance.product.id
+
+        # случайный хвост для уникальности
+        random_suffix = "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=4)
+        )
+
+        return f"{brand_code}-{cat_id}-{prod_id}-{random_suffix}"
+    except Exception as e:
+        print(f"Ошибка при генерации артикула: {e}")
+        return None
