@@ -25,7 +25,7 @@ window.addEventListener('load', function () {
 				imgContainer.innerHTML = `
 				    <div style="margin-bottom: 5px; font-size: 11px; color: #666;">Предпросмотр:</div>
 				    <img src="${e.target.result}"
-				          style="width: 100px; height: 100px; object-fit: cover; object-position: center; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 2px solid #79aec8;" />
+				          style="width: 80px; height: auto; object-fit: cover; object-position: center; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 2px solid #79aec8;" />
 				`
 			}
 			reader.readAsDataURL(input.files[0])

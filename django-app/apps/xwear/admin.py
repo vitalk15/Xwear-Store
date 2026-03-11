@@ -45,8 +45,16 @@ class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
     model = ProductImage
     extra = 1  # 1 пустая строка для изображения
     fields = ["image", "is_main", "alt", "image_preview"]
-    readonly_fields = ["image_preview", "is_main"]
-    verbose_name_plural = "Фото товара (Верхнее фото автоматически становится главным - перетащите для изменения)"
+    sortable_field_name = "position"
+    verbose_name_plural = "Фото товара (При создании выберите главное фото, при редактировании - перетащите наверх)"
+
+    def get_readonly_fields(self, request, obj=None):
+        # obj — это сам Товар (Product).
+        # Если он существует (obj is not None), значит мы в режиме редактирования.
+        if obj:
+            return ["image_preview", "is_main"]
+        # Если товара еще нет (режим создания), все поля доступны для редактирования
+        return ["image_preview"]
 
     def image_preview(self, obj):
         return get_admin_thumb(obj.image)
@@ -196,7 +204,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     list_display = [
         "name",
         "brand",
-        "category",
+        "get_short_category",
         "gender",
         "active_sizes_count",
         "get_price_range",
@@ -236,6 +244,16 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
 
     # gender_display.short_description = "Пол"
 
+    @admin.display(description="Категория", ordering="category")
+    def get_short_category(self, obj):
+        """
+        Отображает только последнюю часть категории (после разделителя)
+        """
+        if obj.category:
+            full_path = str(obj.category)
+            return full_path.split(" / ")[-1]
+        return "-"
+
     @admin.display(description="Главное фото")
     def image_main(self, obj):
         main_img = obj.get_main_image_obj
@@ -254,7 +272,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         # Разброс цен для справки
         prices = [s.final_price for s in obj.sizes.all() if s.is_active]
         if prices:
-            return f"{min(prices)} - {max(prices)} ₽"
+            return f"{min(prices)} - {max(prices)}"
         return "Цена не задана"
 
     # Оптимизация запросов
@@ -280,6 +298,26 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
             messages.info(
                 request, f"Скидка {discount_value}% применена ко всем размерам."
             )
+
+    def save_related(self, request, form, formsets, change):
+        # 1. Сначала даем Django сохранить все инлайны и позиции от Sortable2
+        super().save_related(request, form, formsets, change)
+
+        # 2. Ищем, в какой форме был изменен или установлен флаг is_main
+        manual_id = None
+        for formset in formsets:
+            if formset.model == ProductImage:
+                for f in formset.forms:
+                    # Если галочка is_main изменилась или она True в новой форме
+                    if "is_main" in f.changed_data and f.cleaned_data.get("is_main"):
+                        if f.instance.pk:
+                            manual_id = f.instance.pk
+                break
+
+        # 3. Передаем этот ID в функцию синхронизации
+        from .utils import sync_product_images
+
+        sync_product_images(form.instance, manual_selected_id=manual_id)
 
     class Media:
         js = (

@@ -166,15 +166,20 @@ THUMBNAIL_EXTENSION = "webp"
 THUMBNAIL_CACHE_DIMENSIONS = True
 THUMBNAIL_ALIASES = {
     "xwear.ProductImage.image": {
+        "admin_preview": {  # для превью в админке
+            "size": (80, 70),
+            "crop": "smart",
+            "quality": 85,
+        },
         "product_small": {  # для превью в корзине или мини-карточек
             "size": (105, 95),
             "crop": "smart",
-            "quality": 75,
+            "quality": 85,
         },
         "product_medium": {  # для плитки товаров
             "size": (320, 320),
             "crop": "smart",
-            "quality": 80,
+            "quality": 85,
         },
         "product_large": {  # для детальной страницы товара
             "size": (670, 490),
@@ -186,17 +191,17 @@ THUMBNAIL_ALIASES = {
         "slider_main": {
             "size": (1540, 630),
             "crop": "smart",
-            "quality": 90,
+            "quality": 95,
         },
     },
 }
 
-THUMBNAIL_WIDGET_OPTIONS = {
-    "size": (100, 90),  # Размер превью в админке
-    "crop": "smart",  # Умная обрезка (фокус на деталях)
-    "quality": 75,
-    "format": "WEBP",
-}
+# Превью для админки
+# THUMBNAIL_WIDGET_OPTIONS = {
+#     "size": (80, 70),
+#     "crop": "smart",
+#     "quality": 80,
+# }
 
 
 # Настройки доступа с других доменов (CORS)

@@ -31,17 +31,9 @@ class Category(MPTTModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        # Добавляем отступы в зависимости от уровня вложенности
-        # indent = "--" * self.level
-        # return f"{indent} {self.name}" if self.level > 0 else self.name.upper()
-
         # корневая категория
         if self.is_root_node():
             return self.name.upper()
-
-        # категория 1 lvl
-        # if self.level == 1:
-        #     return f"{self.parent.name.upper()} > {self.name}"
 
         # для глубоких категорий
         indent = "--" * self.level
@@ -50,6 +42,11 @@ class Category(MPTTModel):
             if self.level > 1
             else f"{indent} {self.name}"
         )
+        # return (
+        #     f"{self.parent.name} / {self.name}"
+        #     if self.level > 1
+        #     else f"{self.parent.name.upper()} > {self.name}"
+        # )
 
     class MPTTMeta:
         order_insertion_by = ["name"]
@@ -142,17 +139,19 @@ class ProductImage(models.Model):
     product = models.ForeignKey(
         "Product", on_delete=models.CASCADE, related_name="images", verbose_name="Товар"
     )
-    image = ThumbnailerImageField(
-        upload_to=UploadToPath("products", "prod"), verbose_name="Фото"
-    )
+    image = ThumbnailerImageField(upload_to=UploadToPath("products"), verbose_name="Фото")
     is_main = models.BooleanField(default=False, verbose_name="Главное фото")
-    alt = models.CharField(max_length=200, blank=True, verbose_name="Alt текст")
+    alt = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Alt текст",
+        help_text="Оставьте пустым для автогенерации",
+    )
     position = models.PositiveIntegerField(default=0, db_index=True)
 
     def save(self, *args, **kwargs):
-        # Проверка на позицию, если это НОВОЕ фото
+        # Если позиция не задана (новое фото)
         if self.position is None:
-            # Пытаемся поставить в конец списка
             last_image = (
                 ProductImage.objects.filter(product=self.product)
                 .order_by("-position")
@@ -161,6 +160,11 @@ class ProductImage(models.Model):
             self.position = (last_image.position + 1) if last_image else 0
 
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        if self.is_main:
+            return f"ГЛАВНОЕ ФОТО ({self.product.name})"
+        return f"Фото №{self.position + 1} ({self.product.name})"
 
     class Meta:
         verbose_name = "Фото товара"
@@ -227,13 +231,13 @@ class Product(models.Model):
 
 class Material(models.Model):
     class MaterialType(models.TextChoices):
-        OUTER = "OUTER", "Материал верха"
-        INNER = "INNER", "Материал подкладки"
-        SOLE = "SOLE", "Материал подошвы"
+        OUTER = "OUTER", "Верх"
+        INNER = "INNER", "Подкладка"
+        SOLE = "SOLE", "Подошва"
 
     name = models.CharField(max_length=100, verbose_name="Название")
     material_type = models.CharField(
-        max_length=10, choices=MaterialType.choices, verbose_name="Тип материала"
+        max_length=10, choices=MaterialType.choices, verbose_name="Назначение"
     )
 
     class Meta:
@@ -245,7 +249,8 @@ class Material(models.Model):
         )
 
     def __str__(self):
-        return f"{self.name} ({self.get_material_type_display()})"
+        # return f"{self.name} ({self.get_material_type_display()})"
+        return self.name
 
 
 class ProductSpecification(models.Model):

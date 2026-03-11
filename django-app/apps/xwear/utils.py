@@ -2,21 +2,23 @@ import os
 import string
 import random
 from uuid import uuid4
-from django.conf import settings
 from django.utils.deconstruct import deconstructible
 from django.core.exceptions import ValidationError
 from django.core.files.images import get_image_dimensions
 from django.utils.text import slugify
 from django.utils.html import format_html
 from django.db.models import Prefetch, Min, Max, Q
-from easy_thumbnails.files import get_thumbnailer
+from django.db import transaction
+
+# from easy_thumbnails.files import get_thumbnailer
+from easy_thumbnails.alias import aliases as et_aliases
 
 
-# преобразование имени изображения с указанием префикса и папки сохранения
+# преобразование имени изображения с указанием папки сохранения
 # деконструируемый класс (используем вместо фабрики функции, так как выполнялся сброс миграций и при создании новых есть проблема с wrapper)
 @deconstructible
 class UploadToPath:
-    def __init__(self, folder, prefix):
+    def __init__(self, folder, prefix=None):
         self.folder = folder
         self.prefix = prefix
 
@@ -27,13 +29,28 @@ class UploadToPath:
         """
         ext = filename.split(".")[-1]
 
-        # Если объект сохранен - используем ID, иначе UUID
+        # 1. Если передан префикс - используем его
+        if self.prefix:
+            base_name = self.prefix
+        # 2. Если префикса нет, пробуем взять название товара
+        elif hasattr(instance, "product") and instance.product.name:
+            base_name = slugify(instance.product.name)
+        # 3. Запасной вариант
+        else:
+            base_name = "product"
+
+        if not base_name:
+            base_name = "file"
+
+        # Добавляем уникальный хвост (ID или короткий UUID) для защиты от дублей
         if instance.pk:
             identifier = instance.pk
         else:
-            identifier = uuid4().hex[:8]
+            identifier = uuid4().hex[:5]
 
-        new_filename = f"{self.prefix}_{identifier}.{ext}"
+        new_filename = f"{base_name}_{identifier}.{ext}"
+
+        # Формируем путь: products/krossovki-xwear_a1b2c.jpg
         return os.path.join(self.folder, new_filename)
 
 
@@ -87,21 +104,65 @@ def generate_unique_slug(model_instance, base_field="name", scope_field=None):
 
 
 # получение данных миниатюр
-def get_thumbnail_data(image_field, aliases, request):
+# def get_thumbnail_data(image_field, aliases, request):
+#     """
+#     Универсальная функция для получения словаря миниатюр.
+#     Возвращает URL, ширину и высоту для каждого алиаса.
+#     """
+#     if not image_field:
+#         return None
+
+#     thumbnailer = get_thumbnailer(image_field)
+#     data = {}
+
+#     for key, alias_name in aliases.items():
+#         try:
+#             thumb = thumbnailer.get_thumbnail({"alias": alias_name})
+#             # Если request есть - строим полный путь, если нет - отдаем относительный
+#             url = request.build_absolute_uri(thumb.url) if request else thumb.url
+
+#             data[key] = {
+#                 "url": url,
+#                 "width": thumb.width,
+#                 "height": thumb.height,
+#             }
+#         except Exception:
+#             continue
+
+#     return data
+
+
+# получение данных миниатюр
+def get_thumbnail_data(image_field, aliases, request=None):
     """
     Универсальная функция для получения словаря миниатюр.
-    Возвращает URL, ширину и высоту для каждого алиаса.
     """
     if not image_field:
         return None
 
-    thumbnailer = get_thumbnailer(image_field)
     data = {}
+
+    # Динамически определяем target (например: 'xwear.ProductImage.image')
+    # Это нужно, чтобы et_aliases.get() знал, в каком блоке настроек искать алиас
+    target_path = ""
+    if hasattr(image_field, "instance") and hasattr(image_field, "field"):
+        app_label = image_field.instance._meta.app_label
+        model_name = image_field.instance._meta.object_name
+        field_name = image_field.field.name
+        target_path = f"{app_label}.{model_name}.{field_name}"
 
     for key, alias_name in aliases.items():
         try:
-            thumb = thumbnailer.get_thumbnail({"alias": alias_name})
-            # Если request есть - строим полный путь, если нет - отдаем относительный
+            # 2. Правильно извлекаем словарь настроек по имени алиаса
+            options = et_aliases.get(alias_name, target=target_path)
+
+            # Если настройки не найдены в словаре — пропускаем
+            if not options:
+                continue
+
+            # 3. Передаем словарь опций
+            thumb = image_field.get_thumbnail(options)
+
             url = request.build_absolute_uri(thumb.url) if request else thumb.url
 
             data[key] = {
@@ -109,8 +170,9 @@ def get_thumbnail_data(image_field, aliases, request):
                 "width": thumb.width,
                 "height": thumb.height,
             }
-        except Exception:
-            continue
+        except Exception as e:
+            return f"Ошибка получения данных превью: {e}"
+            # continue
 
     return data
 
@@ -120,29 +182,29 @@ def get_admin_thumb(image_field):
     if not image_field:
         return "Нет фото"
     try:
-        thumbnailer = get_thumbnailer(image_field)
-        options = getattr(settings, "THUMBNAIL_WIDGET_OPTIONS", {})
-        thumb_url = thumbnailer.get_thumbnail(options).url
-        width, height = options.get("size", (100, 100))
-        # return format_html(
-        #     '<img src="{0}" style="width: {1}px; height: {2}px; object-fit: cover; object-position: center; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);" />',
-        #     thumb_url,
-        #     width,
-        #     height,
-        # )
+        options = et_aliases.get("admin_preview", target="xwear.ProductImage.image")
+
+        # Если алиас не найден в настройках, используем безопасный дефолт
+        if not options:
+            options = {"size": (80, 70), "crop": "smart", "quality": 85}
+
+        # Генерируем миниатюру через метод поля ThumbnailerImageField (get_thumbnail)
+        thumb = image_field.get_thumbnail(options)
+        width, height = options.get("size", (80, 70))
+
         return format_html(
             '<div style="width: {1}px; height: {2}px; display: flex; align-items: center; '
             "justify-content: center; background: #f8f9fa; border-radius: 4px; overflow: hidden; "
             'box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #ddd;">'
-            '<img src="{0}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />'
+            '<img src="{0}" style="flex-shrink: 0; max-width: 100%; max-height: 100%; object-fit: contain;" />'
             "</div>",
-            thumb_url,
+            thumb.url,
             width,
             height,
         )
     except Exception as e:
-        print(f"DEBUG: Thumbnail error: {e}")
-        return "Ошибка генерации превью"
+        # В продакшене логировать
+        return f"Ошибка генерации превью: {e}"
 
 
 # валидация загружаемых изображений для баннера
@@ -331,3 +393,47 @@ def generate_unique_article(instance):
     except Exception as e:
         print(f"Ошибка при генерации артикула: {e}")
         return None
+
+
+@transaction.atomic
+def sync_product_images(product, manual_selected_id=None):
+    # 1. Получаем все фото, отсортированные по позиции
+    images = list(product.images.all().order_by("position", "id"))
+    if not images:
+        return
+
+    # Шаблон для проверки alt-текста: "Название товара - фото"
+    base_pattern = f"{product.name} - фото"
+
+    def get_smart_alt(instance, target_number):
+        current_alt = instance.alt or ""
+        # Если Alt пустой ИЛИ он совпадает со стандартным шаблоном
+        if not current_alt or current_alt.startswith(base_pattern):
+            return f"{base_pattern} {target_number}"
+        # В противном случае оставляем то, что ввел пользователь
+        return current_alt
+
+    # 2. Определяем главное
+    if manual_selected_id:
+        # ПРИОРИТЕТ 1: Если пользователь явно кликнул на галочку (передано из admin.py)
+        target_main = product.images.filter(pk=manual_selected_id).first()
+    else:
+        # ПРИОРИТЕТ 2: В остальных случаях (включая перетаскивание)
+        # главным становится тот, кто фактически первый в списке
+        target_main = images[0]
+
+    if not target_main:
+        target_main = images[0]
+
+    # 3. Синхронизируем флаги
+    new_alt_main = f"{product.name} - фото 1"
+    product.images.all().update(is_main=False)
+    product.images.filter(pk=target_main.pk).update(
+        is_main=True, position=0, alt=get_smart_alt(target_main, 1)
+    )
+
+    # 4. Выравниваем позиции (чтобы не было двух нулевых)
+    others = product.images.exclude(pk=target_main.pk).order_by("position", "id")
+    for i, img in enumerate(others, start=2):
+        new_alt = f"{product.name} - фото {i}"
+        product.images.filter(pk=img.pk).update(position=i - 1, alt=get_smart_alt(img, i))
