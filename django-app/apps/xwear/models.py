@@ -4,12 +4,14 @@ from django.conf import settings
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from easy_thumbnails.fields import ThumbnailerImageField
+from easy_thumbnails.files import generate_all_aliases
 from .utils import (
     UploadToPath,
+    convert_to_webp,
     generate_unique_slug,
-    validate_banner_image,
     generate_unique_article,
 )
+from .validators import ImageValidator
 
 
 class Category(MPTTModel):
@@ -129,6 +131,9 @@ class ProductSize(models.Model):
     def has_discount(self):
         return self.discount_percent > 0
 
+    def __str__(self):
+        return "Размерная шкала"
+
     class Meta:
         unique_together = ["product", "size"]
         verbose_name = "Размер/цена товара"
@@ -139,7 +144,11 @@ class ProductImage(models.Model):
     product = models.ForeignKey(
         "Product", on_delete=models.CASCADE, related_name="images", verbose_name="Товар"
     )
-    image = ThumbnailerImageField(upload_to=UploadToPath("products"), verbose_name="Фото")
+    image = ThumbnailerImageField(
+        upload_to=UploadToPath("products"),
+        validators=[ImageValidator(min_width=670, min_height=490, max_mb=1.5)],
+        verbose_name="Фото (min 670x490, max 1,5Мб)",
+    )
     is_main = models.BooleanField(default=False, verbose_name="Главное фото")
     alt = models.CharField(
         max_length=200,
@@ -159,7 +168,50 @@ class ProductImage(models.Model):
             )
             self.position = (last_image.position + 1) if last_image else 0
 
+        # Если файл новый или изменился
+        is_new_image = not self.pk or self._image_changed()
+
+        if self.image and is_new_image:
+            # 1. Подтягиваем категорию из базы
+            if self.product_id:
+                # Используем filter().first() чтобы не упасть, если вдруг ID битый
+                prod = (
+                    Product.objects.select_related("category")
+                    .filter(pk=self.product_id)
+                    .first()
+                )
+                if prod:
+                    self.product = prod
+
+            # 2. Конвертируем
+            webp_content = convert_to_webp(self.image)
+
+            # 3. Генерируем правильное имя (с категорией)
+            upload_processor = UploadToPath("products/")
+            # Передаем self, чтобы UploadToPath увидел обновленного self.product
+            new_path = upload_processor(self, self.image.name)
+
+            # 4. Подменяем файл (save=False, чтобы не зациклить)
+            # self.image.save(new_filename, webp_content, save=False)
+
+            # 4. Подменяем файл и путь напрямую в поле - СПЕЦИАЛЬНО ДЛЯ ThumbnailerImageField:
+            # Это позволяет избежать лишних циклов сохранения.
+            self.image.file = webp_content
+            self.image.name = new_path
+
         super().save(*args, **kwargs)
+
+        # 4. Запускаем генерацию миниатюр
+        if self.image and is_new_image:
+            generate_all_aliases(self.image, include_global=True)
+
+    def _image_changed(self):
+        """Проверка, изменился ли файл изображения"""
+        try:
+            old_obj = ProductImage.objects.get(pk=self.pk)
+            return old_obj.image != self.image
+        except ProductImage.DoesNotExist:
+            return True
 
     def __str__(self):
         if self.is_main:
@@ -187,7 +239,7 @@ class Product(models.Model):
         related_name="products",
         verbose_name="Категория",
     )
-    name = models.CharField(max_length=50, verbose_name="Наименование")
+    name = models.CharField(max_length=50, verbose_name="Модель")
     slug = models.SlugField(max_length=50, blank=True, verbose_name="Слаг")
     description = models.TextField(blank=True, verbose_name="Описание")
     gender = models.CharField(
@@ -353,17 +405,41 @@ class SliderBanner(models.Model):
     title = models.CharField(max_length=100, verbose_name="Заголовок")
     image = ThumbnailerImageField(
         upload_to=UploadToPath("slider", "slide"),
-        validators=[validate_banner_image],
-        verbose_name="Изображение (min 1540x630)",
+        validators=[ImageValidator(min_width=1540, min_height=630, max_mb=2.0)],
+        verbose_name="Изображение (min 1540x630, max 2Мб)",
     )
     link = models.URLField(blank=True, verbose_name="Ссылка")
     order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
+    def save(self, *args, **kwargs):
+        # Если позиция не задана (новое фото)
+        # if self.position is None:
+        #     last_image = (
+        #         ProductImage.objects.filter(product=self.product)
+        #         .order_by("-position")
+        #         .first()
+        #     )
+        #     self.position = (last_image.position + 1) if last_image else 0
+
+        # Если файл новый или изменился
+        if not self.pk or self._image_changed():
+            convert_to_webp(self.image, quality=100)
+
+        super().save(*args, **kwargs)
+
+    def _image_changed(self):
+        """Проверка, изменился ли файл изображения"""
+        try:
+            old_obj = ProductImage.objects.get(pk=self.pk)
+            return old_obj.image != self.image
+        except ProductImage.DoesNotExist:
+            return True
+
+    def __str__(self):
+        return self.title
+
     class Meta:
         verbose_name = "Слайд"
         verbose_name_plural = "Слайды"
         ordering = ["order", "-id"]
-
-    def __str__(self):
-        return self.title

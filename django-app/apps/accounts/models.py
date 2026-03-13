@@ -1,13 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
-from django.core.validators import RegexValidator, EmailValidator
+from django.core.validators import EmailValidator
 from django.db import models
-
-
-# Валидатор номеров телефонов для Беларуси (+375XXXXXXXXX)
-phone_regex = RegexValidator(
-    regex=r"^\+375(25|29|33|44)\d{7}$",
-    message="Номер должен быть в формате +375XXXXXXXXX (МТС, А1, life:).",
-)
+from .validators import phone_regex
 
 
 class UserManager(BaseUserManager):

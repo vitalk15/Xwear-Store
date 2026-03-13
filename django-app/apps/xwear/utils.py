@@ -2,9 +2,10 @@ import os
 import string
 import random
 from uuid import uuid4
+from io import BytesIO
+from PIL import Image
+from django.core.files.base import ContentFile
 from django.utils.deconstruct import deconstructible
-from django.core.exceptions import ValidationError
-from django.core.files.images import get_image_dimensions
 from django.utils.text import slugify
 from django.utils.html import format_html
 from django.db.models import Prefetch, Min, Max, Q
@@ -27,27 +28,42 @@ class UploadToPath:
         Этот метод заменяет нашу старую функцию wrapper.
         Django вызывает его, когда нужно получить путь.
         """
-        ext = filename.split(".")[-1]
+        # ext = filename.split(".")[-1]
+        ext = "webp"  # Мы всегда конвертируем в webp
 
         # 1. Если передан префикс - используем его
         if self.prefix:
             base_name = self.prefix
-        # 2. Если префикса нет, пробуем взять название товара
-        elif hasattr(instance, "product") and instance.product.name:
-            base_name = slugify(instance.product.name)
-        # 3. Запасной вариант
+        # 2. Если префикса нет, пробуем взять название товара и категории
+        elif hasattr(instance, "product") and instance.product:
+            product = instance.product
+            # name_part = slugify(product.name)
+
+            # 1. Берем готовый слаг категории (если категория есть)
+            category_slug = ""
+            if hasattr(product, "category") and product.category:
+                category_slug = getattr(product.category, "slug", "")
+
+            # 2. Берем готовый слаг товара
+            product_slug = getattr(product, "slug", "")
+
+            # Подстраховка: если слага вдруг нет (например, сохраняем через скрипт в обход сигналов)
+            if not product_slug:
+                product_slug = slugify(product.name) or "product"
+
+            # 3. Собираем имя
+            base_name = (
+                f"{category_slug}-{product_slug}" if category_slug else product_slug
+            )
+
         else:
             base_name = "product"
 
-        if not base_name:
+        if not base_name or base_name == "-":
             base_name = "file"
 
         # Добавляем уникальный хвост (ID или короткий UUID) для защиты от дублей
-        if instance.pk:
-            identifier = instance.pk
-        else:
-            identifier = uuid4().hex[:5]
-
+        identifier = instance.pk if instance.pk else uuid4().hex[:5]
         new_filename = f"{base_name}_{identifier}.{ext}"
 
         # Формируем путь: products/krossovki-xwear_a1b2c.jpg
@@ -70,6 +86,27 @@ class UploadToPath:
 #         return os.path.join(folder, new_filename)
 
 #     return wrapper
+
+
+def convert_to_webp(image_field, quality=100):
+    """
+    Конвертирует изображение в WebP.
+    """
+    if not image_field:
+        return
+
+    img = Image.open(image_field)
+
+    # Конвертируем в RGB для сохранения в WebP (убирает проблемы с прозрачностью)
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
+
+    output = BytesIO()
+    # Сохраняем с максимальным качеством для оригиналов
+    img.save(output, format="WEBP", quality=quality, method=6)
+    output.seek(0)
+
+    return ContentFile(output.read())
 
 
 # Генератор уникальных слагов
@@ -205,18 +242,6 @@ def get_admin_thumb(image_field):
     except Exception as e:
         # В продакшене логировать
         return f"Ошибка генерации превью: {e}"
-
-
-# валидация загружаемых изображений для баннера
-def validate_banner_image(image):
-    width, height = get_image_dimensions(image)
-    min_width = 1540
-    min_height = 630
-    if width < min_width or height < min_height:
-        raise ValidationError(
-            f"Размер слишком мал ({width}x{height})."
-            f"Для слайдера требуются изображения не менее {min_width}x{min_height} px."
-        )
 
 
 # Собирает данные для сайдбара (бренды, размеры, диапазон цен),
@@ -395,6 +420,7 @@ def generate_unique_article(instance):
         return None
 
 
+# синхронизация изображений товара (главная, порядок) и генерация alt-текста
 @transaction.atomic
 def sync_product_images(product, manual_selected_id=None):
     # 1. Получаем все фото, отсортированные по позиции
@@ -402,8 +428,15 @@ def sync_product_images(product, manual_selected_id=None):
     if not images:
         return
 
-    # Шаблон для проверки alt-текста: "Название товара - фото"
-    base_pattern = f"{product.name} - фото"
+    # 2. Извлекаем только "хвост" категории (например, "Кроссовки")
+    category_short_name = ""
+    if product.category:
+        # Берем последнюю часть пути после " / "
+        category_short_name = str(product.category).rsplit(" / ", maxsplit=1)[-1]
+
+    # 3. Шаблон для проверки alt-текста: "Категория модель - фото"
+    # .strip() подстрахует от лишних пробелов, если категория вдруг пустая
+    base_pattern = f"{category_short_name} {product.name} - фото".strip()
 
     def get_smart_alt(instance, target_number):
         current_alt = instance.alt or ""
@@ -413,7 +446,7 @@ def sync_product_images(product, manual_selected_id=None):
         # В противном случае оставляем то, что ввел пользователь
         return current_alt
 
-    # 2. Определяем главное
+    # 2. Определяем главное фото
     if manual_selected_id:
         # ПРИОРИТЕТ 1: Если пользователь явно кликнул на галочку (передано из admin.py)
         target_main = product.images.filter(pk=manual_selected_id).first()
@@ -426,7 +459,6 @@ def sync_product_images(product, manual_selected_id=None):
         target_main = images[0]
 
     # 3. Синхронизируем флаги
-    new_alt_main = f"{product.name} - фото 1"
     product.images.all().update(is_main=False)
     product.images.filter(pk=target_main.pk).update(
         is_main=True, position=0, alt=get_smart_alt(target_main, 1)
@@ -435,5 +467,4 @@ def sync_product_images(product, manual_selected_id=None):
     # 4. Выравниваем позиции (чтобы не было двух нулевых)
     others = product.images.exclude(pk=target_main.pk).order_by("position", "id")
     for i, img in enumerate(others, start=2):
-        new_alt = f"{product.name} - фото {i}"
         product.images.filter(pk=img.pk).update(position=i - 1, alt=get_smart_alt(img, i))
