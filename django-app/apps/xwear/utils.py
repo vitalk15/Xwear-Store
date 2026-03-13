@@ -34,32 +34,18 @@ class UploadToPath:
         # 1. Если передан префикс - используем его
         if self.prefix:
             base_name = self.prefix
-        # 2. Если префикса нет, пробуем взять название товара и категории
+        # 2. Если префикса нет, пробуем взять название товара
         elif hasattr(instance, "product") and instance.product:
             product = instance.product
-            # name_part = slugify(product.name)
 
-            # 1. Берем готовый слаг категории (если категория есть)
-            category_slug = ""
-            if hasattr(product, "category") and product.category:
-                category_slug = getattr(product.category, "slug", "")
+            # Берем готовый слаг товара
+            base_name = getattr(product, "slug", "")
 
-            # 2. Берем готовый слаг товара
-            product_slug = getattr(product, "slug", "")
-
-            # Подстраховка: если слага вдруг нет (например, сохраняем через скрипт в обход сигналов)
-            if not product_slug:
-                product_slug = slugify(product.name) or "product"
-
-            # 3. Собираем имя
-            base_name = (
-                f"{category_slug}-{product_slug}" if category_slug else product_slug
-            )
+            # Подстраховка: если слага вдруг нет
+            if not base_name:
+                base_name = "product"
 
         else:
-            base_name = "product"
-
-        if not base_name or base_name == "-":
             base_name = "file"
 
         # Добавляем уникальный хвост (ID или короткий UUID) для защиты от дублей
@@ -428,16 +414,10 @@ def sync_product_images(product, manual_selected_id=None):
     if not images:
         return
 
-    # 2. Извлекаем только "хвост" категории (например, "Кроссовки")
-    category_short_name = ""
-    if product.category:
-        # Берем последнюю часть пути после " / "
-        category_short_name = str(product.category).rsplit(" / ", maxsplit=1)[-1]
+    # 2. Шаблон для проверки alt-текста: "Название товара - фото"
+    base_pattern = f"{product.name} - фото"
 
-    # 3. Шаблон для проверки alt-текста: "Категория модель - фото"
-    # .strip() подстрахует от лишних пробелов, если категория вдруг пустая
-    base_pattern = f"{category_short_name} {product.name} - фото".strip()
-
+    # 3. Генерация alt-текста
     def get_smart_alt(instance, target_number):
         current_alt = instance.alt or ""
         # Если Alt пустой ИЛИ он совпадает со стандартным шаблоном
@@ -446,7 +426,7 @@ def sync_product_images(product, manual_selected_id=None):
         # В противном случае оставляем то, что ввел пользователь
         return current_alt
 
-    # 2. Определяем главное фото
+    # 4. Определяем главное фото
     if manual_selected_id:
         # ПРИОРИТЕТ 1: Если пользователь явно кликнул на галочку (передано из admin.py)
         target_main = product.images.filter(pk=manual_selected_id).first()
@@ -458,13 +438,13 @@ def sync_product_images(product, manual_selected_id=None):
     if not target_main:
         target_main = images[0]
 
-    # 3. Синхронизируем флаги
+    # 5. Синхронизируем флаги
     product.images.all().update(is_main=False)
     product.images.filter(pk=target_main.pk).update(
         is_main=True, position=0, alt=get_smart_alt(target_main, 1)
     )
 
-    # 4. Выравниваем позиции (чтобы не было двух нулевых)
+    # 6. Выравниваем позиции остальных (чтобы не было двух нулевых)
     others = product.images.exclude(pk=target_main.pk).order_by("position", "id")
     for i, img in enumerate(others, start=2):
         product.images.filter(pk=img.pk).update(position=i - 1, alt=get_smart_alt(img, i))

@@ -172,21 +172,17 @@ class ProductImage(models.Model):
         is_new_image = not self.pk or self._image_changed()
 
         if self.image and is_new_image:
-            # 1. Подтягиваем категорию из базы
+            # Принудительно получаем актуальный объект продукта из БД,
+            # чтобы подтянуть сгенерированный слаг
             if self.product_id:
-                # Используем filter().first() чтобы не упасть, если вдруг ID битый
-                prod = (
-                    Product.objects.select_related("category")
-                    .filter(pk=self.product_id)
-                    .first()
-                )
+                prod = Product.objects.filter(pk=self.product_id).first()
                 if prod:
                     self.product = prod
 
-            # 2. Конвертируем
+            # 1. Конвертируем
             webp_content = convert_to_webp(self.image)
 
-            # 3. Генерируем правильное имя (с категорией)
+            # 2. Генерируем имя
             upload_processor = UploadToPath("products/")
             # Передаем self, чтобы UploadToPath увидел обновленного self.product
             new_path = upload_processor(self, self.image.name)
@@ -239,7 +235,7 @@ class Product(models.Model):
         related_name="products",
         verbose_name="Категория",
     )
-    name = models.CharField(max_length=50, verbose_name="Модель")
+    name = models.CharField(max_length=50, verbose_name="Название")
     slug = models.SlugField(max_length=50, blank=True, verbose_name="Слаг")
     description = models.TextField(blank=True, verbose_name="Описание")
     gender = models.CharField(
