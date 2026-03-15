@@ -4,8 +4,15 @@ window.addEventListener('load', function () {
 	// Функция для отрисовки превью
 	const showPreview = (input) => {
 		if (input.files && input.files[0]) {
-			const reader = new FileReader()
+			const file = input.files[0]
+			// Считываем лимиты из атрибутов (преобразуем в числа)
+			const limits = {
+				width: parseInt(input.dataset.minWidth) || 0,
+				height: parseInt(input.dataset.minHeight) || 0,
+				size: parseFloat(input.dataset.maxMb) || 0,
+			}
 
+			const reader = new FileReader()
 			reader.onload = function (e) {
 				// Ищем, есть ли уже превью рядом с инпутом
 				let imgContainer = input
@@ -16,17 +23,40 @@ window.addEventListener('load', function () {
 				if (!imgContainer) {
 					imgContainer = document.createElement('div')
 					imgContainer.className = 'live-preview-container'
+					// imgContainer.style.cssText =
+					// 	'margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; border: 1px dashed #79aec8; display: inline-block;'
 					imgContainer.style.marginTop = '10px'
 					// Вставляем после инпута
 					input.parentNode.appendChild(imgContainer)
 				}
 
-				// Рисуем само изображение (стили как в утилите get_admin_thumb)
-				imgContainer.innerHTML = `
-				    <div style="margin-bottom: 5px; font-size: 11px; color: #666;">Предпросмотр:</div>
-				    <img src="${e.target.result}"
-				          style="width: 80px; height: auto; object-fit: cover; object-position: center; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 2px solid #79aec8;" />
-				`
+				// Создаем временный объект изображения для получения разрешения
+				const tempImg = new Image()
+				tempImg.src = e.target.result
+				tempImg.onload = function () {
+					const fileSizeMb = file.size / (1024 * 1024)
+
+					// Проверки для подсветки
+					const isWidthBad = limits.width && this.width < limits.width
+					const isHeightBad = limits.height && this.height < limits.height
+					const isSizeBad = limits.size && fileSizeMb > limits.size
+
+					imgContainer.innerHTML = `
+                <div style="font-size: 11px; font-weight: bold; color: #444; margin-bottom: 5px;">Предпросмотр:</div>
+                <img src="${e.target.result}" style="width: 100px; height: auto; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); ${isWidthBad || isHeightBad || isSizeBad ? 'border: 2px solid #ba2121;' : 'border: 2px solid #79aec8;'}" />
+                <div style="font-size: 10px; margin-top: 5px; line-height: 1.4;">
+                    <span style="color: ${isWidthBad ? '#ba2121' : '#666'}; font-weight: ${isWidthBad ? 'bold' : 'normal'}">
+                        📏 ${this.width}x
+                    </span>
+                    <span style="color: ${isHeightBad ? '#ba2121' : '#666'}; font-weight: ${isHeightBad ? 'bold' : 'normal'}">
+                        ${this.height} px
+                    </span><br>
+                    <span style="color: ${isSizeBad ? '#ba2121' : '#666'}; font-weight: ${isSizeBad ? 'bold' : 'normal'}">
+                        💾 ${fileSizeMb.toFixed(2)}
+                    </span>
+                </div>
+            `
+				}
 			}
 			reader.readAsDataURL(input.files[0])
 		}

@@ -145,7 +145,7 @@ class ProductImage(models.Model):
         "Product", on_delete=models.CASCADE, related_name="images", verbose_name="Товар"
     )
     image = ThumbnailerImageField(
-        upload_to=UploadToPath("products"),
+        upload_to=UploadToPath("products", use_category_subdir=True),
         validators=[ImageValidator(min_width=670, min_height=490, max_mb=1.5)],
         verbose_name="Фото (min 670x490, max 1,5Мб)",
     )
@@ -183,7 +183,7 @@ class ProductImage(models.Model):
             webp_content = convert_to_webp(self.image)
 
             # 2. Генерируем имя
-            upload_processor = UploadToPath("products/")
+            upload_processor = UploadToPath("products/", use_category_subdir=True)
             # Передаем self, чтобы UploadToPath увидел обновленного self.product
             new_path = upload_processor(self, self.image.name)
 
@@ -203,6 +203,9 @@ class ProductImage(models.Model):
 
     def _image_changed(self):
         """Проверка, изменился ли файл изображения"""
+        if not self.pk:
+            return True
+
         try:
             old_obj = ProductImage.objects.get(pk=self.pk)
             return old_obj.image != self.image
@@ -400,7 +403,7 @@ class Favorite(models.Model):
 class SliderBanner(models.Model):
     title = models.CharField(max_length=100, verbose_name="Заголовок")
     image = ThumbnailerImageField(
-        upload_to=UploadToPath("slider", "slide"),
+        upload_to=UploadToPath("banner", "slide"),
         validators=[ImageValidator(min_width=1540, min_height=630, max_mb=2.0)],
         verbose_name="Изображение (min 1540x630, max 2Мб)",
     )
@@ -419,15 +422,28 @@ class SliderBanner(models.Model):
         #     self.position = (last_image.position + 1) if last_image else 0
 
         # Если файл новый или изменился
-        if not self.pk or self._image_changed():
-            convert_to_webp(self.image, quality=100)
+        is_new_image = not self.pk or self._image_changed()
+
+        if self.image and is_new_image:
+            webp_content = convert_to_webp(self.image, quality=100)
+            upload_processor = UploadToPath("banner", "slide")
+            new_path = upload_processor(self, self.image.name)
+
+            self.image.file = webp_content
+            self.image.name = new_path
 
         super().save(*args, **kwargs)
 
+        # Генерируем миниатюры
+        if self.image and is_new_image:
+            generate_all_aliases(self.image, include_global=True)
+
     def _image_changed(self):
         """Проверка, изменился ли файл изображения"""
+        if not self.pk:
+            return True
         try:
-            old_obj = ProductImage.objects.get(pk=self.pk)
+            old_obj = SliderBanner.objects.get(pk=self.pk)
             return old_obj.image != self.image
         except ProductImage.DoesNotExist:
             return True
@@ -436,6 +452,6 @@ class SliderBanner(models.Model):
         return self.title
 
     class Meta:
-        verbose_name = "Слайд"
-        verbose_name_plural = "Слайды"
+        verbose_name = "Баннер"
+        verbose_name_plural = "Баннеры"
         ordering = ["order", "-id"]

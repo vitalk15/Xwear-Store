@@ -7,6 +7,7 @@ from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
 from adminsortable2.admin import (
     SortableAdminBase,
+    SortableAdminMixin,
     SortableInlineAdminMixin,
     CustomInlineFormSet,
 )
@@ -26,6 +27,7 @@ from .models import (
     SliderBanner,
 )
 from .utils import get_admin_thumb
+from .validators import ImageValidator
 
 
 @admin.register(Category)
@@ -74,22 +76,39 @@ class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
         # Если товара еще нет (режим создания), все поля доступны для редактирования
         return ["image_preview"]
 
+    @admin.display(description="Превью")
     def image_preview(self, obj):
-        return get_admin_thumb(obj.image)
+        return get_admin_thumb(obj.image, alias="admin_preview")
 
-    image_preview.short_description = "Превью"
+    # Прокидываем лимиты mageValidator в админку (добавляем полю формы "image" data-атрибуты)
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "image":
+            # Ищем наш валидатор среди всех валидаторов поля
+            for v in db_field.validators:
+                if isinstance(v, ImageValidator):
+                    # Прокидываем значения в атрибуты виджета
+                    formfield.widget.attrs.update(
+                        {
+                            "data-min-width": v.min_width or 0,
+                            "data-min-height": v.min_height or 0,
+                            "data-max-mb": v.max_mb or 0,
+                        }
+                    )
+                    break
+        return formfield
 
     class Media:
         js = ("admin/js/image_preview.js",)
 
 
 @admin.register(Size)
-class SizeAdmin(admin.ModelAdmin):
-    list_display = ["name", "order"]
+class SizeAdmin(SortableAdminMixin, admin.ModelAdmin):
+    list_display = ["name"]
     list_display_links = ["name"]
     search_fields = ["name"]
-    list_editable = ["order"]
-    fields = (("name", "order"),)
+    # list_editable = ["order"]
+    # fields = (("name", "order"),)
 
 
 class ProductSizeInline(admin.TabularInline):
@@ -343,7 +362,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     def image_main(self, obj):
         main_img = obj.get_main_image_obj
         if main_img:
-            return get_admin_thumb(main_img.image)
+            return get_admin_thumb(main_img.image, "xwear.ProductImage.image")
         return "-"
         # return None
 
@@ -506,23 +525,37 @@ class FavoriteAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(SliderBanner)
-class SliderBannerAdmin(admin.ModelAdmin):
-    list_display = ("get_preview", "title", "order", "is_active")
-    list_editable = ("order", "is_active")
+class SliderBannerAdmin(SortableAdminMixin, admin.ModelAdmin):
+    list_display = ("get_preview", "title", "order", "link", "is_active")
+    list_editable = ("link", "is_active")
     readonly_fields = ("get_preview_large",)
+    fields = ("title", "image", "get_preview_large", "link", "is_active")
 
     @admin.display(description="Превью")
     def get_preview(self, obj):
-        if obj.image:
-            return format_html(
-                '<img src="{}" style="width: 150px; height: auto;" />', obj.image.url
-            )
-        return "Нет изображения"
+        return get_admin_thumb(obj.image, alias="admin_preview")
 
     @admin.display(description="Текущее изображение")
     def get_preview_large(self, obj):
-        if obj.image:
-            return format_html(
-                '<img src="{}" style="max-width: 600px; height: auto;" />', obj.image.url
-            )
-        return "Нет изображения"
+        return get_admin_thumb(obj.image, alias="slider_large", show_info=True)
+
+    # Прокидываем лимиты mageValidator в админку (в data-атрибуты)
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "image":
+            # Ищем наш валидатор среди всех валидаторов поля
+            for v in db_field.validators:
+                if isinstance(v, ImageValidator):
+                    # Прокидываем значения в атрибуты виджета
+                    formfield.widget.attrs.update(
+                        {
+                            "data-min-width": v.min_width or 0,
+                            "data-min-height": v.min_height or 0,
+                            "data-max-mb": v.max_mb or 0,
+                        }
+                    )
+                    break
+        return formfield
+
+    class Media:
+        js = ("admin/js/image_preview.js",)

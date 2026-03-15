@@ -19,9 +19,11 @@ from easy_thumbnails.alias import aliases as et_aliases
 # деконструируемый класс (используем вместо фабрики функции, так как выполнялся сброс миграций и при создании новых есть проблема с wrapper)
 @deconstructible
 class UploadToPath:
-    def __init__(self, folder, prefix=None):
+
+    def __init__(self, folder, prefix=None, use_category_subdir=False):
         self.folder = folder
         self.prefix = prefix
+        self.use_category_subdir = use_category_subdir
 
     def __call__(self, instance, filename):
         """
@@ -30,16 +32,25 @@ class UploadToPath:
         """
         # ext = filename.split(".")[-1]
         ext = "webp"  # Мы всегда конвертируем в webp
+        subfolder = ""
 
         # 1. Если передан префикс - используем его
         if self.prefix:
             base_name = self.prefix
-        # 2. Если префикса нет, пробуем взять название товара
+        # 2. Если префикса нет, определяем базовое имя товара (слаг)
         elif hasattr(instance, "product") and instance.product:
             product = instance.product
 
             # Берем готовый слаг товара
             base_name = getattr(product, "slug", "")
+
+            # Если включена опция подпапок, достаем слаг категории
+            if self.use_category_subdir:
+                category = getattr(product, "category", None)
+                if category and hasattr(category, "slug"):
+                    subfolder = category.slug
+                else:
+                    subfolder = "no-category"
 
             # Подстраховка: если слага вдруг нет
             if not base_name:
@@ -52,8 +63,8 @@ class UploadToPath:
         identifier = instance.pk if instance.pk else uuid4().hex[:5]
         new_filename = f"{base_name}_{identifier}.{ext}"
 
-        # Формируем путь: products/krossovki-xwear_a1b2c.jpg
-        return os.path.join(self.folder, new_filename)
+        # Формируем путь (media/products/category-slug/file.webp)
+        return os.path.join(self.folder, subfolder, new_filename)
 
 
 # преобразование имени изображения с указанием префикса и папки сохранения
@@ -74,10 +85,8 @@ class UploadToPath:
 #     return wrapper
 
 
+# Конвертирование изображений в WebP
 def convert_to_webp(image_field, quality=100):
-    """
-    Конвертирует изображение в WebP.
-    """
     if not image_field:
         return
 
@@ -155,11 +164,8 @@ def generate_unique_slug(model_instance, base_field="name", scope_field=None):
 #     return data
 
 
-# получение данных миниатюр
+# Универсальная функция для получения словаря миниатюр
 def get_thumbnail_data(image_field, aliases, request=None):
-    """
-    Универсальная функция для получения словаря миниатюр.
-    """
     if not image_field:
         return None
 
@@ -200,31 +206,57 @@ def get_thumbnail_data(image_field, aliases, request=None):
     return data
 
 
-# Генерация превью в админке
-def get_admin_thumb(image_field):
-    if not image_field:
+# Генерация превью в админке и показ информации о фото
+def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
+    if not image_field or not hasattr(image_field, "url"):
         return "Нет фото"
     try:
-        options = et_aliases.get("admin_preview", target="xwear.ProductImage.image")
+        # Автоматически определяем target для алиаса на основе модели
+        target = f"{image_field.instance._meta.app_label}.{image_field.instance._meta.object_name}.{image_field.field.name}"
+        options = et_aliases.get(alias, target=target)
+        # options = et_aliases.get("admin_preview", target="xwear.ProductImage.image")
 
-        # Если алиас не найден в настройках, используем безопасный дефолт
         if not options:
+            # Дефолтные настройки, если алиас не найден
             options = {"size": (80, 70), "crop": "smart", "quality": 85}
 
         # Генерируем миниатюру через метод поля ThumbnailerImageField (get_thumbnail)
         thumb = image_field.get_thumbnail(options)
         width, height = options.get("size", (80, 70))
 
-        return format_html(
-            '<div style="width: {1}px; height: {2}px; display: flex; align-items: center; '
+        html = format_html(
+            '<div class="admin-preview-wrapper" style="margin-bottom: 5px;">'
+            '<div style="width: {1}px; height: auto; display: flex; align-items: center; '
             "justify-content: center; background: #f8f9fa; border-radius: 4px; overflow: hidden; "
             'box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #ddd;">'
-            '<img src="{0}" style="flex-shrink: 0; max-width: 100%; max-height: 100%; object-fit: contain;" />'
+            '<img src="{0}" style="flex-shrink: 0; max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer;" onclick="window.open(\'{2}\', \'_blank\')" />'
             "</div>",
             thumb.url,
             width,
-            height,
+            image_field.url,
         )
+
+        if show_info:
+            # Получаем размер файла и разрешение
+            try:
+                size_kb = round(image_field.size / 1024, 2)
+                size_str = (
+                    f"{size_kb} KB" if size_kb < 1000 else f"{round(size_kb/1024, 2)} MB"
+                )
+                info_html = format_html(
+                    '<div style="font-size: 10px; color: #666; margin-top: 3px; line-height: 1.2;">'
+                    "📏 {0}x{1} px<br>💾 {2}"
+                    "</div>",
+                    image_field.width,
+                    image_field.height,
+                    size_str,
+                )
+                html += info_html
+            except:
+                pass
+
+        return html + format_html("</div>")
+
     except Exception as e:
         # В продакшене логировать
         return f"Ошибка генерации превью: {e}"

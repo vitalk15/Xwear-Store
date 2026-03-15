@@ -188,10 +188,25 @@ THUMBNAIL_ALIASES = {
         },
     },
     "xwear.SliderBanner.image": {
-        "slider_main": {
+        "admin_preview": {
+            "size": (250, 100),
+            "crop": "smart",
+            "quality": 85,
+        },
+        "slider_small": {
+            "size": (250, 100),
+            "crop": "smart",
+            "quality": 85,
+        },
+        "slider_medium": {
+            "size": (1000, 400),
+            "crop": "smart",
+            "quality": 85,
+        },
+        "slider_large": {
             "size": (1540, 630),
             "crop": "smart",
-            "quality": 95,
+            "quality": 100,
         },
     },
 }
