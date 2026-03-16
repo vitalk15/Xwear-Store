@@ -44,15 +44,15 @@ window.addEventListener('load', function () {
 					imgContainer.innerHTML = `
                 <div style="font-size: 11px; font-weight: bold; color: #444; margin-bottom: 5px;">Предпросмотр:</div>
                 <img src="${e.target.result}" style="width: 100px; height: auto; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); ${isWidthBad || isHeightBad || isSizeBad ? 'border: 2px solid #ba2121;' : 'border: 2px solid #79aec8;'}" />
-                <div style="font-size: 10px; margin-top: 5px; line-height: 1.4;">
-                    <span style="color: ${isWidthBad ? '#ba2121' : '#666'}; font-weight: ${isWidthBad ? 'bold' : 'normal'}">
-                        📏 ${this.width}x
-                    </span>
-                    <span style="color: ${isHeightBad ? '#ba2121' : '#666'}; font-weight: ${isHeightBad ? 'bold' : 'normal'}">
-                        ${this.height} px
-                    </span><br>
-                    <span style="color: ${isSizeBad ? '#ba2121' : '#666'}; font-weight: ${isSizeBad ? 'bold' : 'normal'}">
-                        💾 ${fileSizeMb.toFixed(2)}
+                <div style="font-size: 10px; margin-top: 5px; line-height: 1.4; color: #666">
+                    <span style="color: ${isWidthBad ? '#ba2121' : 'inherit'}; font-weight: ${isWidthBad ? 'bold' : 'normal'}">
+                        📏 ${this.width}
+                    </span>x
+                    <span style="color: ${isHeightBad ? '#ba2121' : 'inherit'}; font-weight: ${isHeightBad ? 'bold' : 'normal'}">
+                        ${this.height}
+                    </span> px<br>
+                    <span style="color: ${isSizeBad ? '#ba2121' : 'inherit'}; font-weight: ${isSizeBad ? 'bold' : 'normal'}">
+                        💾 ${fileSizeMb.toFixed(2)} MB
                     </span>
                 </div>
             `

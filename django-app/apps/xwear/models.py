@@ -7,9 +7,9 @@ from easy_thumbnails.fields import ThumbnailerImageField
 from easy_thumbnails.files import generate_all_aliases
 from .utils import (
     UploadToPath,
-    convert_to_webp,
     generate_unique_slug,
     generate_unique_article,
+    prepare_image_for_save,
 )
 from .validators import ImageValidator
 
@@ -159,6 +159,7 @@ class ProductImage(models.Model):
     position = models.PositiveIntegerField(default=0, db_index=True)
 
     def save(self, *args, **kwargs):
+        # Базовая сортировка
         # Если позиция не задана (новое фото)
         if self.position is None:
             last_image = (
@@ -168,49 +169,23 @@ class ProductImage(models.Model):
             )
             self.position = (last_image.position + 1) if last_image else 0
 
-        # Если файл новый или изменился
-        is_new_image = not self.pk or self._image_changed()
+        # Конвертация загружаемого изображения в WebP и генерация миниатюр
+        # 1. Обновляем продукт перед обработкой пути, чтобы подтянуть сгенерированный слаг
+        if not self.pk and self.product_id:
+            prod = Product.objects.filter(pk=self.product_id).first()
+            if prod:
+                self.product = prod
 
-        if self.image and is_new_image:
-            # Принудительно получаем актуальный объект продукта из БД,
-            # чтобы подтянуть сгенерированный слаг
-            if self.product_id:
-                prod = Product.objects.filter(pk=self.product_id).first()
-                if prod:
-                    self.product = prod
-
-            # 1. Конвертируем
-            webp_content = convert_to_webp(self.image)
-
-            # 2. Генерируем имя
-            upload_processor = UploadToPath("products/", use_category_subdir=True)
-            # Передаем self, чтобы UploadToPath увидел обновленного self.product
-            new_path = upload_processor(self, self.image.name)
-
-            # 4. Подменяем файл (save=False, чтобы не зациклить)
-            # self.image.save(new_filename, webp_content, save=False)
-
-            # 4. Подменяем файл и путь напрямую в поле - СПЕЦИАЛЬНО ДЛЯ ThumbnailerImageField:
-            # Это позволяет избежать лишних циклов сохранения.
-            self.image.file = webp_content
-            self.image.name = new_path
+        # 2. Обработка загружаемого изображения
+        is_new = prepare_image_for_save(
+            self, "image", folder="products/", use_category_subdir=True
+        )
 
         super().save(*args, **kwargs)
 
-        # 4. Запускаем генерацию миниатюр
-        if self.image and is_new_image:
+        # 3. Запускаем генерацию миниатюр
+        if is_new:
             generate_all_aliases(self.image, include_global=True)
-
-    def _image_changed(self):
-        """Проверка, изменился ли файл изображения"""
-        if not self.pk:
-            return True
-
-        try:
-            old_obj = ProductImage.objects.get(pk=self.pk)
-            return old_obj.image != self.image
-        except ProductImage.DoesNotExist:
-            return True
 
     def __str__(self):
         if self.is_main:
@@ -412,41 +387,17 @@ class SliderBanner(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
     def save(self, *args, **kwargs):
-        # Если позиция не задана (новое фото)
-        # if self.position is None:
-        #     last_image = (
-        #         ProductImage.objects.filter(product=self.product)
-        #         .order_by("-position")
-        #         .first()
-        #     )
-        #     self.position = (last_image.position + 1) if last_image else 0
-
-        # Если файл новый или изменился
-        is_new_image = not self.pk or self._image_changed()
-
-        if self.image and is_new_image:
-            webp_content = convert_to_webp(self.image, quality=100)
-            upload_processor = UploadToPath("banner", "slide")
-            new_path = upload_processor(self, self.image.name)
-
-            self.image.file = webp_content
-            self.image.name = new_path
+        # Конвертация загружаемого изображения в WebP и генерация миниатюр
+        # 1. Обработка загружаемого изображения
+        is_new = prepare_image_for_save(
+            self, "image", folder="banner", prefix="slide", quality=100
+        )
 
         super().save(*args, **kwargs)
 
-        # Генерируем миниатюры
-        if self.image and is_new_image:
+        # 2. Генерируем миниатюры
+        if is_new:
             generate_all_aliases(self.image, include_global=True)
-
-    def _image_changed(self):
-        """Проверка, изменился ли файл изображения"""
-        if not self.pk:
-            return True
-        try:
-            old_obj = SliderBanner.objects.get(pk=self.pk)
-            return old_obj.image != self.image
-        except ProductImage.DoesNotExist:
-            return True
 
     def __str__(self):
         return self.title

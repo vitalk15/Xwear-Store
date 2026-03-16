@@ -15,7 +15,7 @@ from django.db import transaction
 from easy_thumbnails.alias import aliases as et_aliases
 
 
-# преобразование имени изображения с указанием папки сохранения
+# переименование изображения с указанием папки сохранения
 # деконструируемый класс (используем вместо фабрики функции, так как выполнялся сброс миграций и при создании новых есть проблема с wrapper)
 @deconstructible
 class UploadToPath:
@@ -226,10 +226,11 @@ def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
 
         html = format_html(
             '<div class="admin-preview-wrapper" style="margin-bottom: 5px;">'
+            '<a href="{2}" target="_blank" style="text-decoration: none;">'
             '<div style="width: {1}px; height: auto; display: flex; align-items: center; '
             "justify-content: center; background: #f8f9fa; border-radius: 4px; overflow: hidden; "
             'box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #ddd;">'
-            '<img src="{0}" style="flex-shrink: 0; max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer;" onclick="window.open(\'{2}\', \'_blank\')" />'
+            '<img src="{0}" style="flex-shrink: 0; max-width: 100%; max-height: 100%; object-fit: contain;" />'
             "</div>",
             thumb.url,
             width,
@@ -480,3 +481,65 @@ def sync_product_images(product, manual_selected_id=None):
     others = product.images.exclude(pk=target_main.pk).order_by("position", "id")
     for i, img in enumerate(others, start=2):
         product.images.filter(pk=img.pk).update(position=i - 1, alt=get_smart_alt(img, i))
+
+
+# Извлекает лимиты из ImageValidator и добавляет их в data-атрибуты виджета
+def add_validator_attrs_to_widget(db_field, formfield):
+    if not formfield:
+        return formfield
+
+    from .validators import ImageValidator
+
+    # Ищем наш валидатор ImageValidator среди всех валидаторов поля
+    for v in db_field.validators:
+        if isinstance(v, ImageValidator):
+            # Прокидываем значения в атрибуты виджета
+            formfield.widget.attrs.update(
+                {
+                    "data-min-width": v.min_width or 0,
+                    "data-min-height": v.min_height or 0,
+                    "data-max-mb": v.max_mb or 0,
+                }
+            )
+            break
+    return formfield
+
+
+# Универсальная проверка: изменился ли файл в поле модели
+def is_field_changed(instance, field_name):
+    if not instance.pk:
+        return True
+    try:
+        old_obj = instance.__class__.objects.get(pk=instance.pk)
+        return getattr(old_obj, field_name) != getattr(instance, field_name)
+    except instance.__class__.DoesNotExist:
+        return True
+
+
+# Полный цикл подготовки загружаемого изображения: конвертация в WebP и генерация пути.
+def prepare_image_for_save(
+    instance, field_name, folder, prefix=None, use_category_subdir=False, quality=85
+):
+    """
+    Возвращает True, если файл был обновлен.
+    """
+    image_field = getattr(instance, field_name)
+
+    # Если файла нет или он не менялся — ничего не делаем
+    if not image_field or not is_field_changed(instance, field_name):
+        return False
+
+    # 1. Конвертируем в WebP
+    webp_content = convert_to_webp(image_field, quality=quality)
+
+    # 2. Формируем путь
+    upload_processor = UploadToPath(
+        folder, prefix=prefix, use_category_subdir=use_category_subdir
+    )
+    new_path = upload_processor(instance, image_field.name)
+
+    # 3. Подменяем данные в поле
+    image_field.file = webp_content
+    image_field.name = new_path
+
+    return True

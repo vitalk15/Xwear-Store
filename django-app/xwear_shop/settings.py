@@ -1,5 +1,6 @@
 import os
 import sys
+import mimetypes
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
@@ -28,6 +29,8 @@ SITE_URL = config("SITE_URL", default="http://127.0.0.1:8000")
 # FRONTEND_URL используется для всех ссылок, по которым пользователь должен кликнуть.
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
 
+# Регистрируем MIME-тип для WebP (для режима разработки)
+mimetypes.add_type("image/webp", ".webp", True)
 
 # Application definition
 

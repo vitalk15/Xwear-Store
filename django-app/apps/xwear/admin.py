@@ -26,8 +26,7 @@ from .models import (
     Favorite,
     SliderBanner,
 )
-from .utils import get_admin_thumb
-from .validators import ImageValidator
+from .utils import get_admin_thumb, add_validator_attrs_to_widget
 
 
 @admin.register(Category)
@@ -80,22 +79,11 @@ class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
     def image_preview(self, obj):
         return get_admin_thumb(obj.image, alias="admin_preview")
 
-    # Прокидываем лимиты mageValidator в админку (добавляем полю формы "image" data-атрибуты)
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
         if db_field.name == "image":
-            # Ищем наш валидатор среди всех валидаторов поля
-            for v in db_field.validators:
-                if isinstance(v, ImageValidator):
-                    # Прокидываем значения в атрибуты виджета
-                    formfield.widget.attrs.update(
-                        {
-                            "data-min-width": v.min_width or 0,
-                            "data-min-height": v.min_height or 0,
-                            "data-max-mb": v.max_mb or 0,
-                        }
-                    )
-                    break
+            # Прокидываем лимиты ImageValidator в админку (добавляем полю формы "image" data-атрибуты)
+            add_validator_attrs_to_widget(db_field, formfield)
         return formfield
 
     class Media:
@@ -331,6 +319,9 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     # Автозаполнение slug
     prepopulated_fields = {"slug": ("name",)}
 
+    # Кол-во показываемых товаров на одной странице пагинации
+    list_per_page = 20
+
     @admin.display(description="Пол")
     def gender_display(self, obj):
         return obj.get_gender_display()
@@ -539,22 +530,11 @@ class SliderBannerAdmin(SortableAdminMixin, admin.ModelAdmin):
     def get_preview_large(self, obj):
         return get_admin_thumb(obj.image, alias="slider_large", show_info=True)
 
-    # Прокидываем лимиты mageValidator в админку (в data-атрибуты)
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
         if db_field.name == "image":
-            # Ищем наш валидатор среди всех валидаторов поля
-            for v in db_field.validators:
-                if isinstance(v, ImageValidator):
-                    # Прокидываем значения в атрибуты виджета
-                    formfield.widget.attrs.update(
-                        {
-                            "data-min-width": v.min_width or 0,
-                            "data-min-height": v.min_height or 0,
-                            "data-max-mb": v.max_mb or 0,
-                        }
-                    )
-                    break
+            # Прокидываем лимиты ImageValidator в админку (в data-атрибуты поля)
+            add_validator_attrs_to_widget(db_field, formfield)
         return formfield
 
     class Media:
