@@ -41,7 +41,7 @@ class CartItem(models.Model):
         verbose_name_plural = "Товары в корзине"
 
     def __str__(self):
-        return f"{self.product_size.product.name} ({self.product_size.size.name}) x {self.quantity}"
+        return f"{self.product_size.product.full_name} ({self.product_size.size.name}) x {self.quantity}"
 
     @property
     def total_item_price(self):

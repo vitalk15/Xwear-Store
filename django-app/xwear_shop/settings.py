@@ -167,6 +167,7 @@ MEDIA_URL = "media/"
 THUMBNAIL_BASEDIR = "thumbnails"
 THUMBNAIL_EXTENSION = "webp"
 THUMBNAIL_CACHE_DIMENSIONS = True
+THUMBNAIL_NAMER = "xwear.utils.clean_thumbnail_namer"
 THUMBNAIL_ALIASES = {
     "xwear.ProductImage.image": {
         "admin_preview": {  # для превью в админке

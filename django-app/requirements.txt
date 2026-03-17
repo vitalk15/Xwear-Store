@@ -20,6 +20,7 @@ pipdeptree==2.30.0
 psycopg==3.2.13
 PyJWT==2.10.1
 python-decouple==3.8
+pytils==0.4.4
 PyYAML==6.0.3
 referencing==0.37.0
 rpds-py==0.29.0

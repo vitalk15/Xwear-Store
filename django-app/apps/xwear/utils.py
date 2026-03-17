@@ -6,13 +6,15 @@ from io import BytesIO
 from PIL import Image
 from django.core.files.base import ContentFile
 from django.utils.deconstruct import deconstructible
-from django.utils.text import slugify
+
+# from django.utils.text import slugify
 from django.utils.html import format_html
 from django.db.models import Prefetch, Min, Max, Q
 from django.db import transaction
 
 # from easy_thumbnails.files import get_thumbnailer
 from easy_thumbnails.alias import aliases as et_aliases
+from pytils.translit import slugify
 
 
 # переименование изображения с указанием папки сохранения
@@ -104,6 +106,22 @@ def convert_to_webp(image_field, quality=100):
     return ContentFile(output.read())
 
 
+def clean_thumbnail_namer(
+    thumbnailer, prepared_options, source_filename, thumbnail_extension, **kwargs
+):
+    """
+    Создает чистое имя миниатюры без двойных расширений.
+    """
+    # Отрезаем оригинальное расширение (например, '.webp' или '.jpg')
+    base_name, _ = os.path.splitext(source_filename)
+
+    # Собираем параметры миниатюры в строку через подчеркивание
+    options_string = "_".join(prepared_options)
+
+    # Склеиваем всё вместе с новым расширением
+    return f"{base_name}_{options_string}.{thumbnail_extension}"
+
+
 # Генератор уникальных слагов
 def generate_unique_slug(model_instance, base_field="name", scope_field=None):
     """
@@ -112,7 +130,8 @@ def generate_unique_slug(model_instance, base_field="name", scope_field=None):
         base_field: Поле для slugify ('name')
         scope_field: Поле для уникальности ('parent', 'category')
     """
-    slug_base = slugify(getattr(model_instance, base_field), allow_unicode=False)
+    # slug_base = slugify(getattr(model_instance, base_field), allow_unicode=False)
+    slug_base = slugify(getattr(model_instance, base_field))
     slug = slug_base
 
     counter = 1
@@ -448,7 +467,7 @@ def sync_product_images(product, manual_selected_id=None):
         return
 
     # 2. Шаблон для проверки alt-текста: "Название товара - фото"
-    base_pattern = f"{product.name} - фото"
+    base_pattern = f"{product.full_name} - фото"
 
     # 3. Генерация alt-текста
     def get_smart_alt(instance, target_number):

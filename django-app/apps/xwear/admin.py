@@ -272,7 +272,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     inlines = [ProductImageInline, ProductSizeInline, SpecificationInline]
 
     list_display = [
-        "name",
+        "get_full_name",
         "get_article",
         "brand",
         "get_short_category",
@@ -283,7 +283,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         "image_main",
         "is_active",
     ]
-    list_display_links = ["name", "get_article"]
+    list_display_links = ["get_full_name", "get_article"]
     list_filter = [
         "is_active",
         "gender",
@@ -294,7 +294,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         SizeFilter,
         DiscountFilter,
     ]
-    search_fields = ["name", "specification__article", "brand__name"]
+    search_fields = ["get_full_name", "specification__article", "brand__name"]
 
     # Если категорий и брендов будет много (заменяет выбор из выпадающего списка на удобный поиск)
     # search_fields = ["name", "brand__name", "category__name"] # в BrandAdmin и CategoryAdmin name уже указано
@@ -307,8 +307,9 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     # Форма редактирования
     fields = [
         "name",
-        "slug",
         "brand",
+        "model_name",
+        "slug",
         "category",
         "description",
         "gender",
@@ -316,11 +317,12 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         "is_active",
     ]
 
-    # Автозаполнение slug
-    prepopulated_fields = {"slug": ("name",)}
-
     # Кол-во показываемых товаров на одной странице пагинации
     list_per_page = 20
+
+    @admin.display(description="Полное название")
+    def get_full_name(self, obj):
+        return obj.full_name
 
     @admin.display(description="Пол")
     def gender_display(self, obj):

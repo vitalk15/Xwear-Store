@@ -16,6 +16,13 @@ from .validators import ImageValidator
 
 class Category(MPTTModel):
     name = models.CharField(max_length=30, verbose_name="Название")
+    singular_name = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        verbose_name="Название (ед. ч.)",
+        help_text="Оставьте пустым, если совпадает с основным названием или не требуется",
+    )
     slug = models.SlugField(max_length=30, blank=True, verbose_name="Слаг")
     is_active = models.BooleanField(default=True, db_index=True, verbose_name="Активна")
     parent = TreeForeignKey(
@@ -189,8 +196,8 @@ class ProductImage(models.Model):
 
     def __str__(self):
         if self.is_main:
-            return f"ГЛАВНОЕ ФОТО ({self.product.name})"
-        return f"Фото №{self.position + 1} ({self.product.name})"
+            return f"ГЛАВНОЕ ФОТО ({self.product.full_name})"
+        return f"Фото №{self.position + 1} ({self.product.full_name})"
 
     class Meta:
         verbose_name = "Фото товара"
@@ -213,8 +220,19 @@ class Product(models.Model):
         related_name="products",
         verbose_name="Категория",
     )
-    name = models.CharField(max_length=50, verbose_name="Название")
-    slug = models.SlugField(max_length=50, blank=True, verbose_name="Слаг")
+    name = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Название товара",
+        help_text="Оставьте пустым, чтобы взять название из категории",
+    )
+    model_name = models.CharField("Модель", max_length=255)
+    slug = models.SlugField(
+        max_length=50,
+        blank=True,
+        verbose_name="Слаг",
+        help_text="Оставьте пустым для автогенерации",
+    )
     description = models.TextField(blank=True, verbose_name="Описание")
     gender = models.CharField(
         max_length=1, choices=GenderChoices.choices, verbose_name="Пол"
@@ -230,16 +248,37 @@ class Product(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
     @property
+    def type_name(self):
+        """Тип товара (например, 'Кроссовки' или 'Ремень')"""
+        # 1. Сначала ищем имя в самом товаре (для Аксессуаров)
+        # 2. Если пусто — ищем singular_name в категории
+        # 3. Если и там пусто — берем обычное name категории
+        return self.name or self.category.singular_name or self.category.name
+
+    @property
+    def short_name(self):
+        """Собирает имя: Бренд + Модель ('adidas Runfalcon 5')"""
+        return f"{self.brand.name} {self.model_name}".strip()
+
+    @property
+    def full_name(self):
+        """Собирает полное имя: Тип + Бренд + Модель ('Кроссовки adidas Runfalcon 5')"""
+        return f"{self.type_name} {self.short_name}".strip()
+
+    @property
     def get_main_image_obj(self):
         return self.images.first()
 
     def save(self, *args, **kwargs):
+        # Автоматическая генерация слага при сохранении (если не заполнен)
         if not self.slug:
-            self.slug = generate_unique_slug(self, scope_field="category")
+            self.slug = generate_unique_slug(
+                self, base_field="full_name", scope_field="category"
+            )
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.name
+        return self.full_name
 
     class Meta:
         ordering = ["name"]
@@ -347,7 +386,7 @@ class ProductSpecification(models.Model):
         verbose_name_plural = "Характеристики товаров"
 
     # def __str__(self):
-    #     return f"Характеристики для {self.product.name}"
+    #     return f"Характеристики для {self.product.full_name}"
 
 
 class Favorite(models.Model):
@@ -372,7 +411,7 @@ class Favorite(models.Model):
         verbose_name_plural = "Избранное"
 
     def __str__(self):
-        return f"{self.user} -> {self.product.name}"
+        return f"{self.user} -> {self.product.full_name}"
 
 
 class SliderBanner(models.Model):

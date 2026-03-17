@@ -185,7 +185,8 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id",
-            "name",
+            "type_name",
+            "short_name",
             "slug",
             "category_name",
             "category_slug",
@@ -200,6 +201,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
+    full_name = serializers.ReadOnlyField()
     category_name = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.CharField(source="category.slug", read_only=True)
     brand = BrandSerializer(read_only=True)
@@ -220,7 +222,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id",
-            "name",
+            "full_name",
             "slug",
             "category_name",
             "category_slug",
@@ -251,7 +253,7 @@ class SliderBannerSerializer(serializers.ModelSerializer):
     def get_thumbnails(self, obj):
         request = self.context.get("request")
         aliases = {
-            "main": "slider_main",
+            "large": "slider_large",
         }
         return get_thumbnail_data(obj.image, aliases, request)
 
