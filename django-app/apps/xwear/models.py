@@ -34,6 +34,16 @@ class Category(MPTTModel):
         verbose_name="Родительская категория",
     )
 
+    def get_full_path(self):
+        """Возвращает полный путь к категории, если она не корневая"""
+        # Если это корень, возвращаем пустую строку или None
+        if self.is_root_node():
+            return ""
+
+        # Только для вложенных категорий лезем в дерево за предками
+        ancestors = self.get_ancestors(include_self=True)
+        return "/".join([ancestor.slug for ancestor in ancestors])
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(self, scope_field="parent")
@@ -112,6 +122,7 @@ class ProductSize(models.Model):
         max_digits=10,
         decimal_places=2,
         verbose_name="Итоговая цена",
+        null=True,
         blank=True,
         editable=False,  # Скрываем из админки (пользователь не должен менять её вручную)
         default=0,  # Временный дефолт для старых записей
@@ -214,19 +225,17 @@ class Product(models.Model):
 
     category = models.ForeignKey(
         Category,
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
+        on_delete=models.PROTECT,
         related_name="products",
         verbose_name="Категория",
     )
     name = models.CharField(
         max_length=50,
         blank=True,
-        verbose_name="Название товара",
-        help_text="Оставьте пустым, чтобы взять название из категории",
+        verbose_name="Тип товара",
+        help_text="Оставьте пустым, для автогенерации из категории",
     )
-    model_name = models.CharField("Модель", max_length=255)
+    model_name = models.CharField(max_length=255, verbose_name="Модель")
     slug = models.SlugField(
         max_length=50,
         blank=True,
@@ -250,7 +259,7 @@ class Product(models.Model):
     @property
     def type_name(self):
         """Тип товара (например, 'Кроссовки' или 'Ремень')"""
-        # 1. Сначала ищем имя в самом товаре (для Аксессуаров)
+        # 1. Сначала ищем имя в самом товаре
         # 2. Если пусто — ищем singular_name в категории
         # 3. Если и там пусто — берем обычное name категории
         return self.name or self.category.singular_name or self.category.name
@@ -336,7 +345,7 @@ class ProductSpecification(models.Model):
         verbose_name="Артикул",
         unique=True,
         blank=True,
-        help_text="Оставьте пустым для автогенерации (BRAND-CAT-ID-RANDOM) или введите вручную.",
+        help_text="Оставьте пустым для автогенерации (BRAND-CAT-ID-RANDOM)",
     )
     season = models.CharField(
         max_length=20,

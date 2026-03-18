@@ -304,15 +304,16 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     # Редактирование в списке
     list_editable = ["is_active"]
 
+    # Добавляем вычисляемое поле в список отображаемых
+    readonly_fields = ("display_type_name",)
+
     # Форма редактирования
     fields = [
-        "name",
-        "brand",
-        "model_name",
+        ("category", "gender"),
+        ("name", "display_type_name"),
+        ("brand", "model_name"),
         "slug",
-        "category",
         "description",
-        "gender",
         "set_discount_all_sizes",
         "is_active",
     ]
@@ -323,6 +324,11 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     @admin.display(description="Полное название")
     def get_full_name(self, obj):
         return obj.full_name
+
+    @admin.display(description="Используемый тип товара")
+    def display_type_name(self, obj):
+        # Показываем, что именно система использует сейчас
+        return obj.type_name
 
     @admin.display(description="Пол")
     def gender_display(self, obj):

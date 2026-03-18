@@ -38,12 +38,12 @@ def category_tree_view(request):
 
 # товары категории
 @api_view(["GET"])
-def category_detail_view(request, category_slug):
-    category = get_object_or_404(Category, slug=category_slug, is_active=True)
+def category_detail_view(request, pk):
+    category = get_object_or_404(Category, pk=pk, is_active=True)
 
     # MPTT breadcrumbs
     breadcrumbs = [
-        {"name": cat.name, "slug": cat.slug}
+        {"name": cat.name, "slug": cat.slug, "id": cat.id}
         for cat in category.get_ancestors(include_self=True)
     ]
 
@@ -67,7 +67,6 @@ def category_detail_view(request, category_slug):
             "category": {
                 "id": category.id,
                 "name": category.name,
-                "slug": category.slug,
                 "breadcrumbs": breadcrumbs,
             },
             "filters": {
@@ -82,11 +81,9 @@ def category_detail_view(request, category_slug):
 
 # Детали товара
 @api_view(["GET"])
-def product_detail_view(request, category_slug, product_slug):
+def product_detail_view(request, pk):
     product = get_object_or_404(
-        Product.objects.filter(
-            is_active=True, category__slug=category_slug, slug=product_slug
-        )
+        Product.objects.filter(is_active=True, pk=pk)
         .select_related(
             "category",
             "brand",
@@ -152,18 +149,14 @@ def slider_banner_list_view(request):
 
 # Рекомендации товаров
 @api_view(["GET"])
-def product_recommendations_view(request, category_slug, product_slug):
+def product_recommends_view(request, pk):
     # Находим основной товар
-    product = get_object_or_404(
-        Product.objects.filter(
-            is_active=True, category__slug=category_slug, slug=product_slug
-        )
-    )
+    product = get_object_or_404(Product.objects.filter(is_active=True, pk=pk))
 
     # Получаем рекомендации
-    recommendations = get_similar_products(product)
+    recommends = get_similar_products(product)
 
     serializer = ProductListSerializer(
-        recommendations, many=True, context={"request": request}
+        recommends, many=True, context={"request": request}
     )
     return Response(serializer.data)

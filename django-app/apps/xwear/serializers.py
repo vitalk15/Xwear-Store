@@ -15,11 +15,17 @@ from .utils import get_thumbnail_data
 
 class CategorySerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
+    full_path = serializers.CharField(source="get_full_path", read_only=True)
+    is_clickable = serializers.SerializerMethodField()
     # has_children = serializers.SerializerMethodField()
+
+    def get_is_clickable(self, obj):
+        # Кликабельны все категории, кроме корневых (level 0)
+        return not obj.is_root_node()
 
     class Meta:
         model = Category
-        fields = ["id", "name", "slug", "level", "children"]
+        fields = ["id", "name", "slug", "level", "full_path", "is_clickable", "children"]
 
     # рекурсивная сериализация активных дочерних элементов (до 300-500 категорий)
     def get_children(self, obj):
@@ -137,6 +143,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     old_min_price = serializers.SerializerMethodField()
     discount_percent = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
+    frontend_url = serializers.SerializerMethodField()
     # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
 
     def _get_cheapest_size(self, obj):
@@ -181,6 +188,11 @@ class ProductListSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def get_frontend_url(self, obj):
+        # Собираем путь: /catalog/полный-путь-категории/слаг-товара-ID
+        category_path = obj.category.get_full_path()
+        return f"/catalog/{category_path}/{obj.slug}-{obj.id}/"
+
     class Meta:
         model = Product
         fields = [
@@ -196,6 +208,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "old_min_price",
             "discount_percent",
             "main_image",
+            "frontend_url",
             "is_active",
         ]
 
