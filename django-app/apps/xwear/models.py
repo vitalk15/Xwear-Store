@@ -232,7 +232,7 @@ class Product(models.Model):
     name = models.CharField(
         max_length=50,
         blank=True,
-        verbose_name="Тип товара",
+        verbose_name="Вид товара",
         help_text="Оставьте пустым, для автогенерации из категории",
     )
     model_name = models.CharField(max_length=255, verbose_name="Модель")
@@ -258,7 +258,7 @@ class Product(models.Model):
 
     @property
     def type_name(self):
-        """Тип товара (например, 'Кроссовки' или 'Ремень')"""
+        """Вид товара (например, 'Кроссовки' или 'Ремень')"""
         # 1. Сначала ищем имя в самом товаре
         # 2. Если пусто — ищем singular_name в категории
         # 3. Если и там пусто — берем обычное name категории
