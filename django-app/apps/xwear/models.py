@@ -235,7 +235,7 @@ class Product(models.Model):
         verbose_name="Вид товара",
         help_text="Оставьте пустым, для автогенерации из категории",
     )
-    model_name = models.CharField(max_length=255, verbose_name="Модель")
+    model_name = models.CharField(max_length=50, verbose_name="Модель")
     slug = models.SlugField(
         max_length=50,
         blank=True,
@@ -265,14 +265,9 @@ class Product(models.Model):
         return self.name or self.category.singular_name or self.category.name
 
     @property
-    def short_name(self):
-        """Собирает имя: Бренд + Модель ('adidas Runfalcon 5')"""
-        return f"{self.brand.name} {self.model_name}".strip()
-
-    @property
     def full_name(self):
         """Собирает полное имя: Тип + Бренд + Модель ('Кроссовки adidas Runfalcon 5')"""
-        return f"{self.type_name} {self.short_name}".strip()
+        return f"{self.type_name} {self.brand.name} {self.model_name}".strip()
 
     @property
     def get_main_image_obj(self):
@@ -345,7 +340,7 @@ class ProductSpecification(models.Model):
         verbose_name="Артикул",
         unique=True,
         blank=True,
-        help_text="Оставьте пустым для автогенерации (BRAND-CAT-ID-RANDOM)",
+        help_text="Оставьте пустым для автогенерации [BRAND(2)GENDER(1)CAT_ID(3)-PROD_ID(5)RAND(3)]",
     )
     season = models.CharField(
         max_length=20,

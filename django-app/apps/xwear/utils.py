@@ -434,25 +434,39 @@ def get_similar_products(product, limit=8):
 
 # генерация артикула для товара
 def generate_unique_article(instance):
-    # # BRAND - CATEGORY_ID - PRODUCT_ID - RANDOM
+    """
+    Генерирует артикул: [BRAND(2)][GENDER(1)][CAT(3)]-[PROD(5)][RAND(3)]
+    Пример: ADM025-00142X8Z
+    """
 
     # Проверяем, привязан ли товар и есть ли у него категория
-    if not instance.product or not instance.product.category:
+    product = getattr(instance, "product", instance)
+
+    if not product or not product.category:
         return None
 
     try:
-        brand_code = (
-            instance.product.brand.name[:3].upper() if instance.product.brand else "GEN"
-        )
-        cat_id = instance.product.category.id
-        prod_id = instance.product.id
+        # 1. Код бренда (2 символа)
+        brand_code = product.brand.name[:2].upper() if product.brand else "NB"
 
-        # случайный хвост для уникальности
+        # 2. Код пола (1 символ)
+        # Берем значение из choices (M, F, U)
+        gender_code = product.gender if product.gender else "U"
+
+        # 3. ID категории с дополнением до 3 знаков
+        cat_id = str(product.category.id).zfill(3)
+
+        # 4. ID товара с дополнением до 5 знаков
+        # Если товар еще не сохранен (id=None), ставим нули
+        prod_id = str(product.id).zfill(5) if product.id else "00000"
+
+        # 5. Случайный хвост (3 символа) для защиты от перебора и уникальности
         random_suffix = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=4)
+            random.choices(string.ascii_uppercase + string.digits, k=3)
         )
 
-        return f"{brand_code}-{cat_id}-{prod_id}-{random_suffix}"
+        return f"{brand_code}{gender_code}{cat_id}-{prod_id}{random_suffix}"
+
     except Exception as e:
         print(f"Ошибка при генерации артикула: {e}")
         return None

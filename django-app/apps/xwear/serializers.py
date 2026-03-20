@@ -136,9 +136,10 @@ class BrandSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
+    type_name = serializers.ReadOnlyField()
+    brand_name = serializers.CharField(source="brand.name", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.CharField(source="category.slug", read_only=True)
-    brand_name = serializers.CharField(source="brand.name", read_only=True)
     min_price = serializers.SerializerMethodField()
     old_min_price = serializers.SerializerMethodField()
     discount_percent = serializers.SerializerMethodField()
@@ -198,11 +199,11 @@ class ProductListSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "type_name",
-            "short_name",
+            "brand_name",
+            "model_name",
             "slug",
             "category_name",
             "category_slug",
-            "brand_name",
             "gender",
             "min_price",
             "old_min_price",
@@ -214,10 +215,11 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    full_name = serializers.ReadOnlyField()
+    type_name = serializers.ReadOnlyField()
     category_name = serializers.CharField(source="category.name", read_only=True)
     category_slug = serializers.CharField(source="category.slug", read_only=True)
-    brand = BrandSerializer(read_only=True)
+    brand_name = serializers.CharField(source="brand.name", read_only=True)
+    # brand = BrandSerializer(read_only=True)
     sizes = ProductSizeSerializer(
         source='sizes.order_by("-size")', many=True, read_only=True
     )
@@ -235,14 +237,15 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id",
-            "full_name",
+            "type_name",
+            "brand_name",
+            "model_name",
             "slug",
+            "gender",
             "category_name",
             "category_slug",
-            "brand",
             "breadcrumbs",
             "description",
-            "gender",
             "sizes",
             "images",
             "specification",

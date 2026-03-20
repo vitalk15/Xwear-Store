@@ -272,10 +272,8 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     inlines = [ProductImageInline, ProductSizeInline, SpecificationInline]
 
     list_display = [
-        "get_full_name",
         "get_article",
-        "brand",
-        "get_short_category",
+        "get_full_name",
         "gender",
         "get_season",
         "active_sizes_count",
