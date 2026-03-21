@@ -8,7 +8,6 @@ from easy_thumbnails.files import generate_all_aliases
 from .utils import (
     UploadToPath,
     generate_unique_slug,
-    generate_unique_article,
     prepare_image_for_save,
 )
 from .validators import ImageValidator
@@ -240,7 +239,7 @@ class Product(models.Model):
         max_length=50,
         blank=True,
         verbose_name="Слаг",
-        help_text="Оставьте пустым для автогенерации",
+        help_text="Генерируется автоматически на основе вида, бренда и модели",
     )
     description = models.TextField(blank=True, verbose_name="Описание")
     gender = models.CharField(
@@ -253,6 +252,13 @@ class Product(models.Model):
         null=True,
         related_name="products",
         verbose_name="Бренд",
+    )
+    article = models.CharField(
+        max_length=50,
+        verbose_name="Артикул",
+        unique=True,
+        blank=True,
+        help_text="Генерируется автоматически '[BRAND(2)][GENDER(1)][CAT_ID(3)]-[PROD_ID(5)][RAND(3)]'",
     )
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
@@ -274,12 +280,32 @@ class Product(models.Model):
         return self.images.first()
 
     def save(self, *args, **kwargs):
-        # Автоматическая генерация слага при сохранении (если не заполнен)
+        # 1. Генерация слага, если он пуст (ID не нужен)
         if not self.slug:
             self.slug = generate_unique_slug(
                 self, base_field="full_name", scope_field="category"
             )
+
+        # 2. ОСНОВНОЕ СОХРАНЕНИЕ
+        # Здесь Django создаст запись (если новый) или обновит (если существующий)
+        # После этого шага у нас 100% есть self.pk (даже у новых товаров)
         super().save(*args, **kwargs)
+
+        # 3. Генерация артикула (если он пуст)
+        if not self.article:
+            from .utils import generate_unique_article
+
+            self.article = generate_unique_article(self)
+
+            # Если товар только что создан, нам не нужно пересохранять всё целиком.
+            # Мы используем update_fields, чтобы точечно записать только артикул.
+            # if is_new:
+            #     super().save(update_fields=["article"])
+            #     return
+
+            # Используем .update() вместо super().save(update_fields=...)
+            # Это быстрее и НЕ вызывает повторные сигналы или методы save().
+            self.__class__.objects.filter(pk=self.pk).update(article=self.article)
 
     def __str__(self):
         return self.full_name
@@ -335,13 +361,6 @@ class ProductSpecification(models.Model):
         related_name="specification",
         verbose_name="Характеристики",
     )
-    article = models.CharField(
-        max_length=50,
-        verbose_name="Артикул",
-        unique=True,
-        blank=True,
-        help_text="Оставьте пустым для автогенерации [BRAND(2)GENDER(1)CAT_ID(3)-PROD_ID(5)RAND(3)]",
-    )
     season = models.CharField(
         max_length=20,
         choices=SeasonChoices.choices,
@@ -375,19 +394,9 @@ class ProductSpecification(models.Model):
         verbose_name="Материал подошвы",
     )
 
-    def save(self, *args, **kwargs):
-        if not self.article:
-            # Генерируем, пока не найдем уникальный (на всякий случай)
-            new_article = generate_unique_article(self)
-            while ProductSpecification.objects.filter(article=new_article).exists():
-                new_article = generate_unique_article(self)
-            self.article = new_article
-
-        super().save(*args, **kwargs)
-
     class Meta:
-        verbose_name = "Характеристики товара"
-        verbose_name_plural = "Характеристики товаров"
+        verbose_name = "Характеристика товара"
+        verbose_name_plural = "Характеристики товара"
 
     # def __str__(self):
     #     return f"Характеристики для {self.product.full_name}"

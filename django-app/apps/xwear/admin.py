@@ -67,6 +67,10 @@ class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
     sortable_field_name = "position"
     verbose_name_plural = "Фото товара (При создании выберите главное фото, при редактировании - перетащите наверх)"
 
+    @admin.display(description="Превью")
+    def image_preview(self, obj):
+        return get_admin_thumb(obj.image, alias="admin_preview")
+
     def get_readonly_fields(self, request, obj=None):
         # obj — это сам Товар (Product).
         # Если он существует (obj is not None), значит мы в режиме редактирования.
@@ -75,16 +79,20 @@ class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
         # Если товара еще нет (режим создания), все поля доступны для редактирования
         return ["image_preview"]
 
-    @admin.display(description="Превью")
-    def image_preview(self, obj):
-        return get_admin_thumb(obj.image, alias="admin_preview")
-
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
         if db_field.name == "image":
             # Прокидываем лимиты ImageValidator в админку (добавляем полю формы "image" data-атрибуты)
             add_validator_attrs_to_widget(db_field, formfield)
         return formfield
+
+    def get_queryset(self, request):
+        # Оптимизируем получение картинок внутри инлайна
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("product__category", "product__brand")
+        )
 
     class Media:
         js = ("admin/js/image_preview.js",)
@@ -140,14 +148,6 @@ class SpecificationInline(admin.StackedInline):
 
     autocomplete_fields = ["material_outer", "material_inner", "material_sole"]
 
-    # Динамический подход для полей только для чтения (если данных ещё нет, можно ввести вручную)
-    def get_readonly_fields(self, request, obj=None):
-        # obj здесь — это родительский объект Product
-        # Нам нужно проверить, создан ли уже объект характеристик
-        if hasattr(obj, "specification") and obj.specification.article:
-            return ("article",)
-        return ()
-
     class Media:
         # Прячем заголовок h3 внутри инлайна (появляется при StackedInline)
         css = {"all": ("admin/css/hide_inline_header.css",)}
@@ -162,13 +162,24 @@ class ProductAdminForm(forms.ModelForm):
     #     queryset=Category.objects.filter(children__isnull=True), level_indicator="--"
     # )
 
-    # Добавляем виртуальное поле, которого нет в модели
+    # Добавляем виртуальное поле для установки массовой скидки
     set_discount_all_sizes = forms.IntegerField(
         label="Установить скидку (%) на все размеры",
         required=False,
         min_value=0,
         max_value=100,
-        help_text="Введите число, чтобы массово обновить скидку. Оставьте пустым, если не нужно менять.",
+        help_text="Введите число, чтобы массово обновить скидку",
+    )
+
+    regen_article = forms.BooleanField(
+        required=False,
+        label="Сбросить артикул",
+        help_text="Отметьте, чтобы создать новый артикул при сохранении",
+    )
+    regen_slug = forms.BooleanField(
+        required=False,
+        label="Сбросить слаг",
+        help_text="Отметьте, чтобы обновить ссылку на товар",
     )
 
     class Meta:
@@ -272,7 +283,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     inlines = [ProductImageInline, ProductSizeInline, SpecificationInline]
 
     list_display = [
-        "get_article",
+        "article",
         "get_full_name",
         "gender",
         "get_season",
@@ -281,7 +292,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         "image_main",
         "is_active",
     ]
-    list_display_links = ["get_full_name", "get_article"]
+    list_display_links = ["get_full_name", "article"]
     list_filter = [
         "is_active",
         "gender",
@@ -292,7 +303,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         SizeFilter,
         DiscountFilter,
     ]
-    search_fields = ["get_full_name", "specification__article", "brand__name"]
+    search_fields = ["get_full_name", "article", "brand__name"]
 
     # Если категорий и брендов будет много (заменяет выбор из выпадающего списка на удобный поиск)
     # search_fields = ["name", "brand__name", "category__name"] # в BrandAdmin и CategoryAdmin name уже указано
@@ -302,16 +313,63 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     # Редактирование в списке
     list_editable = ["is_active"]
 
+    # Артикул и слаг всегда только для чтения
+    readonly_fields = ["article", "slug"]
+
     # Форма редактирования
-    fields = [
-        "name",
-        ("brand", "model_name"),
-        ("category", "gender"),
-        "slug",
-        "description",
-        "set_discount_all_sizes",
-        "is_active",
-    ]
+    # fields = [
+    #     "name",
+    #     ("brand", "model_name"),
+    #     ("category", "gender"),
+    #     ("article", "slug"),
+    #     "description",
+    #     "set_discount_all_sizes",
+    #     "is_active",
+    # ]
+
+    fieldsets = (
+        (
+            "Идентификация (Авто)",
+            {
+                "fields": ("name", "article", "slug"),
+            },
+        ),
+        (
+            "Классификация",
+            {
+                "fields": (
+                    ("brand", "model_name"),
+                    ("category", "gender"),
+                ),
+                # "description": "Укажите основные параметры для правильной генерации артикула.",
+            },
+        ),
+        (
+            "Информация",
+            {
+                "fields": ("description",),
+            },
+        ),
+        (
+            "Настройки и Статус",
+            {
+                "fields": (
+                    "set_discount_all_sizes",
+                    "is_active",
+                ),
+            },
+        ),
+        (
+            "Служебные действия",
+            {
+                "classes": (
+                    "collapse",
+                ),  # Делаем блок свернутым по умолчанию, чтобы не мозолил глаза
+                "description": "Внимание: перегенерация URL (Slug) может повлиять на SEO.",
+                "fields": ("regen_article", "regen_slug"),
+            },
+        ),
+    )
 
     # Кол-во показываемых товаров на одной странице пагинации
     list_per_page = 20
@@ -325,11 +383,6 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         return obj.get_gender_display()
 
     # gender_display.short_description = "Пол"
-
-    @admin.display(description="Артикул", ordering="specification__article")
-    def get_article(self, obj):
-        # Используем getattr на случай, если спецификация вдруг не создана
-        return getattr(obj.specification, "article", "—")
 
     @admin.display(description="Сезон", ordering="specification__season")
     def get_season(self, obj):
@@ -427,10 +480,16 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         )
 
     def save_model(self, request, obj, form, change):
-        # 1. Сначала сохраняем сам товар
+        # 1. Если чекбокс перегенерации нажат — очищаем поле прямо перед сохранением
+        if form.cleaned_data.get("regen_article"):
+            obj.article = None
+        if form.cleaned_data.get("regen_slug"):
+            obj.slug = None
+
+        # 2. Сохраняем сам товар
         super().save_model(request, obj, form, change)
 
-        # 2. Проверяем, ввел ли менеджер значение в поле массовой скидки
+        # 3. Проверяем, ввел ли менеджер значение в поле массовой скидки
         discount_value = form.cleaned_data.get("set_discount_all_sizes")
 
         if discount_value is not None:
@@ -461,6 +520,15 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
 
         sync_product_images(form.instance, manual_selected_id=manual_id)
 
+    # Динамический подход для полей только для чтения (если данных ещё нет, можно ввести вручную)
+    # def get_readonly_fields(self, request, obj=None):
+    #     if obj:  # Если товар уже создан
+    #         return [
+    #             "article",
+    #             "slug",
+    #         ]  # Запрещаем менять слаг и артикул ПОСЛЕ создания
+    #     return ["article"]  # При создании слаг можно править
+
     class Media:
         js = (
             "admin/js/product_gender_auto.js",
@@ -471,10 +539,14 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
 class ProductInline(admin.TabularInline):
     model = Product
     # Указываем только самые важные поля для быстрого обзора
-    fields = ["name", "category", "get_edit_link", "is_active"]
-    readonly_fields = ["get_edit_link"]
+    fields = ["article", "get_full_name", "get_edit_link", "is_active"]
+    readonly_fields = ["article", "get_full_name", "get_edit_link"]
     extra = 0
     show_change_link = True  # Встроенная ссылка на редактирование от Django
+
+    @admin.display(description="Полное название")
+    def get_full_name(self, obj):
+        return obj.full_name
 
     @admin.display(description="Действие")
     def get_edit_link(self, obj):
@@ -483,6 +555,10 @@ class ProductInline(admin.TabularInline):
             url = reverse("admin:xwear_product_change", args=[obj.pk])
             return format_html('<a href="{}" class="button">Редактировать</a>', url)
         return "-"
+
+    def get_queryset(self, request):
+        # Подтягиваем всё, что нужно для формирования get_full_name
+        return super().get_queryset(request).select_related("category", "brand")
 
 
 @admin.register(Brand)
@@ -493,12 +569,14 @@ class BrandAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ["name"]
 
-    @admin.display(description="Кол-во товаров")
+    @admin.display(description="Кол-во товаров", ordering="products_count")
     def get_products_count(self, obj):
-        return obj.products.count()
+        # Берем значение из аннотации
+        return obj.products_count
 
     def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related("products")
+        # Используем аннотацию
+        return super().get_queryset(request).annotate(products_count=Count("products"))
 
 
 @admin.register(Favorite)

@@ -121,7 +121,6 @@ class SpecificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSpecification
         fields = [
-            "article",
             "season",
             "material_outer",
             "material_inner",
@@ -241,6 +240,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "brand_name",
             "model_name",
             "slug",
+            "article",
             "gender",
             "category_name",
             "category_slug",

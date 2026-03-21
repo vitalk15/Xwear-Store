@@ -44,28 +44,39 @@ class UploadToPath:
             product = instance.product
 
             # Берем готовый слаг товара
-            base_name = getattr(product, "slug", "")
+            base_name = getattr(product, "slug", "product")
 
-            # Если включена опция подпапок, достаем слаг категории
+            # Если включена опция вложенных подпапок
             if self.use_category_subdir:
+                # Достаем слаг категории
                 category = getattr(product, "category", None)
-                if category and hasattr(category, "slug"):
-                    subfolder = category.slug
-                else:
-                    subfolder = "no-category"
+                category_slug = (
+                    category.slug
+                    if category and getattr(category, "slug", None)
+                    else "no-category"
+                )
+                # if category and hasattr(category, "slug"):
+                #     subfolder = category.slug
+                # else:
+                #     subfolder = "no-category"
 
-            # Подстраховка: если слага вдруг нет
-            if not base_name:
-                base_name = "product"
+                # Достаем слаг бренда
+                brand = getattr(product, "brand", None)
+                brand_slug = (
+                    brand.slug if brand and getattr(brand, "slug", None) else "no-brand"
+                )
+
+                # Формируем путь внутри основной папки: category-slug/brand-slug
+                subfolder = os.path.join(category_slug, brand_slug)
 
         else:
             base_name = "file"
 
-        # Добавляем уникальный хвост (ID или короткий UUID) для защиты от дублей
+        # Уникальный идентификатор для защиты от перезаписи файлов с одинаковыми именами
         identifier = instance.pk if instance.pk else uuid4().hex[:5]
         new_filename = f"{base_name}_{identifier}.{ext}"
 
-        # Формируем путь (media/products/category-slug/file.webp)
+        # Формируем итоговый путь: media/folder/category-slug/brand-slug/file.webp
         return os.path.join(self.folder, subfolder, new_filename)
 
 
@@ -433,34 +444,34 @@ def get_similar_products(product, limit=8):
 
 
 # генерация артикула для товара
-def generate_unique_article(instance):
+def generate_unique_article(product):
     """
     Генерирует артикул: [BRAND(2)][GENDER(1)][CAT(3)]-[PROD(5)][RAND(3)]
     Пример: ADM025-00142X8Z
     """
 
-    # Проверяем, привязан ли товар и есть ли у него категория
-    product = getattr(instance, "product", instance)
-
-    if not product or not product.category:
+    # 1. Используем category_id вместо category.id.
+    # Это спасает от лишнего запроса к БД, если объект категории еще не загружен в память.
+    # (Мы уже сделали поле category обязательным в базе, но оставим проверку для надежности)
+    if not product.category_id:
         return None
 
     try:
-        # 1. Код бренда (2 символа)
-        brand_code = product.brand.name[:2].upper() if product.brand else "NB"
+        # 2. Код бренда (2 символа)
+        brand_code = product.brand.slug[:2].upper() if product.brand else "NB"
 
-        # 2. Код пола (1 символ)
+        # 3. Код пола (1 символ)
         # Берем значение из choices (M, F, U)
         gender_code = product.gender if product.gender else "U"
 
-        # 3. ID категории с дополнением до 3 знаков
-        cat_id = str(product.category.id).zfill(3)
+        # 4. ID категории с дополнением до 3 знаков
+        cat_id = str(product.category_id).zfill(3)
 
-        # 4. ID товара с дополнением до 5 знаков
+        # 5. ID товара с дополнением до 5 знаков
         # Если товар еще не сохранен (id=None), ставим нули
         prod_id = str(product.id).zfill(5) if product.id else "00000"
 
-        # 5. Случайный хвост (3 символа) для защиты от перебора и уникальности
+        # 6. Случайный хвост (3 символа) для защиты от перебора и уникальности
         random_suffix = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=3)
         )
@@ -472,7 +483,7 @@ def generate_unique_article(instance):
         return None
 
 
-# синхронизация изображений товара (главная, порядок) и генерация alt-текста
+# синхронизация изображений товара (главная, порядок) и генерация alt-текста в админке
 @transaction.atomic
 def sync_product_images(product, manual_selected_id=None):
     # 1. Получаем все фото, отсортированные по позиции
