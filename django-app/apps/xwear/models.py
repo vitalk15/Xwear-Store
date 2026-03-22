@@ -80,7 +80,7 @@ class Category(MPTTModel):
 
 class Brand(models.Model):
     name = models.CharField(max_length=50, verbose_name="Название")
-    slug = models.SlugField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50, unique=True, verbose_name="Слаг")
 
     class Meta:
         verbose_name = "Бренд"
@@ -152,6 +152,7 @@ class ProductSize(models.Model):
         return "Размерная шкала"
 
     class Meta:
+        ordering = ["size"]
         unique_together = ["product", "size"]
         verbose_name = "Размер/цена товара"
         verbose_name_plural = "Размеры/цены товаров"

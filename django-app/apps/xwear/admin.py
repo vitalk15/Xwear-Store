@@ -11,6 +11,7 @@ from adminsortable2.admin import (
     SortableInlineAdminMixin,
     CustomInlineFormSet,
 )
+from django_admin_inline_paginator.admin import TabularInlinePaginated
 
 # from mptt.forms import TreeNodeChoiceField
 from core.admin import ReadOnlyAdminMixin
@@ -286,6 +287,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         "article",
         "get_full_name",
         "gender",
+        "get_root_category",
         "get_season",
         "active_sizes_count",
         "get_price_range",
@@ -317,16 +319,6 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     readonly_fields = ["article", "slug"]
 
     # Форма редактирования
-    # fields = [
-    #     "name",
-    #     ("brand", "model_name"),
-    #     ("category", "gender"),
-    #     ("article", "slug"),
-    #     "description",
-    #     "set_discount_all_sizes",
-    #     "is_active",
-    # ]
-
     fieldsets = (
         (
             "Идентификация (Авто)",
@@ -362,10 +354,14 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         (
             "Служебные действия",
             {
-                "classes": (
-                    "collapse",
-                ),  # Делаем блок свернутым по умолчанию, чтобы не мозолил глаза
-                "description": "Внимание: перегенерация URL (Slug) может повлиять на SEO.",
+                "classes": ("collapse",),  # Делаем блок свернутым по умолчанию
+                "description": (
+                    '<div style="color: #ba2121; font-weight: bold; margin-bottom: 10px;">'
+                    "⚠️ ИНСТРУКЦИЯ: Если вы изменили ВИД, БРЕНД, МОДЕЛЬ или КАТЕГОРИЮ у существующего товара:<br>"
+                    '1. Отметьте галочки ниже и нажмите "Сохранить".<br>'
+                    "2. Чтобы фото назывались правильно и лежали в правильных папках на сервере — удалите старые изображения и загрузите их заново."
+                    "</div>"
+                ),
                 "fields": ("regen_article", "regen_slug"),
             },
         ),
@@ -389,6 +385,17 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         if hasattr(obj, "specification"):
             return obj.specification.get_season_display()
         return "—"
+
+    @admin.display(description="Группа", ordering="category")
+    def get_root_category(self, obj):
+        """
+        Отображает только корневую категорию (Обувь, Одежда и т.д.)
+        """
+        if obj.category:
+            # Берем полное строковое представление и забираем первую часть
+            full_path = str(obj.category)
+            return full_path.split(" / ")[0]
+        return "-"
 
     @admin.display(description="Категория", ordering="category")
     def get_short_category(self, obj):
@@ -536,17 +543,37 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         )
 
 
-class ProductInline(admin.TabularInline):
+class ProductInline(TabularInlinePaginated):
     model = Product
+    # Количество товаров на одной странице инлайна
+    per_page = 20
     # Указываем только самые важные поля для быстрого обзора
-    fields = ["article", "get_full_name", "get_edit_link", "is_active"]
-    readonly_fields = ["article", "get_full_name", "get_edit_link"]
+    fields = [
+        "article",
+        "get_full_name",
+        "get_root_category",
+        "get_edit_link",
+        "is_active",
+    ]
+    readonly_fields = ["article", "get_full_name", "get_root_category", "get_edit_link"]
     extra = 0
-    show_change_link = True  # Встроенная ссылка на редактирование от Django
+    # show_change_link = True  # Встроенная ссылка на редактирование от Django
+    ordering = ["-id"]
 
     @admin.display(description="Полное название")
     def get_full_name(self, obj):
         return obj.full_name
+
+    @admin.display(description="Группа", ordering="category")
+    def get_root_category(self, obj):
+        """
+        Отображает только корневую категорию (Обувь, Одежда и т.д.)
+        """
+        if obj.category:
+            # Берем полное строковое представление и забираем первую часть
+            full_path = str(obj.category)
+            return full_path.split(" / ")[0]
+        return "-"
 
     @admin.display(description="Действие")
     def get_edit_link(self, obj):
@@ -558,21 +585,58 @@ class ProductInline(admin.TabularInline):
 
     def get_queryset(self, request):
         # Подтягиваем всё, что нужно для формирования get_full_name
-        return super().get_queryset(request).select_related("category", "brand")
+        return super().get_queryset(request).select_related("category")
 
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
     inlines = [ProductInline]
 
-    list_display = ["name", "slug", "get_products_count"]
+    list_display = ["name", "slug", "view_products_link_list"]
+    readonly_fields = ["view_products_link_detail"]
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ["name"]
 
-    @admin.display(description="Кол-во товаров", ordering="products_count")
-    def get_products_count(self, obj):
-        # Берем значение из аннотации
-        return obj.products_count
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (("name", "slug"), "view_products_link_detail"),
+            },
+        ),
+    )
+
+    # @admin.display(description="Кол-во товаров", ordering="products_count")
+    # def get_products_count(self, obj):
+    #     # Берем значение из аннотации
+    #     return obj.products_count
+
+    # Ссылка для общего СПИСКА брендов (компактная)
+    @admin.display(description="Товары")
+    def view_products_link_list(self, obj):
+        if obj.pk:
+            url = (
+                reverse("admin:xwear_product_changelist") + f"?brand__id__exact={obj.pk}"
+            )
+            return format_html('<a href="{}">Перейти ({})</a>', url, obj.products_count)
+        return "-"
+
+    # 3. Кнопка для СТРАНИЦЫ редактирования бренда
+    @admin.display(description="Управление ассортиментом")
+    def view_products_link_detail(self, obj):
+        if obj.pk:
+            url = (
+                reverse("admin:xwear_product_changelist") + f"?brand__id__exact={obj.pk}"
+            )
+            return format_html(
+                '<a href="{}" class="button" style="background-color: #79aec8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">'
+                'Посмотреть все товары бренда "{}" ({})'
+                "</a>",
+                url,
+                obj.name,
+                obj.products_count,
+            )
+        return "Сначала сохраните бренд"
 
     def get_queryset(self, request):
         # Используем аннотацию

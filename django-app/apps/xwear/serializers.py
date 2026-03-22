@@ -69,21 +69,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSizeSerializer(serializers.ModelSerializer):
     size_name = serializers.CharField(source="size.name", read_only=True)
-    # final_price — цена со скидкой или обычная
-    final_price = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
-    # old_price — это исходная цена из поля price
-    old_price = serializers.DecimalField(
-        source="price", max_digits=6, decimal_places=2, read_only=True
-    )
-    # has_discount — метод-свойство модели
-    has_discount = serializers.BooleanField(read_only=True)
-
-    # Если планируем только отдавать данные (read-only), и не нужна специальная валидация на входе, можно использовать serializers.ReadOnlyField. Он просто берет значение «как есть»:
-    # size_name = serializers.ReadOnlyField(source="size.name")
-    # final_price = serializers.ReadOnlyField()
-    # old_price = serializers.ReadOnlyField(source="price")
-    # has_discount = serializers.ReadOnlyField()
-
+    has_discount = serializers.ReadOnlyField()
     is_available = serializers.SerializerMethodField()
 
     # Если будем использовать остатки
@@ -99,7 +85,7 @@ class ProductSizeSerializer(serializers.ModelSerializer):
             "id",
             "size_name",
             "final_price",
-            "old_price",
+            "price",
             "discount_percent",
             "has_discount",
             "is_available",
@@ -135,47 +121,86 @@ class BrandSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    type_name = serializers.ReadOnlyField()
-    brand_name = serializers.CharField(source="brand.name", read_only=True)
-    category_name = serializers.CharField(source="category.name", read_only=True)
-    category_slug = serializers.CharField(source="category.slug", read_only=True)
-    min_price = serializers.SerializerMethodField()
-    old_min_price = serializers.SerializerMethodField()
-    discount_percent = serializers.SerializerMethodField()
+    gender_display = serializers.CharField(source="get_gender_display", read_only=True)
+    naming = serializers.SerializerMethodField()
+    pricing = serializers.SerializerMethodField()
+
+    # min_price = serializers.SerializerMethodField()
+    # old_min_price = serializers.SerializerMethodField()
+    # discount_percent = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
     frontend_url = serializers.SerializerMethodField()
-    # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
 
-    def _get_cheapest_size(self, obj):
-        """Вспомогательный метод для поиска самого дешевого активного размера"""
+    def get_naming(self, obj):
+        return {
+            "type": obj.type_name,
+            "brand": {
+                "name": obj.brand.name,
+                "slug": obj.brand.slug,
+            },
+            "model": obj.model_name,
+            "category": {
+                "name": obj.category.name,
+                "slug": obj.category.slug,
+            },
+            # Полезно для заголовка вкладки в браузере
+            "full_title": obj.full_name,
+        }
+
+    def get_pricing(self, obj):
+        # Используем аннотацию, если она есть (для скорости)
+        annotated_price = getattr(obj, "annotated_min_final_price", None)
+
+        if annotated_price is not None:
+            return {
+                "min_price": annotated_price,
+                "old_price": getattr(obj, "annotated_old_price", None),
+                "discount": getattr(obj, "annotated_discount", 0),
+            }
+
+        # Фоллбек (запасной вариант), если аннотации нет
+        # ВАЖНО: убедитесь, что во вьюхе сделан prefetch_related('sizes')
         active_sizes = [s for s in obj.sizes.all() if s.is_active]
         if not active_sizes:
-            return None
-        # Находим объект размера с минимальной ценой final_price
-        return min(active_sizes, key=lambda s: s.final_price)
+            return {"min_price": 0, "old_price": None, "discount": 0}
 
-    def get_min_price(self, obj):
-        # Если мы пришли из вьюхи рекомендаций, цена уже посчитана в БД
-        annotated_price = getattr(obj, "annotated_min_final_price", None)
-        if annotated_price is not None:
-            return annotated_price
+        cheapest = min(active_sizes, key=lambda s: s.final_price)
+        return {
+            "min_price": cheapest.final_price,
+            "old_price": cheapest.price if cheapest.has_discount else None,
+            "discount": cheapest.discount_percent if cheapest.has_discount else 0,
+        }
 
-        # В остальных случаях используем
-        size = self._get_cheapest_size(obj)
-        return size.final_price if size else 0
+    # def _get_cheapest_size(self, obj):
+    #     """Вспомогательный метод для поиска самого дешевого активного размера"""
+    #     active_sizes = [s for s in obj.sizes.all() if s.is_active]
+    #     if not active_sizes:
+    #         return None
+    #     # Находим объект размера с минимальной ценой final_price
+    #     return min(active_sizes, key=lambda s: s.final_price)
 
-    def get_old_min_price(self, obj):
-        size = self._get_cheapest_size(obj)
-        # Показываем старую цену только если на этот конкретный размер есть скидка
-        if size and size.has_discount:
-            return size.price
-        return None
+    # def get_min_price(self, obj):
+    #     # Если мы пришли из вьюхи рекомендаций, цена уже посчитана в БД
+    #     annotated_price = getattr(obj, "annotated_min_final_price", None)
+    #     if annotated_price is not None:
+    #         return annotated_price
 
-    def get_discount_percent(self, obj):
-        size = self._get_cheapest_size(obj)
-        if size and size.has_discount:
-            return size.discount_percent
-        return 0
+    #     # В остальных случаях используем
+    #     size = self._get_cheapest_size(obj)
+    #     return size.final_price if size else 0
+
+    # def get_old_min_price(self, obj):
+    #     size = self._get_cheapest_size(obj)
+    #     # Показываем старую цену только если на этот конкретный размер есть скидка
+    #     if size and size.has_discount:
+    #         return size.price
+    #     return None
+
+    # def get_discount_percent(self, obj):
+    #     size = self._get_cheapest_size(obj)
+    #     if size and size.has_discount:
+    #         return size.discount_percent
+    #     return 0
 
     def get_main_image(self, obj):
         img_obj = obj.get_main_image_obj
@@ -197,16 +222,12 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id",
-            "type_name",
-            "brand_name",
-            "model_name",
             "slug",
-            "category_name",
-            "category_slug",
+            "article",
             "gender",
-            "min_price",
-            "old_min_price",
-            "discount_percent",
+            "gender_display",
+            "naming",
+            "pricing",
             "main_image",
             "frontend_url",
             "is_active",
@@ -214,17 +235,11 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    type_name = serializers.ReadOnlyField()
-    category_name = serializers.CharField(source="category.name", read_only=True)
-    category_slug = serializers.CharField(source="category.slug", read_only=True)
-    brand_name = serializers.CharField(source="brand.name", read_only=True)
-    # brand = BrandSerializer(read_only=True)
-    sizes = ProductSizeSerializer(
-        source='sizes.order_by("-size")', many=True, read_only=True
-    )
-    # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
+    gender_display = serializers.CharField(source="get_gender_display", read_only=True)
+    sizes = ProductSizeSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     specification = SpecificationSerializer(read_only=True)
+    naming = serializers.SerializerMethodField()
     breadcrumbs = serializers.SerializerMethodField()
 
     def get_breadcrumbs(self, obj):
@@ -232,18 +247,31 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         ancestors = obj.category.get_ancestors(include_self=True)
         return [{"name": cat.name, "slug": cat.slug} for cat in ancestors]
 
+    def get_naming(self, obj):
+        return {
+            "type": obj.type_name,
+            "brand": {
+                "name": obj.brand.name,
+                "slug": obj.brand.slug,
+            },
+            "model": obj.model_name,
+            "category": {
+                "name": obj.category.name,
+                "slug": obj.category.slug,
+            },
+            # Полезно для заголовка вкладки в браузере
+            "full_title": obj.full_name,
+        }
+
     class Meta:
         model = Product
         fields = [
             "id",
-            "type_name",
-            "brand_name",
-            "model_name",
             "slug",
             "article",
             "gender",
-            "category_name",
-            "category_slug",
+            "gender_display",
+            "naming",
             "breadcrumbs",
             "description",
             "sizes",

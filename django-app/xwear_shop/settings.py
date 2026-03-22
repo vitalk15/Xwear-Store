@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "mptt",
     "django_mptt_admin",
     "adminsortable2",
+    "django_admin_inline_paginator",
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
