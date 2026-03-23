@@ -32,6 +32,9 @@ FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
 # Регистрируем MIME-тип для WebP (для режима разработки)
 mimetypes.add_type("image/webp", ".webp", True)
 
+# Для DebugToolbar
+INTERNAL_IPS = ["127.0.0.1", "localhost"]
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -54,6 +57,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
+    "debug_toolbar",
     # 'rest_framework_simplejwt',  # НЕ обязательно для базового JWT
     # 'rest_framework_simplejwt.token_blacklist',  # Только для blacklist (если используем, то убираем кастомный token_version)
 ]
@@ -62,6 +66,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",

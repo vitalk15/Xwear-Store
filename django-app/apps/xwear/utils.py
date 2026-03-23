@@ -300,13 +300,19 @@ def get_category_sidebar_filters(categories):
 
     sidebar_data_qs = Product.objects.filter(category__in=categories, is_active=True)
 
-    price_stats = sidebar_data_qs.annotate(
-        p=Min("sizes__final_price", filter=Q(sizes__is_active=True))
-    ).aggregate(min_p=Min("p"), max_p=Max("p"))
+    price_stats = sidebar_data_qs.aggregate(
+        min_p=Min("sizes__final_price", filter=Q(sizes__is_active=True)),
+        max_p=Max("sizes__final_price", filter=Q(sizes__is_active=True)),
+    )
 
-    brands = Brand.objects.filter(products__category__in=categories).distinct()
+    brands = Brand.objects.filter(
+        products__category__in=categories, products__is_active=True
+    ).distinct()
+
     sizes = (
-        ProductSize.objects.filter(product__category__in=categories, is_active=True)
+        ProductSize.objects.filter(
+            product__category__in=categories, product__is_active=True, is_active=True
+        )
         .values_list("size__name", flat=True)
         .distinct()
         .order_by("size__name")
@@ -348,17 +354,36 @@ def get_filtered_products(categories, query_params):
         .order_by("-created_at")
     )
 
-    # Применяем фильтры (из URL)
-    brand_slugs = query_params.getlist("brands[]")
-    if brand_slugs:
+    # Применяем фильтры
+    # 1. Современный подход через запятую (в URL: ?brands=nike,adidas)
+    brands_param = query_params.get("brands")
+    if brands_param:
+        # brand_slugs = brands_param.split(",")
+        # Убираем лишние пробелы и пустые элементы на всякий случай
+        brand_slugs = [s.strip() for s in brands_param.split(",") if s.strip()]
         queryset = queryset.filter(brand__slug__in=brand_slugs)
 
-    size_names = query_params.getlist("sizes[]")
-    if size_names:
+    sizes_param = query_params.get("sizes")
+    if sizes_param:
+        # size_names = sizes_param.split(",")
+        size_names = [s.strip() for s in sizes_param.split(",") if s.strip()]
         # Если фильтруем по размерам, нужен distinct, так как у товара много размеров
         queryset = queryset.filter(
             sizes__size__name__in=size_names, sizes__is_active=True
         ).distinct()
+
+    # Применяем фильтры
+    # 2. Стандартный подход (в URL: ?brands=nike&brands=adidas)
+    # brand_slugs = query_params.getlist("brands")
+    # if brand_slugs:
+    #     queryset = queryset.filter(brand__slug__in=brand_slugs)
+
+    # size_names = query_params.getlist("sizes")
+    # if size_names:
+    #     # Если фильтруем по размерам, нужен distinct, так как у товара много размеров
+    #     queryset = queryset.filter(
+    #         sizes__size__name__in=size_names, sizes__is_active=True
+    #     ).distinct()
 
     min_p = query_params.get("min_price")
     max_p = query_params.get("max_price")

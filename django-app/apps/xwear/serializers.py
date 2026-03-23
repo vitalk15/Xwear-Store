@@ -14,8 +14,8 @@ from .utils import get_thumbnail_data
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    children = serializers.SerializerMethodField()
     full_path = serializers.CharField(source="get_full_path", read_only=True)
+    children = serializers.SerializerMethodField()
     is_clickable = serializers.SerializerMethodField()
     # has_children = serializers.SerializerMethodField()
 

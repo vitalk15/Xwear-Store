@@ -62,21 +62,33 @@ def category_detail_view(request, pk):
     page = paginator.paginate_queryset(products_queryset, request)
     serializer = ProductListSerializer(page, many=True, context={"request": request})
 
-    return paginator.get_paginated_response(
-        {
-            "category": {
-                "id": category.id,
-                "name": category.name,
-                "breadcrumbs": breadcrumbs,
-            },
-            "filters": {
-                "brands": BrandSerializer(filters_data["brands"], many=True).data,
-                "sizes": filters_data["sizes"],
-                "price_range": filters_data["price_range"],
-            },
-            "products": serializer.data,
-        }
-    )
+    # По стандарту REST API метаданные (категория, фильтры) должны лежать на одном уровне с ключами пагинации (count, next, previous), а сами товары — внутри списка results.
+    # Получаем стандартный ответ DRF (где сериализованные товары лежат в "results")
+    response = paginator.get_paginated_response(serializer.data)
+
+    # Внедряем наши кастомные данные на верхний уровень JSON
+    response.data["category"] = {
+        "id": category.id,
+        "name": category.name,
+        "breadcrumbs": breadcrumbs,
+    }
+    response.data["filters"] = {
+        "brands": BrandSerializer(filters_data["brands"], many=True).data,
+        "sizes": filters_data["sizes"],
+        "price_range": filters_data["price_range"],
+    }
+
+    # В результате структура JSON-ответа будет:
+    # {
+    #   "count": 150,
+    #   "next": "http://api.../?limit=20&offset=20",
+    #   "previous": null,
+    #   "category": { ... },
+    #   "filters": { ... },
+    #   "results": [ ...массив товаров... ]
+    # }
+
+    return response
 
 
 # Детали товара

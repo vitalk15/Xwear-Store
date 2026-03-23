@@ -33,7 +33,10 @@ urlpatterns = [
 
 # маршруты медиа-файлов (для debug-режима)
 if settings.DEBUG:
+    from debug_toolbar.toolbar import debug_toolbar_urls
+
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += debug_toolbar_urls()
 
 # маршруты медиа-файлов (для prod-режима)
 # if not settings.DEBUG:
