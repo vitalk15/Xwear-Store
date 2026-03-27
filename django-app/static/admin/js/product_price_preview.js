@@ -16,7 +16,7 @@ document.addEventListener('change', function (e) {
 			const final = price * (1 - discount / 100)
 
 			// Обновляем текст
-			finalPriceDisplay.innerHTML = `<strong style="color: #d9534f;">${final.toFixed(2)} (превью)</strong>`
+			finalPriceDisplay.innerHTML = `<strong style="color: #d9534f;">${final.toFixed(2)}</strong>`
 		}
 	}
 })

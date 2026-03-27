@@ -11,7 +11,6 @@ from adminsortable2.admin import (
     SortableInlineAdminMixin,
     CustomInlineFormSet,
 )
-from django_admin_inline_paginator.admin import TabularInlinePaginated
 
 # from mptt.forms import TreeNodeChoiceField
 from core.admin import ReadOnlyAdminMixin
@@ -321,12 +320,6 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     # Форма редактирования
     fieldsets = (
         (
-            "Идентификация (Авто)",
-            {
-                "fields": ("name", "article", "slug"),
-            },
-        ),
-        (
             "Классификация",
             {
                 "fields": (
@@ -352,9 +345,16 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
             },
         ),
         (
-            "Служебные действия",
+            "Идентификация (Авто)",
             {
                 "classes": ("collapse",),  # Делаем блок свернутым по умолчанию
+                "fields": ("name", "article", "slug"),
+            },
+        ),
+        (
+            "Служебные действия",
+            {
+                "classes": ("collapse",),
                 "description": (
                     '<div style="color: #ba2121; font-weight: bold; margin-bottom: 10px;">'
                     "⚠️ ИНСТРУКЦИЯ: Если вы изменили ВИД, БРЕНД, МОДЕЛЬ или КАТЕГОРИЮ у существующего товара:<br>"
@@ -368,7 +368,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     )
 
     # Кол-во показываемых товаров на одной странице пагинации
-    list_per_page = 20
+    list_per_page = 10
 
     @admin.display(description="Полное название")
     def get_full_name(self, obj):
@@ -392,20 +392,19 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         Отображает только корневую категорию (Обувь, Одежда и т.д.)
         """
         if obj.category:
-            # Берем полное строковое представление и забираем первую часть
-            full_path = str(obj.category)
-            return full_path.split(" / ")[0]
+            # Метод get_root() возвращает самый верхний объект в дереве (level 0)
+            return obj.category.get_root().name
         return "-"
 
-    @admin.display(description="Категория", ordering="category")
-    def get_short_category(self, obj):
-        """
-        Отображает только последнюю часть категории (после разделителя)
-        """
-        if obj.category:
-            full_path = str(obj.category)
-            return full_path.rsplit(" / ", maxsplit=1)[-1]
-        return "-"
+    # @admin.display(description="Категория", ordering="category")
+    # def get_short_category(self, obj):
+    #     """
+    #     Отображает только последнюю часть категории (после разделителя)
+    #     """
+    #     if obj.category:
+    #         full_path = str(obj.category)
+    #         return full_path.rsplit(" / ", maxsplit=1)[-1]
+    #     return "-"
 
     @admin.display(description="Главное фото")
     def image_main(self, obj):
@@ -543,54 +542,33 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         )
 
 
-class ProductInline(TabularInlinePaginated):
-    model = Product
-    # Количество товаров на одной странице инлайна
-    per_page = 20
-    # Указываем только самые важные поля для быстрого обзора
-    fields = [
-        "article",
-        "get_full_name",
-        "get_root_category",
-        "get_edit_link",
-        "is_active",
-    ]
-    readonly_fields = ["article", "get_full_name", "get_root_category", "get_edit_link"]
-    extra = 0
-    # show_change_link = True  # Встроенная ссылка на редактирование от Django
-    ordering = ["-id"]
+# class ProductInline(TabularInlinePaginated):
+#     model = Product
+#     # Количество товаров на одной странице инлайна
+#     per_page = 10
+#     # Указываем только самые важные поля для быстрого обзора
+#     fields = [
+#         "article",
+#         "get_edit_link",
+#         "is_active",
+#     ]
+#     readonly_fields = ["article", "get_edit_link"]
+#     extra = 0
+#     # show_change_link = True  # Встроенная ссылка на редактирование от Django
+#     ordering = ["-id"]
 
-    @admin.display(description="Полное название")
-    def get_full_name(self, obj):
-        return obj.full_name
-
-    @admin.display(description="Группа", ordering="category")
-    def get_root_category(self, obj):
-        """
-        Отображает только корневую категорию (Обувь, Одежда и т.д.)
-        """
-        if obj.category:
-            # Берем полное строковое представление и забираем первую часть
-            full_path = str(obj.category)
-            return full_path.split(" / ")[0]
-        return "-"
-
-    @admin.display(description="Действие")
-    def get_edit_link(self, obj):
-        if obj.pk:
-            # Создаем прямую ссылку на полную страницу редактирования товара
-            url = reverse("admin:xwear_product_change", args=[obj.pk])
-            return format_html('<a href="{}" class="button">Редактировать</a>', url)
-        return "-"
-
-    def get_queryset(self, request):
-        # Подтягиваем всё, что нужно для формирования get_full_name
-        return super().get_queryset(request).select_related("category")
+#     @admin.display(description="Действие")
+#     def get_edit_link(self, obj):
+#         if obj.pk:
+#             # Создаем прямую ссылку на полную страницу редактирования товара
+#             url = reverse("admin:xwear_product_change", args=[obj.pk])
+#             return format_html('<a href="{}" class="button">Редактировать</a>', url)
+#         return "-"
 
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
-    inlines = [ProductInline]
+    # inlines = [ProductInline]
 
     list_display = ["name", "slug", "view_products_link_list"]
     readonly_fields = ["view_products_link_detail"]

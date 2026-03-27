@@ -155,7 +155,7 @@ class ProductSize(models.Model):
         ordering = ["size"]
         unique_together = ["product", "size"]
         verbose_name = "Размер/цена товара"
-        verbose_name_plural = "Размеры/цены товаров"
+        verbose_name_plural = "Размеры/цены товара"
 
 
 class ProductImage(models.Model):
@@ -235,7 +235,7 @@ class Product(models.Model):
         verbose_name="Вид товара",
         help_text="Оставьте пустым, для автогенерации из категории",
     )
-    model_name = models.CharField(max_length=50, verbose_name="Модель")
+    model_name = models.CharField(max_length=50, blank=True, verbose_name="Модель")
     slug = models.SlugField(
         max_length=50,
         blank=True,
