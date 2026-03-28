@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
@@ -50,7 +51,9 @@ class Category(MPTTModel):
 
     def __str__(self):
         # корневая категория
-        if self.is_root_node():
+        # if self.is_root_node():
+        #     return self.name.upper()
+        if self.parent_id is None:
             return self.name.upper()
 
         # для глубоких категорий
@@ -217,34 +220,59 @@ class ProductImage(models.Model):
         ordering = ["position"]
 
 
+class Color(models.Model):
+    name = models.CharField(verbose_name="Название цвета", max_length=50, unique=True)
+    slug = models.SlugField(verbose_name="Слаг", max_length=50, unique=True)
+    hex_code = models.CharField(
+        verbose_name="Основной HEX-код",
+        max_length=7,
+        help_text="Обязательно для однотонных и двухцветных",
+        default="#000000",
+    )
+    hex_code_2 = models.CharField(
+        verbose_name="Дополнительный HEX",
+        max_length=7,
+        blank=True,
+        null=True,
+        help_text="Заполните для двухцветных товаров (например, черно-белый)",
+    )
+    texture = models.ImageField(
+        verbose_name="Текстура (Паттерн)",
+        upload_to="color_textures/",
+        blank=True,
+        null=True,
+        help_text="Загрузите картинку (например, камуфляж). Если загружена, HEX-коды игнорируются.",
+    )
+
+    class Meta:
+        verbose_name = "Цвет"
+        verbose_name_plural = "Цвета"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class Product(models.Model):
     class GenderChoices(models.TextChoices):
         MALE = "M", "Мужской"
         FEMALE = "F", "Женский"
         UNISEX = "U", "Унисекс"
 
+    base_product = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,  # Если удалим главный товар, остальные просто "отвяжутся", а не удалятся
+        null=True,
+        blank=True,
+        related_name="variants",
+        verbose_name="Базовый товар (для связи цветов)",
+        help_text="Оставьте пустым, если это базовый цвет. Для других цветов выберите базовый товар.",
+    )
     category = models.ForeignKey(
         Category,
         on_delete=models.PROTECT,
         related_name="products",
         verbose_name="Категория",
-    )
-    name = models.CharField(
-        max_length=50,
-        blank=True,
-        verbose_name="Вид товара",
-        help_text="Оставьте пустым, для автогенерации из категории",
-    )
-    model_name = models.CharField(max_length=50, blank=True, verbose_name="Модель")
-    slug = models.SlugField(
-        max_length=50,
-        blank=True,
-        verbose_name="Слаг",
-        help_text="Генерируется автоматически на основе вида, бренда и модели",
-    )
-    description = models.TextField(blank=True, verbose_name="Описание")
-    gender = models.CharField(
-        max_length=1, choices=GenderChoices.choices, verbose_name="Пол"
     )
     brand = models.ForeignKey(
         Brand,
@@ -253,6 +281,31 @@ class Product(models.Model):
         null=True,
         related_name="products",
         verbose_name="Бренд",
+    )
+    color = models.ForeignKey(
+        Color,
+        on_delete=models.PROTECT,
+        related_name="products",
+        verbose_name="Цвет",
+        null=True,  # Временно разрешаем null, чтобы накатить миграции на старые данные
+        blank=True,
+    )
+    name = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Вид товара",
+        help_text="Оставьте пустым, для автогенерации из категории",
+    )
+    model_name = models.CharField(max_length=50, blank=True, verbose_name="Модель")
+    gender = models.CharField(
+        max_length=1, choices=GenderChoices.choices, verbose_name="Пол"
+    )
+    description = models.TextField(blank=True, verbose_name="Описание")
+    slug = models.SlugField(
+        max_length=50,
+        blank=True,
+        verbose_name="Слаг",
+        help_text="Генерируется автоматически на основе вида, бренда и модели",
     )
     article = models.CharField(
         max_length=50,
@@ -278,7 +331,64 @@ class Product(models.Model):
 
     @property
     def get_main_image_obj(self):
-        return self.images.first()
+        # выполняет доп.запрос в базу, игнорируя prefetch
+        # return self.images.first()
+
+        # .all() возвращает кэшированный список, если был prefetch_related
+        images_list = self.images.all()
+
+        # Работаем со списком в памяти Python
+        if images_list:
+            return images_list[0]  # Берем первый элемент списка
+        return None
+
+    @property
+    def family_colors(self):
+        """Возвращает QuerySet всех товаров этой цветовой группы (включая себя)"""
+        # Если это дочерний товар, берем ID базы. Если базовый — свой ID.
+        base_id = self.base_product_id or self.id
+
+        # Ищем базу и всех ее "детей"
+        from django.db.models import Q
+
+        return Product.objects.filter(
+            Q(id=base_id) | Q(base_product_id=base_id)
+        ).select_related("color")
+
+    def clean(self):
+        super().clean()
+
+        # Запрещаем создание более одного базового товара на модель
+        # Если оставляем этот товар базовым (base_product=None)
+        if self.base_product is None:
+            # Ищем, нет ли уже в этой группе другого базового товара,
+            # исключая текущий товар (exclude(pk=self.pk)),
+
+            duplicate_base_exists = (
+                Product.objects.filter(
+                    brand=self.brand,
+                    category=self.category,
+                    model_name__iexact=self.model_name,  # Игнорируем регистр
+                    base_product__isnull=True,
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            )
+
+            if duplicate_base_exists:
+                raise ValidationError(
+                    {
+                        "base_product": (
+                            f"У модели '{self.brand.name} {self.model_name}' уже есть "
+                            f"базовый товар. Вы не можете создать второй. "
+                        )
+                    }
+                )
+
+        if self.base_product and self.base_product.base_product_id:
+            raise ValidationError(
+                {"base_product": "Выбранный товар сам является дочерним."}
+            )
 
     def save(self, *args, **kwargs):
         # 1. Генерация слага, если он пуст (ID не нужен)
@@ -309,7 +419,8 @@ class Product(models.Model):
             self.__class__.objects.filter(pk=self.pk).update(article=self.article)
 
     def __str__(self):
-        return self.full_name
+        color_name = self.color.name if self.color else "Цвет не указан"
+        return f"{self.full_name} ({color_name})"
 
     class Meta:
         ordering = ["name"]

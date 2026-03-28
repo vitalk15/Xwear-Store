@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import (
     Category,
     Brand,
+    Color,
     Product,
     ProductImage,
     ProductSize,
@@ -44,6 +45,12 @@ class CategorySerializer(serializers.ModelSerializer):
     # def get_has_children(self, obj):
     #     # Проверяем наличие активных детей в кэше
     #     return any(child.is_active for child in obj.get_children())
+
+
+class ColorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Color
+        fields = ["id", "name", "slug", "hex_code", "hex_code_2", "texture"]
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -122,8 +129,10 @@ class BrandSerializer(serializers.ModelSerializer):
 
 class ProductListSerializer(serializers.ModelSerializer):
     gender_display = serializers.CharField(source="get_gender_display", read_only=True)
+    color = ColorSerializer(read_only=True)
     naming = serializers.SerializerMethodField()
     pricing = serializers.SerializerMethodField()
+    available_colors = serializers.SerializerMethodField()
 
     # min_price = serializers.SerializerMethodField()
     # old_min_price = serializers.SerializerMethodField()
@@ -171,37 +180,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             "discount": cheapest.discount_percent if cheapest.has_discount else 0,
         }
 
-    # def _get_cheapest_size(self, obj):
-    #     """Вспомогательный метод для поиска самого дешевого активного размера"""
-    #     active_sizes = [s for s in obj.sizes.all() if s.is_active]
-    #     if not active_sizes:
-    #         return None
-    #     # Находим объект размера с минимальной ценой final_price
-    #     return min(active_sizes, key=lambda s: s.final_price)
-
-    # def get_min_price(self, obj):
-    #     # Если мы пришли из вьюхи рекомендаций, цена уже посчитана в БД
-    #     annotated_price = getattr(obj, "annotated_min_final_price", None)
-    #     if annotated_price is not None:
-    #         return annotated_price
-
-    #     # В остальных случаях используем
-    #     size = self._get_cheapest_size(obj)
-    #     return size.final_price if size else 0
-
-    # def get_old_min_price(self, obj):
-    #     size = self._get_cheapest_size(obj)
-    #     # Показываем старую цену только если на этот конкретный размер есть скидка
-    #     if size and size.has_discount:
-    #         return size.price
-    #     return None
-
-    # def get_discount_percent(self, obj):
-    #     size = self._get_cheapest_size(obj)
-    #     if size and size.has_discount:
-    #         return size.discount_percent
-    #     return 0
-
     def get_main_image(self, obj):
         img_obj = obj.get_main_image_obj
         if img_obj:
@@ -212,6 +190,36 @@ class ProductListSerializer(serializers.ModelSerializer):
                 "alt": img_obj.alt,
             }
         return None
+
+    def get_available_colors(self, obj):
+        """
+        Собирает все варианты цветов для текущей группы товаров.
+        Возвращает список с данными цвета и ссылочными данными товара.
+        """
+        # 1. Определяем "корень" группы (либо текущий товар, либо его родитель)
+        root = obj if obj.base_product_id is None else obj.base_product
+
+        # 2. Собираем всех участников группы: корень + все его дочерние варианты
+        # Используем .all(), чтобы не делать лишних запросов (при условии prefetch_related во вьюхе)
+        family = [root]
+        if hasattr(root, "variants"):
+            family.extend(root.variants.all())
+
+        results = []
+        for p in family:
+            if p.color:
+                results.append(
+                    {
+                        "color": ColorSerializer(p.color, context=self.context).data,
+                        # "product_id": p.id,
+                        # "product_slug": p.slug,
+                        # Опционально: можно сразу пробросить URL для фронтенда
+                        "frontend_url": self.get_frontend_url(p),
+                    }
+                )
+
+        # Сортируем (например, по названию цвета), чтобы порядок был всегда одинаковым
+        return sorted(results, key=lambda x: x["color"]["name"])
 
     def get_frontend_url(self, obj):
         # Собираем путь: /catalog/полный-путь-категории/слаг-товара-ID
@@ -228,6 +236,8 @@ class ProductListSerializer(serializers.ModelSerializer):
             "gender_display",
             "naming",
             "pricing",
+            "color",
+            "available_colors",
             "main_image",
             "frontend_url",
             "is_active",
@@ -239,13 +249,20 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     sizes = ProductSizeSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     specification = SpecificationSerializer(read_only=True)
+    color = ColorSerializer(read_only=True)
+    available_colors = serializers.SerializerMethodField()
     naming = serializers.SerializerMethodField()
     breadcrumbs = serializers.SerializerMethodField()
+    frontend_url = serializers.SerializerMethodField()
 
     def get_breadcrumbs(self, obj):
         # MPTT метод get_ancestors возвращает всю цепочку от корня до текущей категории
         ancestors = obj.category.get_ancestors(include_self=True)
         return [{"name": cat.name, "slug": cat.slug} for cat in ancestors]
+
+    def get_frontend_url(self, obj):
+        category_path = obj.category.get_full_path()
+        return f"/catalog/{category_path}/{obj.slug}-{obj.id}/"
 
     def get_naming(self, obj):
         return {
@@ -263,6 +280,30 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "full_title": obj.full_name,
         }
 
+    def get_available_colors(self, obj):
+        # находим корень и собираем всех "родственников"
+        root = obj if obj.base_product_id is None else obj.base_product
+
+        family = [root]
+        if hasattr(root, "variants"):
+            family.extend(root.variants.all())
+
+        results = []
+        for p in family:
+            if p.color:
+                results.append(
+                    {
+                        "color": ColorSerializer(p.color, context=self.context).data,
+                        # "product_id": p.id,
+                        # "product_slug": p.slug,
+                        "frontend_url": self.get_frontend_url(p),
+                        "is_current": p.id
+                        == obj.id,  # Флаг, чтобы фронтенд выделил текущий цвет
+                    }
+                )
+
+        return sorted(results, key=lambda x: x["color"]["name"])
+
     class Meta:
         model = Product
         fields = [
@@ -272,6 +313,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "gender",
             "gender_display",
             "naming",
+            "color",
+            "available_colors",
             "breadcrumbs",
             "description",
             "sizes",

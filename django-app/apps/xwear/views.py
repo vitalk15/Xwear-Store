@@ -14,6 +14,7 @@ from .models import Category, Product, ProductSize, Favorite, SliderBanner
 from .serializers import (
     CategorySerializer,
     BrandSerializer,
+    ColorSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
     FavoriteSerializer,
@@ -74,6 +75,7 @@ def category_detail_view(request, pk):
     }
     response.data["filters"] = {
         "brands": BrandSerializer(filters_data["brands"], many=True).data,
+        "colors": ColorSerializer(filters_data["colors"], many=True).data,
         "sizes": filters_data["sizes"],
         "price_range": filters_data["price_range"],
     }
@@ -99,6 +101,8 @@ def product_detail_view(request, pk):
         .select_related(
             "category",
             "brand",
+            "color",
+            "base_product",
             "specification",
             "specification__material_outer",
             "specification__material_inner",
@@ -106,14 +110,12 @@ def product_detail_view(request, pk):
         )
         .prefetch_related(
             "images",
+            "variants__color",
+            "base_product__variants__color",
+            "base_product__color",
             # Уже делаем сортировку в ProductImage, поэтому не используем здесь:
             # Prefetch("images", queryset=ProductImage.objects.order_by("-is_main", "id")),
-            Prefetch(
-                "sizes",
-                queryset=ProductSize.objects.filter(is_active=True).select_related(
-                    "size"
-                ),
-            ),
+            Prefetch("sizes", queryset=ProductSize.objects.select_related("size")),
         )
     )
 

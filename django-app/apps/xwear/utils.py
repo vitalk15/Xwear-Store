@@ -296,19 +296,23 @@ def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
 # Собирает данные для сайдбара (бренды, размеры, диапазон цен),
 # слайдер цены и список брендов в фильтре должны показывать все возможности категории
 def get_category_sidebar_filters(categories):
-    from .models import Product, ProductSize, Brand
+    from .models import Product, ProductSize, Brand, Color
 
+    # Базовый кверисет
     sidebar_data_qs = Product.objects.filter(category__in=categories, is_active=True)
 
+    # 1. Цены, доступные в этой категории
     price_stats = sidebar_data_qs.aggregate(
         min_p=Min("sizes__final_price", filter=Q(sizes__is_active=True)),
         max_p=Max("sizes__final_price", filter=Q(sizes__is_active=True)),
     )
 
+    # 2. Бренды, доступные в этой категории
     brands = Brand.objects.filter(
         products__category__in=categories, products__is_active=True
     ).distinct()
 
+    # 3. Размеры, доступные в этой категории
     sizes = (
         ProductSize.objects.filter(
             product__category__in=categories, product__is_active=True, is_active=True
@@ -318,9 +322,15 @@ def get_category_sidebar_filters(categories):
         .order_by("size__name")
     )
 
+    # 4. Цвета, доступные в этой категории
+    colors = Color.objects.filter(
+        product__category__in=categories, product__is_active=True
+    ).distinct()
+
     return {
         "brands": brands,
         "sizes": list(sizes),
+        "colors": colors,
         "price_range": {
             "min": price_stats["min_p"] or 0,
             "max": price_stats["max_p"] or 0,
@@ -341,9 +351,12 @@ def get_filtered_products(categories, query_params):
                 "sizes__final_price", filter=Q(sizes__is_active=True)
             )
         )
-        .select_related("brand", "category")
+        .select_related("brand", "category", "color", "base_product")
         .prefetch_related(
             "images",
+            "variants__color",
+            "base_product__variants__color",
+            "base_product__color",
             Prefetch(
                 "sizes",
                 queryset=ProductSize.objects.filter(is_active=True).select_related(
@@ -356,6 +369,7 @@ def get_filtered_products(categories, query_params):
 
     # Применяем фильтры
     # 1. Современный подход через запятую (в URL: ?brands=nike,adidas)
+    # Фильтр по брендам
     brands_param = query_params.get("brands")
     if brands_param:
         # brand_slugs = brands_param.split(",")
@@ -363,6 +377,13 @@ def get_filtered_products(categories, query_params):
         brand_slugs = [s.strip() for s in brands_param.split(",") if s.strip()]
         queryset = queryset.filter(brand__slug__in=brand_slugs)
 
+    # Фильтр по цветам
+    colors_param = query_params.get("colors")
+    if colors_param:
+        color_slugs = [s.strip() for s in colors_param.split(",") if s.strip()]
+        queryset = queryset.filter(color__slug__in=color_slugs)
+
+    # Фильтр по размерам
     sizes_param = query_params.get("sizes")
     if sizes_param:
         # size_names = sizes_param.split(",")
@@ -385,6 +406,7 @@ def get_filtered_products(categories, query_params):
     #         sizes__size__name__in=size_names, sizes__is_active=True
     #     ).distinct()
 
+    # Фильтр по цене
     min_p = query_params.get("min_price")
     max_p = query_params.get("max_price")
     if min_p:
@@ -398,74 +420,86 @@ def get_filtered_products(categories, query_params):
 # Показ рекомендаций
 def get_similar_products(product, limit=8):
     """
-    Возвращает товары из той же подкатегории в ценовом диапазоне +/- 20%.
-    Если находит меньше 4, добивает список другими товарами из этой категории.
+    Возвращает товары из той же подкатегории в ценовом диапазоне +/- 20% рандомно.
     """
-    from .models import Product
+    from .models import Product, ProductSize
 
-    # 1. Находим минимальную финальную цену текущего товара
-    # Используем агрегацию
-    current_min_data = product.sizes.filter(is_active=True).aggregate(
-        min_p=Min("final_price")
-    )
+    # 1. Определяем ID "корневого" товара, чтобы исключить всю семью из рекомендаций
+    root_id = product.base_product_id if product.base_product_id else product.id
 
-    current_min_price = current_min_data["min_p"]
+    # 2. Получаем минимальную финальную цену текущего товара для расчета диапазона
+    # (Берем из аннотации, если она была во вьюхе, или считаем)
+    current_min_price = getattr(product, "annotated_min_final_price", None)
+    if current_min_price is None:
+        price_data = product.sizes.filter(is_active=True).aggregate(
+            min_p=Min("final_price")
+        )
+        current_min_price = price_data["min_p"]
 
     if current_min_price is None:
         return []
 
-    # 2. Расчет диапазона +/- 20%
+    # 3. Расчет диапазона +/- 20%
     min_range = float(current_min_price) * 0.8
     max_range = float(current_min_price) * 1.2
 
-    # 3. Запрос с аннотацией - ищем похожие: та же категория + цена в диапазоне + активен + не сам этот товар. Ограничиваем количество и обязательно добавляем prefetch_related('sizes'), так как сериализатор вызывает obj.sizes.all()
-    similar_qs = (
-        Product.objects.filter(is_active=True, category=product.category)
+    # 4. Получаем только список ID всех подходящих товаров.
+    # Фильтруем по категории, цене и исключаем всю текущую семью
+    all_similar_ids = list(
+        Product.objects.filter(
+            is_active=True,
+            category=product.category,
+            base_product__isnull=True,  # Только уникальные модели (базовые)
+        )
         .annotate(
             # Аннотируем каждый товар в базе его минимальной ценой
+            annotated_min_p=Min("sizes__final_price", filter=Q(sizes__is_active=True))
+        )
+        .filter(annotated_min_p__range=(min_range, max_range))
+        .exclude(
+            Q(id=root_id) | Q(base_product_id=root_id)
+        )  # Исключаем всю текущую семью
+        .values_list("id", flat=True)
+    )
+
+    # 5. Если в ценовом диапазоне товаров мало, добираем ID просто из категории
+    if len(all_similar_ids) < 4:
+        extra_ids = list(
+            Product.objects.filter(
+                is_active=True, category=product.category, base_product__isnull=True
+            )
+            .exclude(
+                Q(id=root_id) | Q(base_product_id=root_id) | Q(id__in=all_similar_ids)
+            )
+            .values_list("id", flat=True)
+        )
+        # Добавляем столько, сколько нужно для лимита
+        all_similar_ids.extend(extra_ids)
+
+    # 6. Выбираем случайные ID, в количестве = limit
+    sample_size = min(len(all_similar_ids), limit)
+    random_ids = random.sample(all_similar_ids, sample_size)
+
+    # 7. Делаем основной запрос только по выбранным ID
+    return (
+        Product.objects.filter(id__in=random_ids)
+        .annotate(
             annotated_min_final_price=Min(
                 "sizes__final_price", filter=Q(sizes__is_active=True)
             )
         )
-        .filter(annotated_min_final_price__range=(min_range, max_range))
-        .exclude(id=product.id)
-        .select_related("brand", "category")
-        .prefetch_related("sizes")
-        .order_by("?")[:limit]
-    )
-
-    # Выполняем запрос и превращаем в список (чтобы посчитать количество)
-    similar_products = list(similar_qs)
-
-    # Добор
-    if len(similar_products) < 4:
-        # Собираем ID тех товаров, что уже лежат в similar_products,
-        # плюс ID самого текущего товара, чтобы не показать его в рекомендациях
-        exclude_ids = [product.id] + [p.id for p in similar_products]
-
-        # Сколько еще товаров нам нужно добрать до лимита?
-        needed_count = limit - len(similar_products)
-
-        # Резервный запрос: та же категория, но БЕЗ фильтра по цене
-        fallback_qs = (
-            Product.objects.filter(is_active=True, category=product.category)
-            .exclude(id__in=exclude_ids)
-            .annotate(
-                # ВАЖНО: Мы все равно делаем аннотацию цены, чтобы наш
-                # ProductListSerializer не упал и корректно отдал min_price на фронтенд!
-                annotated_min_final_price=Min(
-                    "sizes__final_price", filter=Q(sizes__is_active=True)
-                )
-            )
-            .select_related("brand", "category")
-            .prefetch_related("sizes")
-            .order_by("?")[:needed_count]
+        .select_related("brand", "category", "color")
+        .prefetch_related(
+            "images",
+            "variants__color",
+            Prefetch(
+                "sizes",
+                queryset=ProductSize.objects.filter(is_active=True).select_related(
+                    "size"
+                ),
+            ),
         )
-
-        # Добавляем найденные "резервные" товары к основному списку
-        similar_products.extend(list(fallback_qs))
-
-    return similar_products
+    )
 
 
 # генерация артикула для товара
