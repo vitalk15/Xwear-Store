@@ -4,6 +4,7 @@ from django.contrib import admin, messages
 from django.db.models import Count, Q, F, Min, Max, OuterRef, Subquery
 from django.utils.html import format_html
 from django.urls import reverse
+from django.utils.http import urlencode
 from django_mptt_admin.admin import DjangoMpttAdmin
 from adminsortable2.admin import (
     SortableAdminBase,
@@ -67,7 +68,7 @@ class ColorAdminForm(forms.ModelForm):
 
 
 @admin.register(Color)
-class ColorAdmin(admin.ModelAdmin):
+class ColorAdmin(SortableAdminMixin, admin.ModelAdmin):
     form = ColorAdminForm
     list_display = ["name", "color_preview", "slug", "hex_code"]
     search_fields = ["name"]
@@ -92,7 +93,7 @@ class ColorAdmin(admin.ModelAdmin):
         # 2. Если есть второй цвет — делаем диагональный градиент
         elif obj.hex_code_2:
             return format_html(
-                '<div style="{} background: linear-gradient(135deg, {} 50%, {} 50%);" title="{}"></div>',
+                '<div style="{} background: linear-gradient(135deg, {} 51%, {} 49%);" title="{}"></div>',
                 base_style,
                 obj.hex_code,
                 obj.hex_code_2,
@@ -403,6 +404,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         "article",
         "get_full_name",
         "get_color_name",
+        "get_colors_count",
         "gender",
         "get_root_category",
         "get_season",
@@ -489,7 +491,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     )
 
     # Кол-во показываемых товаров на одной странице пагинации
-    list_per_page = 20
+    list_per_page = 10
 
     # show_full_result_count = False
 
@@ -506,6 +508,33 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     @admin.display(description="Цвет")
     def get_color_name(self, obj):
         return obj.color if obj.color else "—"
+
+    @admin.display(description="Вариации")
+    def get_colors_count(self, obj):
+        # Проверяем, есть ли у текущего товара родитель
+        if obj.base_product_id:
+            # Это дочерний товар (вариация)
+            count = obj.child_colors_count
+            # Ссылка должна вести на ID родителя, чтобы показать всю группу
+            target_base_id = obj.base_product_id
+        else:
+            # Это базовый товар
+            count = obj.parent_colors_count
+            # Ссылка ведет на его собственный ID
+            target_base_id = obj.id
+
+        # Если товар базовый и у него нет вариаций
+        if count == 0:
+            return "—"
+
+        # Генерируем ссылку
+        url = (
+            reverse("admin:xwear_product_changelist")
+            + "?"
+            + urlencode({"base_product__id__exact": target_base_id})
+        )
+
+        return format_html('<a href="{}">{}</a>', url, count)
 
     @admin.display(description="Сезон", ordering="specification__season")
     def get_season(self, obj):
@@ -551,7 +580,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         return "-"
         # return None
 
-    @admin.display(description="Доступно размеров", ordering="active_sizes")
+    @admin.display(description="Размеры", ordering="active_sizes")
     def active_sizes_count(self, obj):
         # 1.вар - через цикл (не оптимально для большого кол-ва данных)
         # Получаем все размеры один раз (они уже в кеше благодаря prefetch_related)
@@ -649,6 +678,10 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
                 total_count=Count("sizes"),
                 # Считаем только активные размеры, используя фильтр Q
                 active_count=Count("sizes", filter=Q(sizes__is_active=True)),
+                # 1. Если это базовый товар (считаем его "детей")
+                parent_colors_count=Count("variants__color", distinct=True),
+                # 2. Если это дочерний товар (идем к родителю и считаем его "детей")
+                child_colors_count=Count("base_product__variants__color", distinct=True),
                 # Расчет цен
                 min_price=Min("sizes__final_price", filter=Q(sizes__is_active=True)),
                 max_price=Max("sizes__final_price", filter=Q(sizes__is_active=True)),

@@ -96,7 +96,9 @@ class Brand(models.Model):
 
 class Size(models.Model):
     name = models.CharField(max_length=10, verbose_name="Размер")
-    order = models.PositiveSmallIntegerField(default=0, verbose_name="Порядок")
+    order = models.PositiveSmallIntegerField(
+        default=0, db_index=True, verbose_name="Порядок"
+    )
 
     def __str__(self):
         return self.name
@@ -233,21 +235,22 @@ class Color(models.Model):
         verbose_name="Дополнительный HEX",
         max_length=7,
         blank=True,
-        null=True,
         help_text="Заполните для двухцветных товаров (например, черно-белый)",
     )
     texture = models.ImageField(
         verbose_name="Текстура (Паттерн)",
         upload_to="color_textures/",
         blank=True,
-        null=True,
         help_text="Загрузите картинку (например, камуфляж). Если загружена, HEX-коды игнорируются.",
+    )
+    order = models.PositiveSmallIntegerField(
+        default=0, db_index=True, verbose_name="Порядок"
     )
 
     class Meta:
         verbose_name = "Цвет"
         verbose_name_plural = "Цвета"
-        ordering = ["name"]
+        ordering = ["order"]
 
     def __str__(self):
         return self.name
