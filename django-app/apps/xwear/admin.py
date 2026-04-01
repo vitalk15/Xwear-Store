@@ -1,7 +1,20 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib import admin, messages
-from django.db.models import Count, Q, F, Min, Max, OuterRef, Subquery
+from django.db.models import (
+    Count,
+    Q,
+    F,
+    Min,
+    Max,
+    OuterRef,
+    Subquery,
+    Case,
+    When,
+    IntegerField,
+    Value,
+)
+from django.db.models.functions import Coalesce
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.http import urlencode
@@ -70,46 +83,26 @@ class ColorAdminForm(forms.ModelForm):
 @admin.register(Color)
 class ColorAdmin(SortableAdminMixin, admin.ModelAdmin):
     form = ColorAdminForm
-    list_display = ["name", "color_preview", "slug", "hex_code"]
+    list_display = ["name", "color_preview", "slug", "hex_code", "hex_code_2"]
     search_fields = ["name"]
     prepopulated_fields = {"slug": ("name",)}
 
     @admin.display(description="Цвет")
     def color_preview(self, obj):
         # Базовые стили для кружочка
-        base_style = (
-            "width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ccc;"
-        )
+        style = "width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ccc;"
 
         # 1. Приоритет отдаем текстуре (картинке)
         if obj.texture:
-            return format_html(
-                '<div style="{} background-image: url({}); background-size: cover; background-position: center;" title="{}"></div>',
-                base_style,
-                obj.texture.url,
-                obj.name,
-            )
-
+            style += f"background-image: url({obj.texture.url}); background-size: cover; background-position: center;"
         # 2. Если есть второй цвет — делаем диагональный градиент
         elif obj.hex_code_2:
-            return format_html(
-                '<div style="{} background: linear-gradient(135deg, {} 51%, {} 49%);" title="{}"></div>',
-                base_style,
-                obj.hex_code,
-                obj.hex_code_2,
-                obj.name,
-            )
-
+            style += f"background: linear-gradient(135deg, {obj.hex_code} 51%, {obj.hex_code_2} 49%);"
         # 3. Обычный однотонный цвет
         elif obj.hex_code:
-            return format_html(
-                '<div style="{} background-color: {};" title="{}"></div>',
-                base_style,
-                obj.hex_code,
-                obj.name,
-            )
+            style += f"background-color: {obj.hex_code};"
 
-        return "-"
+        return format_html('<div title="{}" style="{}"></div>', obj.name, style)
 
 
 # ------ ИЗОБРАЖЕНИЯ --------
@@ -363,19 +356,52 @@ class CategoryOptimizedFilter(admin.SimpleListFilter):
 
     def lookups(self, request, model_admin):
         # делаем ОДИН запрос с select_related('parent')
+        #     categories = (
+        #         model_admin.model._meta.get_field("category")
+        #         .related_model.objects.select_related("parent")
+        #         .all()
+        #     )
+        #     # Возвращаем список кортежей (id, имя_с_отступами)
+        #     # Так как мы использовали select_related, метод __str__ не будет дергать базу
+        #     return [(c.pk, str(c)) for c in categories]
+
+        # 1. Получаем модель категории через _meta (без прямого импорта)
+        CategoryModel = model_admin.model._meta.get_field("category").related_model
+
+        # 2. Находим категории, где есть товары напрямую
+        categories_with_products = CategoryModel.objects.filter(products__isnull=False)
+
+        # 3. ОДНИМ запросом получаем их и всех их родителей (цепочки)
+        # include_self=True оставит саму категорию в списке
         categories = (
-            model_admin.model._meta.get_field("category")
-            .related_model.objects.select_related("parent")
-            .all()
+            CategoryModel.objects.get_queryset_ancestors(
+                categories_with_products, include_self=True
+            )
+            .select_related("parent")
+            .distinct()
         )
-        # Возвращаем список кортежей (id, имя_с_отступами)
-        # Так как мы использовали select_related, метод __str__ не будет дергать базу
+
         return [(c.pk, str(c)) for c in categories]
 
+    # def queryset(self, request, queryset):
+    #     # Фильтруем основной список товаров
+    #     if self.value():
+    #         return queryset.filter(category_id=self.value())
+    #     return queryset
+
     def queryset(self, request, queryset):
-        # Фильтруем основной список товаров
         if self.value():
-            return queryset.filter(category_id=self.value())
+            selected_node = queryset.model._meta.get_field(
+                "category"
+            ).related_model.objects.get(pk=self.value())
+
+            # Умная фильтрация: берем всех потомков узла по MPTT-индексам
+            return queryset.filter(
+                category__tree_id=selected_node.tree_id,
+                category__lft__gte=selected_node.lft,
+                category__lft__lte=selected_node.rght,
+            )
+
         return queryset
 
 
@@ -387,7 +413,28 @@ class ActiveColorFilter(admin.SimpleListFilter):
         # Получаем только те цвета, у которых есть хотя бы один товар,
         # и убираем дубликаты с помощью distinct()
         colors = Color.objects.filter(products__isnull=False).distinct()
-        return [(c.id, c.name) for c in colors]
+
+        result = []
+
+        for c in colors:
+            # Базовый стиль
+            style = "display:inline-block; width:12px; height:12px; border-radius:50%; border:1px solid #aaa; vertical-align:middle; margin-right:6px;"
+
+            # Логика приоритетов цвета
+            if c.texture:
+                style += f"background: url({c.texture.url}) center/cover no-repeat;"
+            elif c.hex_code and c.hex_code_2:
+                style += f"background: linear-gradient(135deg, {c.hex_code} 51%, {c.hex_code_2} 49%);"
+            else:
+                style += f"background-color: {c.hex_code or '#eee'};"
+
+            # Собираем кружок и название цвета вместе
+            display_name = format_html('<span style="{}"></span> {}', style, c.name)
+
+            # Добавляем в итоговый список
+            result.append((c.id, display_name))
+
+        return result
 
     def queryset(self, request, queryset):
         if self.value():
@@ -403,11 +450,11 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     list_display = [
         "article",
         "get_full_name",
-        "get_color_name",
-        "get_colors_count",
         "gender",
         "get_root_category",
         "get_season",
+        "get_color_name",
+        "get_colors_count",
         "active_sizes_count",
         "get_price_range",
         "image_main",
@@ -493,7 +540,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     # Кол-во показываемых товаров на одной странице пагинации
     list_per_page = 10
 
-    # show_full_result_count = False
+    show_full_result_count = False
 
     @admin.display(description="Полное название")
     def get_full_name(self, obj):
@@ -507,34 +554,54 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
 
     @admin.display(description="Цвет")
     def get_color_name(self, obj):
-        return obj.color if obj.color else "—"
-
-    @admin.display(description="Вариации")
-    def get_colors_count(self, obj):
-        # Проверяем, есть ли у текущего товара родитель
-        if obj.base_product_id:
-            # Это дочерний товар (вариация)
-            count = obj.child_colors_count
-            # Ссылка должна вести на ID родителя, чтобы показать всю группу
-            target_base_id = obj.base_product_id
-        else:
-            # Это базовый товар
-            count = obj.parent_colors_count
-            # Ссылка ведет на его собственный ID
-            target_base_id = obj.id
-
-        # Если товар базовый и у него нет вариаций
-        if count == 0:
+        if not obj.color:
             return "—"
 
-        # Генерируем ссылку
-        url = (
-            reverse("admin:xwear_product_changelist")
-            + "?"
-            + urlencode({"base_product__id__exact": target_base_id})
-        )
+        style = "display:inline-block; width:16px; height:16px; border-radius:50%; border:1px solid #aaa; vertical-align:middle; cursor: help;"
 
-        return format_html('<a href="{}">{}</a>', url, count)
+        if obj.color.texture:
+            style += f"background-image: url({obj.color.texture.url}); background-size: cover; background-position: center;"
+        elif obj.color.hex_code and obj.color.hex_code_2:
+            style += f"background: linear-gradient(135deg, {obj.color.hex_code} 51%, {obj.color.hex_code_2} 49%);"
+        elif obj.color.hex_code:
+            style += f"background-color: {obj.color.hex_code};"
+
+        return format_html('<span title="{}" style="{}"></span>', obj.color.name, style)
+
+    @admin.display(description="Вариации", ordering="sort_total")
+    def get_colors_count(self, obj):
+        # Если текущий товар - дочерний(вариация)
+        if obj.base_product_id:
+            # считаем активных детей родителя + сам родитель (если активный)
+            active = obj.child_active_family + (1 if obj.base_product.is_active else 0)
+            # считаем всех детей родителя + сам родитель
+            total = obj.child_total_family + 1
+            # Ссылка должна вести на ID родителя, чтобы показать всю группу
+            target_id = obj.base_product_id
+        # Если текущий товар - базовый
+        else:
+            active = obj.base_active_kids + (1 if obj.is_active else 0)
+            total = obj.base_total_kids + 1
+            # Ссылка ведет на его собственный ID
+            target_id = obj.id
+
+        if total <= 1:
+            return "1 / 1"
+
+        # Генерируем ссылку (используем строку поиска с префиксом)
+        url = reverse("admin:xwear_product_changelist") + f"?q=family_{target_id}"
+
+        color = (
+            "inherit" if active == total else "#f39c12"
+        )  # Оранжевый, если есть скрытые
+
+        return format_html(
+            '<a href="{}" style="color: {};">{} / {}</a>',
+            url,
+            color,
+            active,
+            total,
+        )
 
     @admin.display(description="Сезон", ordering="specification__season")
     def get_season(self, obj):
@@ -635,29 +702,76 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
 
     # ограничиваем выборку для base_product
     def get_search_results(self, request, queryset, search_term):
+        # ==========================================
+        # 1. ЛОГИКА ДЛЯ ССЫЛКИ "СЕМЬЯ" В ВАРИАЦИЯХ
+        # ==========================================
+        # 1. Ловим наш поисковый запрос
+        if search_term.startswith("family_"):
+            family_id = search_term.replace("family_", "")
+            if family_id.isdigit():
+                # Фильтруем ТОЛЬКО по семье, игнорируя текстовый поиск
+                queryset = queryset.filter(Q(pk=family_id) | Q(base_product_id=family_id))
+                # Возвращаем результат (False означает, что distinct не нужен)
+                return queryset, False
+
+        # ==========================================
+        # 2. БАЗОВЫЙ ПОИСК DJANGO (ОБЩИЙ)
+        # ==========================================
+        orig_queryset = queryset
         queryset, use_distinct = super().get_search_results(
             request, queryset, search_term
         )
+
+        # ==========================================
+        # 3. ОГРАНИЧИВАЕМ ВЫБОРКУ ДЛЯ АВТОКОМПЛИТА В "BASE_PRODUCT"
+        # ==========================================
 
         # Проверяем, что запрос пришел именно от нашего поля
         if request.GET.get("field_name") == "base_product":
             # 1. Сначала оставляем только "корневые" товары
             queryset = queryset.filter(base_product__isnull=True)
 
-            # 2. Пытаемся достать данные из GET-запроса
+            # 2. Пытаемся достать данные из GET-запроса, который шлёт наш JS
+            # !!! brand или model могут быть необязательными
             brand_id = request.GET.get("forward_brand")
             category_id = request.GET.get("forward_category")
             model_name = request.GET.get("forward_model")
 
-            # 3. Если данные есть — фильтруем жестко по модели
+            # Если мы ищем базовый товар, нам не важен search_term,
+            # если у нас есть точные brand/model
+            target_qs = orig_queryset.filter(base_product__isnull=True)
+
+            # 3. Если менеджер не заполнил форму
             if brand_id and category_id and model_name:
-                queryset = queryset.filter(
+                # Если данные есть — фильтруем жестко по модели
+                queryset = target_qs.filter(
                     brand_id=brand_id,
                     category_id=category_id,
-                    model_name__iexact=model_name,  # Регистронезависимо
+                    model_name__iexact=model_name.strip(),  # Регистронезависимо
                 )
+            else:
+                # Если хотя бы одно поле пустое — очищаем список,
+                # заставляя менеджера сначала выбрать Бренд/Категорию/Модель
+                queryset = queryset.none()
 
         return queryset, use_distinct
+
+    # Переопределение сортировки
+    def get_ordering(self, request):
+        # Получаем текущую сортировку (то, что выбрал пользователь кликом)
+        ordering = super().get_ordering(request)
+
+        # При сортировке по "Вариациям":
+        # 1. члены одной семьи всегда будут идти строгим блоком
+        # 2. внутри этого блока «папа» будет выше детей
+        if "sort_total" in ordering:
+            # Если кликнули "от меньшего к большему"
+            return ["sort_total", "family_id", "is_child"]
+        elif "-sort_total" in ordering:
+            # Если кликнули "от большего к меньшему"
+            return ["-sort_total", "family_id", "is_child"]
+
+        return ordering  # В остальных случаях стандартное поведение
 
     # Оптимизация запросов
     def get_queryset(self, request):
@@ -678,15 +792,38 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
                 total_count=Count("sizes"),
                 # Считаем только активные размеры, используя фильтр Q
                 active_count=Count("sizes", filter=Q(sizes__is_active=True)),
-                # 1. Если это базовый товар (считаем его "детей")
-                parent_colors_count=Count("variants__color", distinct=True),
-                # 2. Если это дочерний товар (идем к родителю и считаем его "детей")
-                child_colors_count=Count("base_product__variants__color", distinct=True),
                 # Расчет цен
                 min_price=Min("sizes__final_price", filter=Q(sizes__is_active=True)),
                 max_price=Max("sizes__final_price", filter=Q(sizes__is_active=True)),
                 # Добавляем имя корневой категории в SQL запрос
                 root_category_name=Subquery(root_category_subquery),
+                # 1. Если это базовый товар (считаем его "детей")
+                base_active_kids=Count(
+                    "variants", filter=Q(variants__is_active=True), distinct=True
+                ),
+                base_total_kids=Count("variants", distinct=True),
+                # 2. Если это дочерний товар (идем к родителю и считаем его "детей")
+                child_active_family=Count(
+                    "base_product__variants",
+                    filter=Q(base_product__variants__is_active=True),
+                    distinct=True,
+                ),
+                child_total_family=Count("base_product__variants", distinct=True),
+                # Создаем единое поле для сортировки по вариациям
+                sort_total=Case(
+                    When(base_product__isnull=True, then=Count("variants") + 1),
+                    default=Count("base_product__variants") + 1,
+                    output_field=IntegerField(),
+                ),
+                # Определяем общий ID семьи для группировки
+                # Если base_product_id пустой (мы база), берем свой id. Иначе берем base_product_id
+                family_id=Coalesce("base_product_id", "id"),
+                # Определяем, кто есть кто (0 = база, 1 = ребенок)
+                is_child=Case(
+                    When(base_product__isnull=True, then=Value(0)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                ),
             )
         )
 

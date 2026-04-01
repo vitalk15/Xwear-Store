@@ -1,6 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
+from django.utils.html import format_html
 from django.conf import settings
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
@@ -268,8 +269,11 @@ class Product(models.Model):
         null=True,
         blank=True,
         related_name="variants",
-        verbose_name="Базовый товар (для связи цветов)",
-        help_text="Оставьте пустым, если это базовый цвет. Для других цветов выберите базовый товар.",
+        verbose_name="Базовая модель (для связи цветов)",
+        help_text=format_html(
+            "Заполняется автоматически, если для текущей уже есть базовая модель.<br>"
+            "Оставьте поле пустым, если это первая модель в серии (станет базовой)."
+        ),
     )
     category = models.ForeignKey(
         Category,
@@ -290,8 +294,6 @@ class Product(models.Model):
         on_delete=models.PROTECT,
         related_name="products",
         verbose_name="Цвет",
-        null=True,  # Временно разрешаем null, чтобы накатить миграции на старые данные
-        blank=True,
     )
     name = models.CharField(
         max_length=50,
