@@ -265,7 +265,7 @@ class Product(models.Model):
 
     base_product = models.ForeignKey(
         "self",
-        on_delete=models.SET_NULL,  # Если удалим главный товар, остальные просто "отвяжутся", а не удалятся
+        on_delete=models.PROTECT,  # запрет удаления базового товара, пока к нему привязаны другие цвета
         null=True,
         blank=True,
         related_name="variants",
@@ -283,9 +283,7 @@ class Product(models.Model):
     )
     brand = models.ForeignKey(
         Brand,
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
+        on_delete=models.PROTECT,
         related_name="products",
         verbose_name="Бренд",
     )
@@ -301,7 +299,7 @@ class Product(models.Model):
         verbose_name="Вид товара",
         help_text="Оставьте пустым, для автогенерации из категории",
     )
-    model_name = models.CharField(max_length=50, blank=True, verbose_name="Модель")
+    model_name = models.CharField(max_length=50, verbose_name="Модель")
     gender = models.CharField(
         max_length=1, choices=GenderChoices.choices, verbose_name="Пол"
     )
@@ -424,8 +422,12 @@ class Product(models.Model):
             self.__class__.objects.filter(pk=self.pk).update(article=self.article)
 
     def __str__(self):
-        color_name = self.color.name if self.color else "Цвет не указан"
-        return f"{self.full_name} ({color_name})"
+        full_name = self.full_name
+        if self.color:
+            full_name += f" ({self.color.name})"
+        if self.base_product_id is None:
+            return f"{full_name} [БАЗА]"
+        return full_name
 
     class Meta:
         ordering = ["name"]

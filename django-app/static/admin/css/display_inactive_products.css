@@ -1,0 +1,51 @@
+/* Находим строку, в которой чекбокс в колонке is_active НЕ отмечен */
+/* Селектор :not(:checked) ловит именно состояние "пустого" квадратика */
+tr:has(td.field-is_active input[type='checkbox']:not(:checked)) {
+	opacity: 0.5;
+	background-color: #f9f9f9 !important; /* !important нужен, чтобы перебить стандартную "зебру" Django */
+	filter: grayscale(0.6); /* Дополнительно обесцветим строку для наглядности */
+	transition: all 0.3s ease;
+}
+
+/* При наведении возвращаем немного яркости */
+tr:has(td.field-is_active input[type='checkbox']:not(:checked)):hover {
+	opacity: 0.8;
+	filter: grayscale(0.2);
+}
+
+/* Чтобы текст не расплывался при прозрачности, можно чуть затемнить его */
+tr:has(td.field-is_active input[type='checkbox']:not(:checked)) td {
+	color: #888 !important;
+}
+
+/* Делаем строку с 0 размеров визуально "заблокированной" */
+/* Блокируем чекбокс */
+tr.no-active-sizes td.field-is_active input[type='checkbox'] {
+	opacity: 0;
+	pointer-events: none;
+	position: relative;
+}
+
+/* Добавляем иконку замочка или стоп-сигнала вместо чекбокса */
+tr.no-active-sizes td.field-is_active::before {
+	content: '🚫';
+	font-size: 13px;
+	position: absolute;
+	margin-left: 0;
+	margin-top: 0;
+	/* opacity: 0.5; */
+}
+
+/* Текст ошибки при наведении на ячейку */
+tr.no-active-sizes td.field-is_active:hover::after {
+	content: 'Активация невозможна: нет размеров';
+	position: absolute;
+	z-index: 1000;
+	background: #333;
+	color: white;
+	padding: 5px 10px;
+	border-radius: 4px;
+	font-size: 11px;
+	white-space: nowrap;
+	left: 40px;
+}

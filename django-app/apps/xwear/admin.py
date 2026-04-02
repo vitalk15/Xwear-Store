@@ -17,7 +17,6 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 from django.utils.html import format_html
 from django.urls import reverse
-from django.utils.http import urlencode
 from django_mptt_admin.admin import DjangoMpttAdmin
 from adminsortable2.admin import (
     SortableAdminBase,
@@ -126,7 +125,7 @@ class ProductImageFormSet(CustomInlineFormSet):
 class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
     model = ProductImage
     formset = ProductImageFormSet
-    extra = 1  # 1 пустая строка для изображения
+    # extra = 1  # 1 пустая строка для изображения
     fields = ["image", "is_main", "alt", "image_preview"]
     sortable_field_name = "position"
     verbose_name_plural = "Фото товара (При создании выберите главное фото, при редактировании - перетащите наверх)"
@@ -134,6 +133,12 @@ class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
     @admin.display(description="Превью")
     def image_preview(self, obj):
         return get_admin_thumb(obj.image, alias="admin_preview")
+
+    # добавление пустой строки для внесения данных
+    def get_extra(self, request, obj=None, **kwargs):
+        if obj:  # Если объект уже существует в базе (редактирование)
+            return 0
+        return 1  # Если это создание нового товара
 
     def get_readonly_fields(self, request, obj=None):
         # obj — это сам Товар (Product).
@@ -176,7 +181,7 @@ class SizeAdmin(SortableAdminMixin, admin.ModelAdmin):
 
 class ProductSizeInline(admin.TabularInline):
     model = ProductSize
-    extra = 1  # 1 пустой размер
+    # extra = 1  # 1 пустой размер
     fields = ["size", "price", "discount_percent", "display_final_price", "is_active"]
     # Это делает выбор размера быстрым поиском (требует search_fields в SizeAdmin)
     autocomplete_fields = ["size"]
@@ -189,6 +194,12 @@ class ProductSizeInline(admin.TabularInline):
                 '<strong style="color: #28a745;">{} </strong>', obj.final_price
             )
         return "-"
+
+    # добавление пустой строки для внесения данных
+    def get_extra(self, request, obj=None, **kwargs):
+        if obj:  # Если объект уже существует в базе (редактирование)
+            return 0
+        return 1  # Если это создание нового товара
 
     def get_queryset(self, request):
         # Оптимизируем запрос, чтобы не тянуть размеры по одному
@@ -557,8 +568,13 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         if not obj.color:
             return "—"
 
+        # Определяем, является ли товар базовым
+        is_base = obj.base_product_id is None
+
+        # Базовые стили
         style = "display:inline-block; width:16px; height:16px; border-radius:50%; border:1px solid #aaa; vertical-align:middle; cursor: help;"
 
+        # Логика фона
         if obj.color.texture:
             style += f"background-image: url({obj.color.texture.url}); background-size: cover; background-position: center;"
         elif obj.color.hex_code and obj.color.hex_code_2:
@@ -566,9 +582,17 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         elif obj.color.hex_code:
             style += f"background-color: {obj.color.hex_code};"
 
-        return format_html('<span title="{}" style="{}"></span>', obj.color.name, style)
+        # Логика контура
+        if is_base:
+            # Для базового товара - двойная серая рамка
+            style += " box-shadow: 0 0 0 1px #fff, 0 0 0 2px #aaa;"
 
-    @admin.display(description="Вариации", ordering="sort_total")
+        # Всплывающая подсказка
+        title = f"{obj.color.name} (БАЗА)" if is_base else obj.color.name
+
+        return format_html('<span title="{}" style="{}"></span>', title, style)
+
+    @admin.display(description="Колорвей", ordering="sort_total")
     def get_colors_count(self, obj):
         # Если текущий товар - дочерний(вариация)
         if obj.base_product_id:
@@ -596,7 +620,7 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         )  # Оранжевый, если есть скрытые
 
         return format_html(
-            '<a href="{}" style="color: {};">{} / {}</a>',
+            '<a href="{}" style="color: {};">{} / {} -></a>',
             url,
             color,
             active,
@@ -732,7 +756,6 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
             queryset = queryset.filter(base_product__isnull=True)
 
             # 2. Пытаемся достать данные из GET-запроса, который шлёт наш JS
-            # !!! brand или model могут быть необязательными
             brand_id = request.GET.get("forward_brand")
             category_id = request.GET.get("forward_category")
             model_name = request.GET.get("forward_model")
@@ -828,11 +851,21 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         )
 
     def save_model(self, request, obj, form, change):
-        # 1. Если чекбокс перегенерации нажат — очищаем поле прямо перед сохранением
+        # Если в карточке товара чекбокс перегенерации нажат — очищаем поле прямо перед сохранением
         if form.cleaned_data.get("regen_article"):
             obj.article = None
         if form.cleaned_data.get("regen_slug"):
             obj.slug = None
+
+        # Проверяем, что запрос на активацию товара пришел со страницы списка (changelist)
+        if request.resolver_match and "changelist" in request.resolver_match.url_name:
+            if obj.is_active and obj.sizes.filter(is_active=True).count() == 0:
+                # Если менеджер попытался включить товар без размеров через чекбокс в списке
+                obj.is_active = False  # Отменяем активацию
+                messages.error(
+                    request,
+                    f"Товар '{obj.model_name}' не активирован: добавьте размеры в карточке товара.",
+                )
 
         # 2. Сохраняем сам товар
         super().save_model(request, obj, form, change)
@@ -849,10 +882,10 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
             )
 
     def save_related(self, request, form, formsets, change):
-        # 1. Сначала даем Django сохранить все инлайны и позиции от Sortable2
+        # Сначала даем Django сохранить все инлайны и позиции от Sortable2
         super().save_related(request, form, formsets, change)
 
-        # 2. Ищем, в какой форме был изменен или установлен флаг is_main
+        # 1. Ищем, в какой форме был изменен или установлен флаг is_main
         manual_id = None
         for formset in formsets:
             if formset.model == ProductImage:
@@ -863,10 +896,24 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
                             manual_id = f.instance.pk
                 break
 
-        # 3. Передаем этот ID в функцию синхронизации
+        # 2. Передаем этот ID в функцию синхронизации
         from .utils import sync_product_images
 
         sync_product_images(form.instance, manual_selected_id=manual_id)
+
+        # Деактивация товара с неактивными размерами
+        obj = form.instance
+        if obj.is_active and obj.sizes.filter(is_active=True).count() == 0:
+            # Принудительно выключаем товар
+            obj.is_active = False
+            obj.save(update_fields=["is_active"])
+
+            # Выводим предупреждение
+            messages.warning(
+                request,
+                f"Товар '{obj}' был автоматически деактивирован, "
+                "так как все его размеры выключены.",
+            )
 
     # Динамический подход для полей только для чтения (если данных ещё нет, можно ввести вручную)
     # def get_readonly_fields(self, request, obj=None):
@@ -882,7 +929,9 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
             "admin/js/product_gender_auto.js",
             "admin/js/product_price_preview.js",
             "admin/js/product_autocomplete.js",
+            "admin/js/no_active_product.js",
         )
+        css = {"all": ("admin/css/display_inactive_products.css",)}
 
 
 # ------ БРЕНДЫ --------
