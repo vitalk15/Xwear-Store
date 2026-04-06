@@ -223,3 +223,6 @@ __marimo__/
 
 info.txt
 media/
+# Игнорируем папку с бэкапами и логами
+backups/
+logs/

@@ -219,7 +219,8 @@ class ProductListSerializer(serializers.ModelSerializer):
                 )
 
         # Сортируем (например, по названию цвета), чтобы порядок был всегда одинаковым
-        return sorted(results, key=lambda x: x["color"]["name"])
+        # return sorted(results, key=lambda x: x["color"]["name"])
+        return results
 
     def get_frontend_url(self, obj):
         # Собираем путь: /catalog/полный-путь-категории/слаг-товара-ID
@@ -298,11 +299,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
                         # "product_slug": p.slug,
                         "frontend_url": self.get_frontend_url(p),
                         "is_current": p.id
-                        == obj.id,  # Флаг, чтобы фронтенд выделил текущий цвет
+                        == obj.id,  # Флаг, для выделения текущего цвета
                     }
                 )
 
-        return sorted(results, key=lambda x: x["color"]["name"])
+        # return sorted(results, key=lambda x: x["color"]["name"])
+        return results
 
     class Meta:
         model = Product
