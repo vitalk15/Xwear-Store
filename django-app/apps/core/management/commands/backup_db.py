@@ -7,10 +7,21 @@ from django.conf import settings
 
 
 class Command(BaseCommand):
-    help = "Создает бинарный бэкап базы данных PostgreSQL (.backup) с текущей датой и удаляет архивы старше 7 дней"
+    help = "Создает по-умолчанию бинарный бэкап базы данных PostgreSQL (.backup) с текущей датой и удаляет архивы старше 7 дней. Для текстового бэкапа (.sql) используйте флаг --sql"
+
+    def add_arguments(self, parser):
+        # Добавляем наш кастомный флаг --sql
+        # action='store_true' означает, что если флаг указан, переменная будет True.
+        # Если не указан — False.
+        parser.add_argument(
+            "--sql",
+            action="store_true",
+            help="Сохранить бэкап в текстовом формате (.sql) вместо бинарного",
+        )
 
     def handle(self, *args, **options):
-        # 1. Получаем настройки базы данных по умолчанию
+        # --- 1. Настройки базы и парсинг аргументов ---
+        # Получаем настройки базы данных по умолчанию
         db = settings.DATABASES["default"]
         db_engine = db.get("ENGINE", "")
 
@@ -24,17 +35,25 @@ class Command(BaseCommand):
         db_host = db["HOST"] or "127.0.0.1"
         db_port = db["PORT"] or "5432"
 
-        # 2. Формируем имя файла с датой и временем
+        # Проверяем, передан ли флаг --sql
+        is_sql_format = options["sql"]
+
+        # Динамически задаем расширение файла и формат для pg_dump
+        extension = ".sql" if is_sql_format else ".backup"
+        pg_format = "p" if is_sql_format else "c"  # 'p' - plain, 'c' - custom
+
+        # Формируем имя файла с датой и временем
         # Формат: dbname_backup_2026_04_06_15_30.backup
         timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M")
-        filename = f"{db_name}_backup_{timestamp}.backup"
+        filename = f"{db_name}_backup_{timestamp}{extension}"
 
         # Создаем папку backups в корне проекта, если её нет
         backup_dir = os.path.join(settings.BASE_DIR, "backups")
         os.makedirs(backup_dir, exist_ok=True)
         filepath = os.path.join(backup_dir, filename)
 
-        # 3. Подготавливаем команду pg_dump
+        # --- 2. Создание бэкапа ---
+        # Подготавливаем команду pg_dump
         cmd = [
             "pg_dump",
             "-U",
@@ -44,23 +63,24 @@ class Command(BaseCommand):
             "-p",
             str(db_port),
             "-F",
-            "c",  # Формат Custom (бинарный архив)
+            pg_format,
             "-d",
-            db_name,  # Явное указание имени БД
+            db_name,
             "-f",
-            filepath,  # Куда сохранить файл
+            filepath,
         ]
 
-        # 4. Передаем пароль через переменные окружения,
+        # Передаем пароль через переменные окружения,
         # чтобы pg_dump не завис в ожидании ввода с клавиатуры
         env = os.environ.copy()
         if db_password:
             env["PGPASSWORD"] = db_password
 
-        self.stdout.write(f'Создание бэкапа базы данных "{db_name}"...')
-
-        # 5. Запускаем процесс
+        # Запускаем процесс
         try:
+            self.stdout.write(
+                f'Создание бэкапа базы данных "{db_name}" в формате {extension}...'
+            )
             # check=True выбросит исключение, если команда завершится с ошибкой
             subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
             self.stdout.write(self.style.SUCCESS(f"Бэкап создан: {filepath}"))
@@ -74,12 +94,11 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("Ошибка при создании бэкапа:"))
             self.stderr.write(self.style.ERROR(e.stderr))
 
-        # 6. Очистка старых бэкапов
+        # --- 3. Очистка старых бэкапов (7 дней) ---
         days_to_keep = 7
-        now = time.time()
 
         # 86400 - это количество секунд в одних сутках (24 * 60 * 60)
-        cutoff_time = now - (days_to_keep * 86400)
+        cutoff_time = time.time() - (days_to_keep * 86400)
 
         deleted_backups = 0
         # deleted_logs = 0
@@ -90,8 +109,11 @@ class Command(BaseCommand):
         for filename in os.listdir(backup_dir):
             filepath = os.path.join(backup_dir, filename)
 
-            # Удаляем только файлы .backup старше 7 дней
-            if os.path.isfile(filepath) and filename.endswith(".backup"):
+            # Проверяем оба возможных расширения перед удалением
+            is_backup_file = filename.endswith(".backup") or filename.endswith(".sql")
+
+            # Удаляем только файлы и только с двумя возможными расширениями
+            if os.path.isfile(filepath) and is_backup_file:
                 # Проверяем время последней модификации файла
                 file_mtime = os.path.getmtime(filepath)
                 # Если файл старше 7 дней
@@ -99,7 +121,7 @@ class Command(BaseCommand):
                     os.remove(filepath)
                     deleted_backups += 1
 
-        if deleted_backups > 0:
+        if deleted_backups:
             self.stdout.write(
                 self.style.WARNING(f"Удалено старых бэкапов - {deleted_backups}")
             )
@@ -115,6 +137,8 @@ class Command(BaseCommand):
 # --------------------------
 # 1. Ручной запуск в терминале:
 # python manage.py backup_db
+# или
+# python manage.py backup_db --sql
 
 # 2. Автоматизация (Production):
 # Когда проект будет на сервере, можно настроить Cron (планировщик задач в Linux), чтобы команда запускалась, например, раз в сутки в 3 часа ночи.
