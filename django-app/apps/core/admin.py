@@ -42,6 +42,13 @@ class NoDeleteAddMixin:
         return False
 
 
+class NoAddMixin:
+    """Миксин запрещающий добавление, но разрешающий правку"""
+
+    def has_add_permission(self, request):
+        return False
+
+
 # --------------------------------------------------------
 
 

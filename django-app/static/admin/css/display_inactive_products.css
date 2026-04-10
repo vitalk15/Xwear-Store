@@ -1,3 +1,7 @@
+/* =============================== */
+/* 1. ЗАТЕМНЕНИЕ НЕАКТИВНЫХ СТРОК  */
+/* =============================== */
+
 /* Находим строку, в которой чекбокс в колонке is_active НЕ отмечен */
 /* Селектор :not(:checked) ловит именно состояние "пустого" квадратика */
 tr:has(td.field-is_active input[type='checkbox']:not(:checked)) {
@@ -18,27 +22,31 @@ tr:has(td.field-is_active input[type='checkbox']:not(:checked)) td {
 	color: #888 !important;
 }
 
-/* Делаем строку с 0 размеров визуально "заблокированной" */
-/* Блокируем чекбокс */
-tr.no-active-sizes td.field-is_active input[type='checkbox'] {
+/* ========================================================= */
+/* 2. БЛОКИРОВКА ЧЕКБОКСОВ (Если нет размеров или вариантов) */
+/* ========================================================= */
+
+/* Блокируем и прячем чекбокс */
+tr.no-active-sizes td.field-is_active input[type='checkbox'],
+tr.no-active-variants td.field-is_active input[type='checkbox'] {
 	opacity: 0;
 	pointer-events: none;
 	position: relative;
 }
 
-/* Добавляем иконку замочка или стоп-сигнала вместо чекбокса */
-tr.no-active-sizes td.field-is_active::before {
+/* Добавляем иконку */
+tr.no-active-sizes td.field-is_active::before,
+tr.no-active-variants td.field-is_active::before {
 	content: '🚫';
 	font-size: 13px;
 	position: absolute;
 	margin-left: 0;
 	margin-top: 0;
-	/* opacity: 0.5; */
 }
 
-/* Текст ошибки при наведении на ячейку */
-tr.no-active-sizes td.field-is_active:hover::after {
-	content: 'Активация невозможна: нет размеров';
+/* Базовые стили для тултипа */
+tr.no-active-sizes td.field-is_active:hover::after,
+tr.no-active-variants td.field-is_active:hover::after {
 	position: absolute;
 	z-index: 1000;
 	background: #333;
@@ -48,4 +56,19 @@ tr.no-active-sizes td.field-is_active:hover::after {
 	font-size: 11px;
 	white-space: nowrap;
 	left: 40px;
+	top: 5px;
+}
+
+/* ======================== */
+/* 3. ТЕКСТЫ ДЛЯ ПОДСКАЗОК  */
+/* ======================== */
+
+/* Текст ошибки для вариантов (нет размеров) */
+tr.no-active-sizes td.field-is_active:hover::after {
+	content: 'Активация невозможна: нет размеров';
+}
+
+/* Текст ошибки для базовых товаров (нет цветов) */
+tr.no-active-variants td.field-is_active:hover::after {
+	content: 'Активация невозможна: нет вариантов';
 }

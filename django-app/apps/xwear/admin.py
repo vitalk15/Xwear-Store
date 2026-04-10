@@ -9,15 +9,13 @@ from django.db.models import (
     Max,
     OuterRef,
     Subquery,
-    Case,
-    When,
-    IntegerField,
-    Value,
 )
-from django.db.models.functions import Coalesce
+
+# from django.db.models.functions import Coalesce
 from django.utils.html import format_html
 from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
+import nested_admin
 from adminsortable2.admin import (
     SortableAdminBase,
     SortableAdminMixin,
@@ -26,42 +24,77 @@ from adminsortable2.admin import (
 )
 
 # from mptt.forms import TreeNodeChoiceField
-from core.admin import ReadOnlyAdminMixin
+from core.admin import ReadOnlyAdminMixin, NoAddMixin
 from .models import (
     Category,
     Brand,
     Color,
     Product,
+    ProductVariant,
     ProductImage,
     Size,
     ProductSize,
     Material,
-    ProductSpecification,
+    ProductMaterial,
     Favorite,
     SliderBanner,
 )
 from .utils import get_admin_thumb, add_validator_attrs_to_widget
 
 
-# ------ КАТЕГОРИИ --------
+# ==========================================
+# 1. ФОРМЫ
+# ==========================================
 
 
-@admin.register(Category)
-class CategoryAdmin(DjangoMpttAdmin):
-    # атр. prepopulated_fields - автогенерация slug по name (показ подсказки в админке)
-    prepopulated_fields = {"slug": ("name",)}
-    list_display = ["name", "slug", "level", "is_active"]
-    list_display_links = ["name"]
-    list_filter = ["is_active", "level"]
-    list_editable = ["is_active"]
-    search_fields = ["name"]
+class ProductAdminForm(forms.ModelForm):
+    # Указываем специальное поле для выбора категории
+    # level_indicator — это символы, которые будут показывать вложенность
+    # category = TreeNodeChoiceField(queryset=Category.objects.all(), level_indicator="---")
+    # Фильтруем категории так, чтобы можно было выбрать только "листья" (leaf nodes)
+    # category = TreeNodeChoiceField(
+    #     queryset=Category.objects.filter(children__isnull=True), level_indicator="--"
+    # )
 
-    # Это ускорит работу __str__, так как родители будут в памяти
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("parent")
+    class Meta:
+        model = Product
+        fields = "__all__"
+
+    # метод проверки данных поля формы
+    def clean_category(self):
+        category = self.cleaned_data.get("category")
+        # Проверяем, является ли категория "листом" (т.е. нет ли у неё детей)
+        # В django-mptt для этого есть встроенный метод is_leaf_node()
+        if category and not category.is_leaf_node():
+            raise ValidationError(
+                f"Категория '{category.name}' является групповой. "
+                "Пожалуйста, выберите конечную подкатегорию."
+            )
+        return category
 
 
-# ------ ЦВЕТА --------
+class ProductVariantAdminForm(forms.ModelForm):
+    set_discount_all_sizes = forms.IntegerField(
+        label="Установить скидку (%) на все размеры",
+        required=False,
+        min_value=0,
+        max_value=100,
+        help_text="Введите число, чтобы массово обновить скидку",
+    )
+    regen_article = forms.BooleanField(
+        required=False,
+        label="Сбросить артикул",
+        help_text="Отметьте, чтобы создать новый артикул для варианта товара",
+    )
+    regen_slug = forms.BooleanField(
+        required=False,
+        label="Сбросить слаг",
+        help_text="Отметьте, чтобы обновить ссылку на вариант товара",
+    )
+
+    class Meta:
+        model = ProductVariant
+        fields = "__all__"
 
 
 class ColorAdminForm(forms.ModelForm):
@@ -79,210 +112,156 @@ class ColorAdminForm(forms.ModelForm):
         }
 
 
-@admin.register(Color)
-class ColorAdmin(SortableAdminMixin, admin.ModelAdmin):
-    form = ColorAdminForm
-    list_display = ["name", "color_preview", "slug", "hex_code", "hex_code_2"]
-    search_fields = ["name"]
-    prepopulated_fields = {"slug": ("name",)}
-
-    @admin.display(description="Цвет")
-    def color_preview(self, obj):
-        # Базовые стили для кружочка
-        style = "width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ccc;"
-
-        # 1. Приоритет отдаем текстуре (картинке)
-        if obj.texture:
-            style += f"background-image: url({obj.texture.url}); background-size: cover; background-position: center;"
-        # 2. Если есть второй цвет — делаем диагональный градиент
-        elif obj.hex_code_2:
-            style += f"background: linear-gradient(135deg, {obj.hex_code} 51%, {obj.hex_code_2} 49%);"
-        # 3. Обычный однотонный цвет
-        elif obj.hex_code:
-            style += f"background-color: {obj.hex_code};"
-
-        return format_html('<div title="{}" style="{}"></div>', obj.name, style)
-
-
-# ------ ИЗОБРАЖЕНИЯ --------
-
-
-class ProductImageFormSet(CustomInlineFormSet):
+class ProductImageFormSet(nested_admin.formsets.NestedInlineFormSet):
     """Проверяет, что загружено хотя бы одно изображение"""
 
     def clean(self):
         super().clean()
-        # Считаем количество форм, которые не помечены на удаление и содержат файлы
+        if any(self.errors):
+            return
+
         count = 0
         for form in self.forms:
-            if form.cleaned_data and not form.cleaned_data.get("DELETE"):
-                count += 1
+            # Проверяем, что форма не пустая и не помечена на удаление
+            if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
+                # Проверяем наличие самого файла изображения
+                if form.cleaned_data.get("image"):
+                    count += 1
 
         if count < 1:
-            raise ValidationError("У товара должно быть хотя бы одно изображение.")
+            raise ValidationError("У варианта должно быть хотя бы одно изображение.")
 
 
-class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
-    model = ProductImage
-    formset = ProductImageFormSet
-    # extra = 1  # 1 пустая строка для изображения
-    fields = ["image", "is_main", "alt", "image_preview"]
-    sortable_field_name = "position"
-    verbose_name_plural = "Фото товара (При создании выберите главное фото, при редактировании - перетащите наверх)"
+# ==========================================
+# 2. ФИЛЬТРЫ
+# ==========================================
 
-    @admin.display(description="Превью")
-    def image_preview(self, obj):
-        return get_admin_thumb(obj.image, alias="admin_preview")
 
-    # добавление пустой строки для внесения данных
-    def get_extra(self, request, obj=None, **kwargs):
-        if obj:  # Если объект уже существует в базе (редактирование)
-            return 0
-        return 1  # Если это создание нового товара
+class CategoryOptimizedFilter(admin.SimpleListFilter):
+    title = "Категория"  # Заголовок в сайдбаре
+    parameter_name = "category_id"  # Имя параметра в URL
 
-    def get_readonly_fields(self, request, obj=None):
-        # obj — это сам Товар (Product).
-        # Если он существует (obj is not None), значит мы в режиме редактирования.
-        if obj:
-            return ["image_preview", "is_main"]
-        # Если товара еще нет (режим создания), все поля доступны для редактирования
-        return ["image_preview"]
+    def lookups(self, request, model_admin):
+        # делаем ОДИН запрос с select_related('parent')
+        #     categories = (
+        #         model_admin.model._meta.get_field("category")
+        #         .related_model.objects.select_related("parent")
+        #         .all()
+        #     )
+        #     # Возвращаем список кортежей (id, имя_с_отступами)
+        #     # Так как мы использовали select_related, метод __str__ не будет дергать базу
+        #     return [(c.pk, str(c)) for c in categories]
 
-    def formfield_for_dbfield(self, db_field, request, **kwargs):
-        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
-        if db_field.name == "image":
-            # Прокидываем лимиты ImageValidator в админку (добавляем полю формы "image" data-атрибуты)
-            add_validator_attrs_to_widget(db_field, formfield)
-        return formfield
-
-    def get_queryset(self, request):
-        # Оптимизируем получение картинок внутри инлайна
-        return (
-            super()
-            .get_queryset(request)
-            .select_related("product__category", "product__brand")
+        # 1. Получаем модель категории через _meta (без прямого импорта)
+        CategoryModel = model_admin.model._meta.get_field("category").related_model
+        # 2. Находим категории, где есть товары напрямую
+        categories_with_products = CategoryModel.objects.filter(products__isnull=False)
+        # 3. ОДНИМ запросом получаем их и всех их родителей (цепочки)
+        # include_self=True оставит саму категорию в списке
+        categories = (
+            CategoryModel.objects.get_queryset_ancestors(
+                categories_with_products, include_self=True
+            )
+            .select_related("parent")
+            .distinct()
         )
+        return [(c.pk, str(c)) for c in categories]
 
-    class Media:
-        js = ("admin/js/image_preview.js",)
+    # def queryset(self, request, queryset):
+    #     # Фильтруем основной список товаров
+    #     if self.value():
+    #         return queryset.filter(category_id=self.value())
+    #     return queryset
 
-
-# ------ РАЗМЕРЫ --------
-
-
-@admin.register(Size)
-class SizeAdmin(SortableAdminMixin, admin.ModelAdmin):
-    list_display = ["name"]
-    list_display_links = ["name"]
-    search_fields = ["name"]
-    # list_editable = ["order"]
-    # fields = (("name", "order"),)
-
-
-class ProductSizeInline(admin.TabularInline):
-    model = ProductSize
-    # extra = 1  # 1 пустой размер
-    fields = ["size", "price", "discount_percent", "display_final_price", "is_active"]
-    # Это делает выбор размера быстрым поиском (требует search_fields в SizeAdmin)
-    autocomplete_fields = ["size"]
-    readonly_fields = ["display_final_price"]
-
-    @admin.display(description="Итоговая цена")
-    def display_final_price(self, obj):
-        if obj.final_price:
-            return format_html(
-                '<strong style="color: #28a745;">{} </strong>', obj.final_price
+    def queryset(self, request, queryset):
+        if self.value():
+            selected_node = queryset.model._meta.get_field(
+                "category"
+            ).related_model.objects.get(pk=self.value())
+            # Умная фильтрация: берем всех потомков узла по MPTT-индексам
+            return queryset.filter(
+                category__tree_id=selected_node.tree_id,
+                category__lft__gte=selected_node.lft,
+                category__lft__lte=selected_node.rght,
             )
-        return "-"
-
-    # добавление пустой строки для внесения данных
-    def get_extra(self, request, obj=None, **kwargs):
-        if obj:  # Если объект уже существует в базе (редактирование)
-            return 0
-        return 1  # Если это создание нового товара
-
-    def get_queryset(self, request):
-        # Оптимизируем запрос, чтобы не тянуть размеры по одному
-        return super().get_queryset(request).select_related("size")
+        return queryset
 
 
-# ------ ХАРАКТЕРИСТИКИ --------
+class VariantCategoryOptimizedFilter(admin.SimpleListFilter):
+    title = "Категория товара"
+    parameter_name = "category_id"
 
+    def lookups(self, request, model_admin):
+        # 1. Добираемся до модели категории через модель варианта -> продукт -> категория
+        # ProductVariant._meta.get_field("product").related_model -> это Product
+        ProductModel = model_admin.model._meta.get_field("product").related_model
+        CategoryModel = ProductModel._meta.get_field("category").related_model
 
-@admin.register(Material)
-class MaterialAdmin(admin.ModelAdmin):
-    list_display = ("name", "material_type")
-    list_filter = ("material_type",)
+        # 2. Находим категории, в которых есть товары, у которых есть варианты
+        # Это исключит пустые категории из списка в фильтре
+        categories_with_variants = CategoryModel.objects.filter(
+            products__variants__isnull=False
+        ).distinct()
 
-    # Поиск по названию (обязательно для работы autocomplete_fields)
-    search_fields = ("name",)
-
-    # Сортировка: сначала по типу, потом по алфавиту
-    ordering = ("material_type", "name")
-
-
-class SpecificationInline(admin.StackedInline):
-    model = ProductSpecification
-    can_delete = False
-    # Ограничиваем количество, так как это OneToOne
-    max_num = 1
-
-    autocomplete_fields = ["material_outer", "material_inner", "material_sole"]
-
-    class Media:
-        # Прячем заголовок h3 внутри инлайна (появляется при StackedInline)
-        css = {"all": ("admin/css/hide_inline_header.css",)}
-
-
-# ------ ТОВАРЫ --------
-
-
-class ProductAdminForm(forms.ModelForm):
-    # Указываем специальное поле для выбора категории
-    # level_indicator — это символы, которые будут показывать вложенность
-    # category = TreeNodeChoiceField(queryset=Category.objects.all(), level_indicator="---")
-    # Фильтруем категории так, чтобы можно было выбрать только "листья" (leaf nodes)
-    # category = TreeNodeChoiceField(
-    #     queryset=Category.objects.filter(children__isnull=True), level_indicator="--"
-    # )
-
-    # Добавляем виртуальное поле для установки массовой скидки
-    set_discount_all_sizes = forms.IntegerField(
-        label="Установить скидку (%) на все размеры",
-        required=False,
-        min_value=0,
-        max_value=100,
-        help_text="Введите число, чтобы массово обновить скидку",
-    )
-
-    regen_article = forms.BooleanField(
-        required=False,
-        label="Сбросить артикул",
-        help_text="Отметьте, чтобы создать новый артикул при сохранении",
-    )
-    regen_slug = forms.BooleanField(
-        required=False,
-        label="Сбросить слаг",
-        help_text="Отметьте, чтобы обновить ссылку на товар",
-    )
-
-    class Meta:
-        model = Product
-        fields = "__all__"
-
-    # метод проверки данных поля формы
-    def clean_category(self):
-        category = self.cleaned_data.get("category")
-
-        # Проверяем, является ли категория "листом" (т.е. нет ли у неё детей)
-        # В django-mptt для этого есть встроенный метод is_leaf_node()
-        if category and not category.is_leaf_node():
-            raise ValidationError(
-                f"Категория '{category.name}' является групповой. "
-                "Пожалуйста, выберите конечную подкатегорию."
+        # 3. Получаем всю цепочку предков для этих категорий (для MPTT)
+        categories = (
+            CategoryModel.objects.get_queryset_ancestors(
+                categories_with_variants, include_self=True
             )
+            .select_related("parent")
+            .distinct()
+        )
+        return [(c.pk, str(c)) for c in categories]
 
-        return category
+    def queryset(self, request, queryset):
+        if self.value():
+            # Получаем выбранный узел категории
+            ProductModel = queryset.model._meta.get_field("product").related_model
+            CategoryModel = ProductModel._meta.get_field("category").related_model
+
+            try:
+                selected_node = CategoryModel.objects.get(pk=self.value())
+                # Фильтруем ВАРИАНТЫ через связь с продуктом
+                return queryset.filter(
+                    product__category__tree_id=selected_node.tree_id,
+                    product__category__lft__gte=selected_node.lft,
+                    product__category__lft__lte=selected_node.rght,
+                )
+            except CategoryModel.DoesNotExist:
+                return queryset
+        return queryset
+
+
+class ActiveColorFilter(admin.SimpleListFilter):
+    title = "Цвет"
+    parameter_name = "color"
+
+    def lookups(self, request, model_admin):
+        # Получаем только те цвета, у которых есть хотя бы один товар,
+        # и убираем дубликаты с помощью distinct()
+        colors = Color.objects.filter(variants__isnull=False).distinct()
+        result = []
+        for c in colors:
+            # Базовый стиль
+            style = "display:inline-block; width:12px; height:12px; border-radius:50%; border:1px solid #aaa; vertical-align:middle; margin-right:6px;"
+            # Логика приоритетов цвета
+            if c.texture:
+                style += f"background: url({c.texture.url}) center/cover no-repeat;"
+            elif c.hex_code and c.hex_code_2:
+                style += f"background: linear-gradient(135deg, {c.hex_code} 51%, {c.hex_code_2} 49%);"
+            else:
+                style += f"background-color: {c.hex_code or '#eee'};"
+
+            # Собираем кружок и название цвета вместе
+            display_name = format_html('<span style="{}"></span> {}', style, c.name)
+            # Добавляем в итоговый список
+            result.append((c.id, display_name))
+        return result
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(color_id=self.value())
+        return queryset
 
 
 class DiscountFilter(admin.SimpleListFilter):
@@ -321,7 +300,6 @@ class SizeFilter(admin.SimpleListFilter):
             Size.objects.filter(id__in=used_size_ids).exclude(id=None).order_by("name")
         )
 
-        # 3. Возвращаем чистый список
         return [(s.id, s.name) for s in sizes]
 
     def queryset(self, request, queryset):
@@ -331,13 +309,11 @@ class SizeFilter(admin.SimpleListFilter):
 
 
 class AvailabilityFilter(admin.SimpleListFilter):
-    # Название фильтра в правой панели
     title = "Наличие размеров"
-    # Имя параметра в URL (например, ?availability=in_stock)
     parameter_name = "availability"
 
     def lookups(self, request, model_admin):
-        """Определяем варианты для выбора в фильтре"""
+        # Определяем варианты для выбора в фильтре
         return (
             ("in_stock", "Есть в наличии"),
             ("full", "Все в наличии"),
@@ -345,15 +321,13 @@ class AvailabilityFilter(admin.SimpleListFilter):
         )
 
     def queryset(self, request, queryset):
-        """Фильтруем запрос в зависимости от выбранного пункта"""
+        # Фильтруем запрос в зависимости от выбранного пункта
         if self.value() == "in_stock":
             # Хотя бы 1 размер активен
             return queryset.filter(active_count__gt=0)
-
         if self.value() == "out_of_stock":
             # Активных размеров 0
             return queryset.filter(active_count=0)
-
         if self.value() == "full":
             # Активные равны общему числу (и при этом товар вообще имеет размеры)
             return queryset.filter(active_count=F("total_count"), total_count__gt=0)
@@ -361,199 +335,215 @@ class AvailabilityFilter(admin.SimpleListFilter):
         return queryset
 
 
-class CategoryOptimizedFilter(admin.SimpleListFilter):
-    title = "Категория"  # Заголовок в сайдбаре
-    parameter_name = "category_id"  # Имя параметра в URL
+# ==========================================
+# 3. ИНЛАЙНЫ
+# ==========================================
 
-    def lookups(self, request, model_admin):
-        # делаем ОДИН запрос с select_related('parent')
-        #     categories = (
-        #         model_admin.model._meta.get_field("category")
-        #         .related_model.objects.select_related("parent")
-        #         .all()
-        #     )
-        #     # Возвращаем список кортежей (id, имя_с_отступами)
-        #     # Так как мы использовали select_related, метод __str__ не будет дергать базу
-        #     return [(c.pk, str(c)) for c in categories]
 
-        # 1. Получаем модель категории через _meta (без прямого импорта)
-        CategoryModel = model_admin.model._meta.get_field("category").related_model
+class ProductImageInline(nested_admin.NestedTabularInline):
+    model = ProductImage
+    formset = ProductImageFormSet
+    extra = 0
+    fields = ["image", "position", "is_main", "alt", "image_preview"]
+    classes = ["collapse"]
+    # sortable_field_name = "position"
 
-        # 2. Находим категории, где есть товары напрямую
-        categories_with_products = CategoryModel.objects.filter(products__isnull=False)
+    @admin.display(description="Превью")
+    def image_preview(self, obj):
+        return get_admin_thumb(obj.image, alias="product_small")
 
-        # 3. ОДНИМ запросом получаем их и всех их родителей (цепочки)
-        # include_self=True оставит саму категорию в списке
-        categories = (
-            CategoryModel.objects.get_queryset_ancestors(
-                categories_with_products, include_self=True
-            )
-            .select_related("parent")
-            .distinct()
+    # добавление пустой строки для внесения данных
+    # def get_extra(self, request, obj=None, **kwargs):
+    #     if obj:  # Если объект уже существует в базе (редактирование)
+    #         return 0
+    #     return 1  # Если это создание нового товара
+
+    def get_readonly_fields(self, request, obj=None):
+        # obj — это сам Товар (Product).
+        # Если он существует (obj is not None), значит мы в режиме редактирования.
+        # if obj:
+        #     return ["image_preview", "is_main"]
+        # Если товара еще нет (режим создания), все поля доступны для редактирования
+        return ["image_preview"]
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "image":
+            # Прокидываем лимиты ImageValidator в админку (добавляем полю формы "image" data-атрибуты)
+            add_validator_attrs_to_widget(db_field, formfield)
+        return formfield
+
+    def get_queryset(self, request):
+        # Оптимизируем получение картинок внутри инлайна
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("variant__product__category", "variant__product__brand")
         )
 
-        return [(c.pk, str(c)) for c in categories]
+    class Media:
+        js = ("admin/js/image_preview.js",)
 
-    # def queryset(self, request, queryset):
-    #     # Фильтруем основной список товаров
-    #     if self.value():
-    #         return queryset.filter(category_id=self.value())
-    #     return queryset
 
-    def queryset(self, request, queryset):
-        if self.value():
-            selected_node = queryset.model._meta.get_field(
-                "category"
-            ).related_model.objects.get(pk=self.value())
+class ProductSizeInline(nested_admin.NestedTabularInline):
+    model = ProductSize
+    extra = 0
+    fields = ["size", "price", "discount_percent", "display_final_price", "is_active"]
+    # Это делает выбор размера быстрым поиском (требует search_fields в SizeAdmin)
+    # autocomplete_fields = ["size"]
+    readonly_fields = ["display_final_price"]
+    classes = ["collapse"]
 
-            # Умная фильтрация: берем всех потомков узла по MPTT-индексам
-            return queryset.filter(
-                category__tree_id=selected_node.tree_id,
-                category__lft__gte=selected_node.lft,
-                category__lft__lte=selected_node.rght,
+    @admin.display(description="Итоговая цена")
+    def display_final_price(self, obj):
+        if obj and obj.pk and obj.final_price:
+            return format_html(
+                '<strong style="color: #28a745;">{} </strong>', obj.final_price
             )
+        return "-"
 
-        return queryset
+    def get_readonly_fields(self, request, obj=None):
+        # 1. Берем список из readonly_fields
+        readonly = list(self.readonly_fields)
+
+        # 2. Если объект уже существует в базе (режим редактирования)
+        if obj and obj.pk:
+            # Добавляем поле "size" только для чтения
+            if "size" not in readonly:
+                readonly.append("size")
+        return readonly
+
+    def has_add_permission(self, request, obj=None):
+        # Разрешаем добавлять новые размеры (вдруг появился нестандартный)
+        return True
+
+    def get_queryset(self, request):
+        # Оптимизируем запрос, чтобы не тянуть размеры по одному
+        return (
+            super().get_queryset(request).select_related("size").order_by("size__order")
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get("DELETE"):
+                is_active = form.cleaned_data.get("is_active")
+                price = form.cleaned_data.get("price")
+
+                # запрещаем активировать размер, не указав его цену
+                if is_active and (price is None or price <= 0):
+                    raise ValidationError(
+                        f"У размера {form.instance.size} включена активация, но не указана цена!"
+                    )
 
 
-class ActiveColorFilter(admin.SimpleListFilter):
-    title = "Цвет"
-    parameter_name = "color"
+class ProductMaterialInline(nested_admin.NestedStackedInline):
+    model = ProductMaterial
+    can_delete = False
+    # Ограничиваем количество, так как это OneToOne
+    max_num = 1  # Не больше одного
+    min_num = 1  # Обязательно наличие хотя бы одной записи
+    validate_min = True  # ВКЛЮЧАЕМ проверку минимального количества
+    autocomplete_fields = ["material_outer", "material_inner", "material_sole"]
+    classes = ["collapse"]
 
-    def lookups(self, request, model_admin):
-        # Получаем только те цвета, у которых есть хотя бы один товар,
-        # и убираем дубликаты с помощью distinct()
-        colors = Color.objects.filter(products__isnull=False).distinct()
+    class Media:
+        # Прячем заголовок h3 внутри инлайна (появляется при StackedInline)
+        css = {"all": ("admin/css/hide_inline_header.css",)}
 
-        result = []
 
-        for c in colors:
-            # Базовый стиль
-            style = "display:inline-block; width:12px; height:12px; border-radius:50%; border:1px solid #aaa; vertical-align:middle; margin-right:6px;"
+class ProductVariantInline(nested_admin.NestedStackedInline):
+    """Инлайн для отображения вариантов (цветов) внутри базового товара"""
 
-            # Логика приоритетов цвета
-            if c.texture:
-                style += f"background: url({c.texture.url}) center/cover no-repeat;"
-            elif c.hex_code and c.hex_code_2:
-                style += f"background: linear-gradient(135deg, {c.hex_code} 51%, {c.hex_code_2} 49%);"
-            else:
-                style += f"background-color: {c.hex_code or '#eee'};"
+    model = ProductVariant
+    # extra = 0
+    inlines = [ProductImageInline, ProductMaterialInline, ProductSizeInline]
+    fields = ["color", "article", "is_active", "edit_link"]
+    readonly_fields = ["edit_link", "article"]
+    verbose_name = "Вариант товара"
+    verbose_name_plural = "Варианты товара (заполнять после базового товара)"
+    classes = ["collapse"]
 
-            # Собираем кружок и название цвета вместе
-            display_name = format_html('<span style="{}"></span> {}', style, c.name)
+    @admin.display(description="Управление вариантом")
+    def edit_link(self, instance):
+        if instance.pk:
+            # Динамически получаем имя приложения и модели
+            app = instance._meta.app_label
+            model = instance._meta.model_name
+            # Создаем ссылку на страницу редактирования конкретного варианта
+            url = reverse(f"admin:{app}_{model}_change", args=[instance.pk])
+            return format_html(
+                '<a href="{}" class="button" target="_blank" style="white-space: nowrap;">'
+                "Настроить детали ➔</a>",
+                url,
+            )
+        return format_html('<span style="color: #888;">Сначала сохраните товар</span>')
 
-            # Добавляем в итоговый список
-            result.append((c.id, display_name))
+    # добавление пустой строки для внесения данных
+    def get_extra(self, request, obj=None, **kwargs):
+        if obj:  # Если объект уже существует в базе (редактирование)
+            return 0
+        return 1  # Если это создание нового товара
 
-        return result
+    class Media:
+        js = (
+            "admin/js/image_preview.js",
+            "admin/js/product_price_preview.js",
+            "admin/js/no_active_product.js",
+        )
+        css = {
+            "all": (
+                "admin/css/display_inactive_products.css",
+                "admin/css/variant_separation.css",
+            )
+        }
 
-    def queryset(self, request, queryset):
-        if self.value():
-            return queryset.filter(color_id=self.value())
-        return queryset
+
+# ==========================================
+# 4. АДМИН-КЛАССЫ
+# ==========================================
 
 
 @admin.register(Product)
-class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
+class ProductAdmin(nested_admin.NestedModelAdmin):
+    """Управление БАЗОВЫМИ товарами (моделями)"""
+
     form = ProductAdminForm
-    inlines = [ProductImageInline, ProductSizeInline, SpecificationInline]
+    inlines = [ProductVariantInline]
 
     list_display = [
-        "article",
         "get_full_name",
         "gender",
+        "season",
         "get_root_category",
-        "get_season",
-        "get_color_name",
-        "get_colors_count",
-        "active_sizes_count",
-        "get_price_range",
-        "image_main",
+        "variants_count",
         "is_active",
     ]
-    list_display_links = ["get_full_name", "article"]
-    list_filter = [
-        "is_active",
-        "gender",
-        "brand",
-        ActiveColorFilter,
-        "specification__season",
-        CategoryOptimizedFilter,
-        AvailabilityFilter,
-        SizeFilter,
-        DiscountFilter,
-    ]
-    # search_fields = ["get_full_name", "article", "brand__name"]
-    search_fields = ["brand__name", "model_name", "article"]
-
-    # Если категорий и брендов будет много (заменяет выбор из выпадающего списка на удобный поиск)
-    # search_fields = ["name", "brand__name", "category__name"] # в BrandAdmin и CategoryAdmin name уже указано
-    # autocomplete_fields = ["brand", "category"]
-    autocomplete_fields = ["category", "base_product", "color"]
-
-    # Редактирование в списке
+    list_display_links = ["get_full_name"]
+    list_filter = ["is_active", "gender", "brand", CategoryOptimizedFilter, "season"]
+    search_fields = ["brand__name", "model_name", "name"]
+    autocomplete_fields = ["category", "brand"]
     list_editable = ["is_active"]
+    readonly_fields = ["slug"]
+    filter_horizontal = ["available_sizes"]
 
-    # Артикул и слаг всегда только для чтения
-    readonly_fields = ["article", "slug"]
-
-    # Форма редактирования
     fieldsets = (
         (
             "Классификация",
-            {
-                "fields": (
-                    ("brand", "model_name"),
-                    ("category", "gender"),
-                    "color",
-                    "base_product",
-                ),
-            },
+            {"fields": (("brand", "model_name"), ("category", "gender"))},
         ),
-        (
-            "Информация",
-            {
-                "fields": ("description",),
-            },
-        ),
-        (
-            "Настройки и Статус",
-            {
-                "fields": (
-                    "set_discount_all_sizes",
-                    "is_active",
-                ),
-            },
-        ),
-        (
-            "Идентификация (Авто)",
-            {
-                "classes": ("collapse",),  # Делаем блок свернутым по умолчанию
-                "fields": ("name", "article", "slug"),
-            },
-        ),
-        (
-            "Служебные действия",
-            {
-                "classes": ("collapse",),
-                "description": (
-                    '<div style="color: #ba2121; font-weight: bold; margin-bottom: 10px;">'
-                    "⚠️ ИНСТРУКЦИЯ: Если вы изменили ВИД, БРЕНД, МОДЕЛЬ или КАТЕГОРИЮ у существующего товара:<br>"
-                    '1. Отметьте галочки ниже и нажмите "Сохранить".<br>'
-                    "2. Чтобы фото назывались правильно и лежали в правильных папках на сервере — удалите старые изображения и загрузите их заново."
-                    "</div>"
-                ),
-                "fields": ("regen_article", "regen_slug"),
-            },
-        ),
+        ("Базовая информация", {"fields": ("season", "description")}),
+        ("Размерная сетка", {"classes": ("collapse",), "fields": ("available_sizes",)}),
+        ("Идентификация (Авто)", {"classes": ("collapse",), "fields": ("name", "slug")}),
+        ("", {"fields": ("is_active",)}),
     )
 
     # Кол-во показываемых товаров на одной странице пагинации
     list_per_page = 10
-
+    # Заменяет подсчёт количества найденных записей на ссылку "Показать всё" (ускорение загрузки)
     show_full_result_count = False
 
-    @admin.display(description="Полное название")
+    @admin.display(description="Базовый товар")
     def get_full_name(self, obj):
         return obj.full_name
 
@@ -561,79 +551,21 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
     def gender_display(self, obj):
         return obj.get_gender_display()
 
-    # gender_display.short_description = "Пол"
+    @admin.display(description="Сезон")
+    def season_display(self, obj):
+        return obj.get_season_display()
 
-    @admin.display(description="Цвет")
-    def get_color_name(self, obj):
-        if not obj.color:
-            return "—"
+    # @admin.display(description="Категория", ordering="category")
+    # def get_short_category(self, obj):
+    #     """
+    #     Отображает только последнюю часть категории (после разделителя)
+    #     """
+    #     if obj.category:
+    #         full_path = str(obj.category)
+    #         return full_path.rsplit(" / ", maxsplit=1)[-1]
+    #     return "-"
 
-        # Определяем, является ли товар базовым
-        is_base = obj.base_product_id is None
-
-        # Базовые стили
-        style = "display:inline-block; width:16px; height:16px; border-radius:50%; border:1px solid #aaa; vertical-align:middle; cursor: help;"
-
-        # Логика фона
-        if obj.color.texture:
-            style += f"background-image: url({obj.color.texture.url}); background-size: cover; background-position: center;"
-        elif obj.color.hex_code and obj.color.hex_code_2:
-            style += f"background: linear-gradient(135deg, {obj.color.hex_code} 51%, {obj.color.hex_code_2} 49%);"
-        elif obj.color.hex_code:
-            style += f"background-color: {obj.color.hex_code};"
-
-        # Логика контура
-        if is_base:
-            # Для базового товара - двойная серая рамка
-            style += " box-shadow: 0 0 0 1px #fff, 0 0 0 2px #aaa;"
-
-        # Всплывающая подсказка
-        title = f"{obj.color.name} (БАЗА)" if is_base else obj.color.name
-
-        return format_html('<span title="{}" style="{}"></span>', title, style)
-
-    @admin.display(description="Колорвей", ordering="sort_total")
-    def get_colors_count(self, obj):
-        # Если текущий товар - дочерний(вариация)
-        if obj.base_product_id:
-            # считаем активных детей родителя + сам родитель (если активный)
-            active = obj.child_active_family + (1 if obj.base_product.is_active else 0)
-            # считаем всех детей родителя + сам родитель
-            total = obj.child_total_family + 1
-            # Ссылка должна вести на ID родителя, чтобы показать всю группу
-            target_id = obj.base_product_id
-        # Если текущий товар - базовый
-        else:
-            active = obj.base_active_kids + (1 if obj.is_active else 0)
-            total = obj.base_total_kids + 1
-            # Ссылка ведет на его собственный ID
-            target_id = obj.id
-
-        if total <= 1:
-            return "1 / 1"
-
-        # Генерируем ссылку (используем строку поиска с префиксом)
-        url = reverse("admin:xwear_product_changelist") + f"?q=family_{target_id}"
-
-        color = (
-            "inherit" if active == total else "#f39c12"
-        )  # Оранжевый, если есть скрытые
-
-        return format_html(
-            '<a href="{}" style="color: {};">{} / {} -></a>',
-            url,
-            color,
-            active,
-            total,
-        )
-
-    @admin.display(description="Сезон", ordering="specification__season")
-    def get_season(self, obj):
-        if hasattr(obj, "specification"):
-            return obj.specification.get_season_display()
-        return "—"
-
-    @admin.display(description="Группа", ordering="root_category_name")
+    @admin.display(description="Группа")
     def get_root_category(self, obj):
         # """
         # Отображает только корневую категорию (Обувь, Одежда и т.д.)
@@ -653,23 +585,215 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         # Если категория есть и подзапрос что-то нашел, выводим. Иначе "-"
         return getattr(obj, "root_category_name", None) or "-"
 
-    # @admin.display(description="Категория", ordering="category")
-    # def get_short_category(self, obj):
-    #     """
-    #     Отображает только последнюю часть категории (после разделителя)
-    #     """
-    #     if obj.category:
-    #         full_path = str(obj.category)
-    #         return full_path.rsplit(" / ", maxsplit=1)[-1]
-    #     return "-"
+    @admin.display(description="Варианты", ordering="variants_count_annotated")
+    def variants_count(self, obj):
+        count = obj.variants_count_annotated
 
-    @admin.display(description="Главное фото")
-    def image_main(self, obj):
-        main_img = obj.get_main_image_obj
-        if main_img:
-            return get_admin_thumb(main_img.image, "xwear.ProductImage.image")
-        return "-"
-        # return None
+        # Если вариантов нет, просто выводим 0 красным цветом
+        if count == 0:
+            return format_html('<span style="color: #dc3545;">0</span>')
+
+        # Динамически получаем имя приложения
+        app_label = obj._meta.app_label
+
+        # Формируем URL для списка вариантов с фильтром по ID текущего базового товара
+        url = (
+            reverse(f"admin:{app_label}_productvariant_changelist")
+            + f"?product__id__exact={obj.id}"
+        )
+
+        # Возвращаем ссылку
+        return format_html('<a href="{}" style="color: #007bff;">{} ➔</a>', url, count)
+
+    def get_queryset(self, request):
+        # Создаем подзапрос: ищем категорию с уровнем 0 и таким же tree_id, как у товара
+        root_category_subquery = Category.objects.filter(
+            tree_id=OuterRef("category__tree_id"), level=0
+        ).values("name")[:1]
+
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("category__parent", "brand")
+            .annotate(
+                # Добавляем имя корневой категории в SQL запрос
+                root_category_name=Subquery(root_category_subquery),
+                # Считаем варианты
+                variants_count_annotated=Count("variants", distinct=True),
+            )
+        )
+
+    def save_model(self, request, obj, form, change):
+        # Защита от включения товара без вариантов через галочку в списке (changelist)
+        if request.resolver_match and "changelist" in request.resolver_match.url_name:
+            if obj.is_active and obj.variants.count() == 0:
+                obj.is_active = False  # Блокируем активацию
+                messages.error(
+                    request,
+                    f"Товар '{obj.model_name}' не активирован: добавьте хотя бы один цвет (вариант).",
+                )
+
+        super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        # 1. Сначала даем Django сохранить все инлайны и позиции от Sortable2
+        super().save_related(request, form, formsets, change)
+
+        obj = form.instance
+
+        # 2. Проходимся по сохраненным вариантам и применяем логику
+        # Получаем все варианты, привязанные к этому товару
+        variants = obj.variants.all()
+
+        for variant in variants:
+            # А. Проверка на пустые размеры и деактивация
+            if variant.is_active and not variant.sizes.filter(is_active=True).exists():
+                # Принудительно выключаем вариант
+                variant.is_active = False
+                variant.save(update_fields=["is_active"])
+                messages.warning(
+                    request, f"Вариант '{variant}' выключен: нет активных размеров."
+                )
+
+            # Б. Синхронизация главных фото и и генерация alt-текста
+            from .utils import sync_product_images
+
+            sync_product_images(variant)
+
+        # 3. Авто-отключение товара, если сохранили карточку, а вариантов нет
+        if obj.is_active and obj.variants.count() == 0:
+            obj.is_active = False
+            # Сохраняем только поле активности, чтобы не триггерить полное обновление
+            obj.save(update_fields=["is_active"])
+
+            messages.warning(
+                request,
+                f"Товар '{obj.model_name}' деактивирован, так как у него нет ни одного варианта.",
+            )
+
+    class Media:
+        js = (
+            "admin/js/product_gender_auto.js",
+            "admin/js/no_active_product.js",
+        )
+        css = {"all": ("admin/css/display_inactive_products.css",)}
+
+
+@admin.register(ProductVariant)
+class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
+    """
+    Dashboard для управления вариантами товаров.
+    Используется для быстрого поиска, фильтрации и массовых правок (цены, скидки, статус).
+    """
+
+    form = ProductVariantAdminForm
+
+    # inlines = [ProductImageInline, ProductSizeInline, ProductMaterialInline]
+
+    list_display = [
+        "article",
+        "get_product_name",
+        "get_color_display",
+        "get_gender",
+        "get_root_category",
+        "get_season",
+        "active_sizes_count",
+        "get_price_range",
+        "image_main",
+        "is_active",
+    ]
+    list_display_links = ["article"]
+    list_filter = [
+        "is_active",
+        "product__brand",
+        "product__gender",
+        VariantCategoryOptimizedFilter,
+        "product__season",
+        ActiveColorFilter,
+        AvailabilityFilter,
+        SizeFilter,
+        DiscountFilter,
+    ]
+    search_fields = ["article", "product__model_name", "product__brand__name"]
+    autocomplete_fields = ["product", "color"]
+    list_editable = ["is_active"]
+    readonly_fields = ["article", "slug"]
+
+    fieldsets = (
+        ("Привязка", {"fields": ("product", "color")}),
+        ("Опции", {"fields": ("set_discount_all_sizes", "is_active")}),
+        ("Идентификация (Авто)", {"fields": ("article", "slug")}),
+        (
+            "Служебные действия",
+            {
+                "classes": ("collapse",),
+                "description": (
+                    '<div style="color: #ba2121; font-weight: bold; margin-bottom: 10px;">'
+                    "⚠️ ИНСТРУКЦИЯ: Если вы изменили ВИД, БРЕНД, МОДЕЛЬ или КАТЕГОРИЮ у существующего товара:<br>"
+                    '1. Отметьте галочки ниже и нажмите "Сохранить".<br>'
+                    "2. Чтобы фото назывались правильно и лежали в правильных папках на сервере — удалите старые изображения и загрузите их заново."
+                    "</div>"
+                ),
+                "fields": ("regen_article", "regen_slug"),
+            },
+        ),
+    )
+
+    # Кол-во показываемых товаров на одной странице пагинации
+    list_per_page = 10
+    # Заменяет подсчёт количества найденных записей на ссылку "Показать всё" (ускорение загрузки)
+    show_full_result_count = False
+
+    # --- ОТОБРАЖЕНИЕ ДАННЫХ ---
+
+    @admin.display(description="Товар")
+    def get_product_name(self, obj):
+        if not obj.product:
+            return "-"
+        # Динамически получаем данные для URL
+        app_label = obj.product._meta.app_label
+        model_name = obj.product._meta.model_name
+        # Генерируем URL (теперь код не зависит от имени приложения)
+        url = reverse(f"admin:{app_label}_{model_name}_change", args=[obj.product.pk])
+
+        return format_html(
+            '<a href="{}" target="_blank" text-decoration: none; color: #447e9b;">'
+            "{}"
+            "</a>",
+            url,
+            obj.product.full_name,
+        )
+
+    @admin.display(description="Сезон")
+    def get_season(self, obj):
+        return obj.product.get_season_display()
+
+    @admin.display(description="Пол")
+    def get_gender(self, obj):
+        return obj.product.get_gender_display()
+
+    @admin.display(description="Группа")
+    def get_root_category(self, obj):
+        """Отображает корневую категорию (уровень 0) через аннотацию"""
+        return getattr(obj, "root_category_name", "-") or "-"
+
+    @admin.display(description="Цвет")
+    def get_color_display(self, obj):
+        if not obj.color:
+            return "—"
+
+        # Базовые стили
+        style = "display:inline-block; width:16px; height:16px; border-radius:50%; border:1px solid #aaa; vertical-align:middle; cursor: help;"
+
+        # Логика фона
+        if obj.color.texture:
+            style += f"background-image: url({obj.color.texture.url}); background-size: cover; background-position: center;"
+        elif obj.color.hex_code and obj.color.hex_code_2:
+            style += f"background: linear-gradient(135deg, {obj.color.hex_code} 51%, {obj.color.hex_code_2} 49%);"
+        elif obj.color.hex_code:
+            style += f"background-color: {obj.color.hex_code};"
+
+        return format_html('<span title="{}" style="{}"></span>', obj.color.name, style)
 
     @admin.display(description="Размеры", ordering="active_sizes")
     def active_sizes_count(self, obj):
@@ -677,10 +801,10 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         # Получаем все размеры один раз (они уже в кеше благодаря prefetch_related)
         # all_sizes = obj.sizes.all()
         # all_count = len(all_sizes)
-        # Считаем активные без создания лишних списков в памяти
+        # Считаем активные без создания лишних списков в памяти - способ 2
         # active_count = sum(1 for s in all_sizes if s.is_active)
 
-        # Считаем в памяти через список - менее оптимально
+        # Считаем в памяти через список - способ 1 (менее оптимально)
         # active_count = len([s for s in obj.sizes.all() if s.is_active])
 
         # return f"{active_count} / {all_count}"
@@ -691,22 +815,17 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
 
         # По умолчанию цвет обычный
         text_color = "inherit"
-
         if active == 0:
-            text_color = "#dc3545"  # Красный
-        elif active == total:
-            text_color = "#28a745"  # Зеленый
+            text_color = "#dc3545"
+        elif active == total and total > 0:
+            text_color = "#28a745"
         elif active < total / 2:
-            text_color = "#800000"  # Бордовый
-
+            text_color = "#800000"
         return format_html(
-            '<span style="color: {};">{} / {}</span>',
-            text_color,
-            active,
-            total,
+            '<span style="color: {};">{} / {}</span>', text_color, active, total
         )
 
-    @admin.display(description="Диапазон цен", ordering="min_price")
+    @admin.display(description="Цены", ordering="min_price")
     def get_price_range(self, obj):
         # 1 вар. - Через список - не оптимально
         # prices = [s.final_price for s in obj.sizes.all() if s.is_active]
@@ -715,102 +834,39 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
         # return "Цена не задана"
 
         # 2.вар - подсчет на уровне SQL через annotate в get_queryset (работает быстро и поддерживает сортировку в столбце)
-        # Если база нашла цены (min_price не None)
         if obj.min_price is not None:
             # Если мин и макс совпадают, выводим одно число, иначе диапазон
             if obj.min_price == obj.max_price:
                 return f"{obj.min_price}"
             return f"{obj.min_price} – {obj.max_price}"
+        return format_html('<span style="color: #999;">Нет цен</span>')
 
-        return "Цена не задана"
+    @admin.display(description="Главное фото")
+    def image_main(self, obj):
+        main_img = obj.get_main_image_obj
+        if main_img:
+            return get_admin_thumb(main_img.image)
+        return "-"
 
-    # ограничиваем выборку для base_product
-    def get_search_results(self, request, queryset, search_term):
-        # ==========================================
-        # 1. ЛОГИКА ДЛЯ ССЫЛКИ "СЕМЬЯ" В ВАРИАЦИЯХ
-        # ==========================================
-        # 1. Ловим наш поисковый запрос
-        if search_term.startswith("family_"):
-            family_id = search_term.replace("family_", "")
-            if family_id.isdigit():
-                # Фильтруем ТОЛЬКО по семье, игнорируя текстовый поиск
-                queryset = queryset.filter(Q(pk=family_id) | Q(base_product_id=family_id))
-                # Возвращаем результат (False означает, что distinct не нужен)
-                return queryset, False
-
-        # ==========================================
-        # 2. БАЗОВЫЙ ПОИСК DJANGO (ОБЩИЙ)
-        # ==========================================
-        orig_queryset = queryset
-        queryset, use_distinct = super().get_search_results(
-            request, queryset, search_term
-        )
-
-        # ==========================================
-        # 3. ОГРАНИЧИВАЕМ ВЫБОРКУ ДЛЯ АВТОКОМПЛИТА В "BASE_PRODUCT"
-        # ==========================================
-
-        # Проверяем, что запрос пришел именно от нашего поля
-        if request.GET.get("field_name") == "base_product":
-            # 1. Сначала оставляем только "корневые" товары
-            queryset = queryset.filter(base_product__isnull=True)
-
-            # 2. Пытаемся достать данные из GET-запроса, который шлёт наш JS
-            brand_id = request.GET.get("forward_brand")
-            category_id = request.GET.get("forward_category")
-            model_name = request.GET.get("forward_model")
-
-            # Если мы ищем базовый товар, нам не важен search_term,
-            # если у нас есть точные brand/model
-            target_qs = orig_queryset.filter(base_product__isnull=True)
-
-            # 3. Если менеджер не заполнил форму
-            if brand_id and category_id and model_name:
-                # Если данные есть — фильтруем жестко по модели
-                queryset = target_qs.filter(
-                    brand_id=brand_id,
-                    category_id=category_id,
-                    model_name__iexact=model_name.strip(),  # Регистронезависимо
-                )
-            else:
-                # Если хотя бы одно поле пустое — очищаем список,
-                # заставляя менеджера сначала выбрать Бренд/Категорию/Модель
-                queryset = queryset.none()
-
-        return queryset, use_distinct
-
-    # Переопределение сортировки
-    def get_ordering(self, request):
-        # Получаем текущую сортировку (то, что выбрал пользователь кликом)
-        ordering = super().get_ordering(request)
-
-        # При сортировке по "Вариациям":
-        # 1. члены одной семьи всегда будут идти строгим блоком
-        # 2. внутри этого блока «папа» будет выше детей
-        if "sort_total" in ordering:
-            # Если кликнули "от меньшего к большему"
-            return ["sort_total", "family_id", "is_child"]
-        elif "-sort_total" in ordering:
-            # Если кликнули "от большего к меньшему"
-            return ["-sort_total", "family_id", "is_child"]
-
-        return ordering  # В остальных случаях стандартное поведение
+    # --- ЛОГИКА И ОПТИМИЗАЦИЯ ---
 
     # Оптимизация запросов
     def get_queryset(self, request):
-        # Создаем подзапрос: ищем категорию с уровнем 0 и таким же tree_id, как у товара
+        # Подзапрос: ищем в дереве категорию с level=0, у которой tree_id совпадает
+        # с tree_id категории связанного товара
         root_category_subquery = Category.objects.filter(
-            tree_id=OuterRef("category__tree_id"), level=0
+            tree_id=OuterRef("product__category__tree_id"), level=0
         ).values("name")[:1]
-
         return (
             super()
             .get_queryset(request)
             .select_related(
-                "category__parent", "brand", "color", "base_product", "specification"
+                "product", "product__brand", "product__category", "color", "composition"
             )
             .prefetch_related("images")
             .annotate(
+                # Прокидываем имя корневой категории в каждый вариант
+                root_category_name=Subquery(root_category_subquery),
                 # Считаем общее количество связанных размеров
                 total_count=Count("sizes"),
                 # Считаем только активные размеры, используя фильтр Q
@@ -818,123 +874,62 @@ class ProductAdmin(SortableAdminBase, admin.ModelAdmin):
                 # Расчет цен
                 min_price=Min("sizes__final_price", filter=Q(sizes__is_active=True)),
                 max_price=Max("sizes__final_price", filter=Q(sizes__is_active=True)),
-                # Добавляем имя корневой категории в SQL запрос
-                root_category_name=Subquery(root_category_subquery),
-                # 1. Если это базовый товар (считаем его "детей")
-                base_active_kids=Count(
-                    "variants", filter=Q(variants__is_active=True), distinct=True
-                ),
-                base_total_kids=Count("variants", distinct=True),
-                # 2. Если это дочерний товар (идем к родителю и считаем его "детей")
-                child_active_family=Count(
-                    "base_product__variants",
-                    filter=Q(base_product__variants__is_active=True),
-                    distinct=True,
-                ),
-                child_total_family=Count("base_product__variants", distinct=True),
-                # Создаем единое поле для сортировки по вариациям
-                sort_total=Case(
-                    When(base_product__isnull=True, then=Count("variants") + 1),
-                    default=Count("base_product__variants") + 1,
-                    output_field=IntegerField(),
-                ),
-                # Определяем общий ID семьи для группировки
-                # Если base_product_id пустой (мы база), берем свой id. Иначе берем base_product_id
-                family_id=Coalesce("base_product_id", "id"),
-                # Определяем, кто есть кто (0 = база, 1 = ребенок)
-                is_child=Case(
-                    When(base_product__isnull=True, then=Value(0)),
-                    default=Value(1),
-                    output_field=IntegerField(),
-                ),
             )
         )
 
     def save_model(self, request, obj, form, change):
-        # Если в карточке товара чекбокс перегенерации нажат — очищаем поле прямо перед сохранением
+        # 1. Сброс артикула/слага при необходимости
+        # Если в карточке варианта товара чекбокс перегенерации нажат — очищаем поле прямо перед сохранением
         if form.cleaned_data.get("regen_article"):
             obj.article = None
         if form.cleaned_data.get("regen_slug"):
             obj.slug = None
 
-        # Проверяем, что запрос на активацию товара пришел со страницы списка (changelist)
+        # 2. Валидация активации из списка (Changelist)
         if request.resolver_match and "changelist" in request.resolver_match.url_name:
+            # Если менеджер попытался включить товар без размеров через чекбокс в списке
             if obj.is_active and obj.sizes.filter(is_active=True).count() == 0:
-                # Если менеджер попытался включить товар без размеров через чекбокс в списке
-                obj.is_active = False  # Отменяем активацию
+                # Отменяем активацию
+                obj.is_active = False
                 messages.error(
                     request,
-                    f"Товар '{obj.model_name}' не активирован: добавьте размеры в карточке товара.",
+                    f"Вариант '{obj.product.model_name}' не активирован: добавьте размеры.",
                 )
 
-        # 2. Сохраняем сам товар
+        # Сохраняем сам вариант
         super().save_model(request, obj, form, change)
 
-        # 3. Проверяем, ввел ли менеджер значение в поле массовой скидки
+        # 3. Применение массовой скидки
         discount_value = form.cleaned_data.get("set_discount_all_sizes")
-
         if discount_value is not None:
             # Обновляем все активные размеры этого товара одним запросом к базе
             obj.sizes.filter(is_active=True).update(discount_percent=discount_value)
-
             messages.info(
                 request, f"Скидка {discount_value}% применена ко всем размерам."
             )
 
-    def save_related(self, request, form, formsets, change):
-        # Сначала даем Django сохранить все инлайны и позиции от Sortable2
-        super().save_related(request, form, formsets, change)
-
-        # 1. Ищем, в какой форме был изменен или установлен флаг is_main
-        manual_id = None
-        for formset in formsets:
-            if formset.model == ProductImage:
-                for f in formset.forms:
-                    # Если галочка is_main изменилась или она True в новой форме
-                    if "is_main" in f.changed_data and f.cleaned_data.get("is_main"):
-                        if f.instance.pk:
-                            manual_id = f.instance.pk
-                break
-
-        # 2. Передаем этот ID в функцию синхронизации
-        from .utils import sync_product_images
-
-        sync_product_images(form.instance, manual_selected_id=manual_id)
-
-        # Деактивация товара с неактивными размерами
-        obj = form.instance
-        if obj.is_active and obj.sizes.filter(is_active=True).count() == 0:
-            # Принудительно выключаем товар
-            obj.is_active = False
-            obj.save(update_fields=["is_active"])
-
-            # Выводим предупреждение
-            messages.warning(
-                request,
-                f"Товар '{obj}' был автоматически деактивирован, "
-                "так как все его размеры выключены.",
-            )
-
-    # Динамический подход для полей только для чтения (если данных ещё нет, можно ввести вручную)
-    # def get_readonly_fields(self, request, obj=None):
-    #     if obj:  # Если товар уже создан
-    #         return [
-    #             "article",
-    #             "slug",
-    #         ]  # Запрещаем менять слаг и артикул ПОСЛЕ создания
-    #     return ["article"]  # При создании слаг можно править
-
     class Media:
         js = (
-            "admin/js/product_gender_auto.js",
+            "admin/js/image_preview.js",
             "admin/js/product_price_preview.js",
-            "admin/js/product_autocomplete.js",
             "admin/js/no_active_product.js",
         )
         css = {"all": ("admin/css/display_inactive_products.css",)}
 
 
-# ------ БРЕНДЫ --------
+@admin.register(Category)
+class CategoryAdmin(DjangoMpttAdmin):
+    # атр. prepopulated_fields - автогенерация slug по name (показ подсказки в админке)
+    prepopulated_fields = {"slug": ("name",)}
+    list_display = ["name", "slug", "level", "is_active"]
+    list_display_links = ["name"]
+    list_filter = ["is_active", "level"]
+    list_editable = ["is_active"]
+    search_fields = ["name"]
+
+    # Это ускорит работу __str__, так как родители будут в памяти
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("parent")
 
 
 @admin.register(Brand)
@@ -962,8 +957,12 @@ class BrandAdmin(admin.ModelAdmin):
     @admin.display(description="Товары")
     def view_products_link_list(self, obj):
         if obj.pk:
+            # Динамически получаем имя приложения
+            app_label = obj._meta.app_label
+
             url = (
-                reverse("admin:xwear_product_changelist") + f"?brand__id__exact={obj.pk}"
+                reverse(f"admin:{app_label}_product_changelist")
+                + f"?brand__id__exact={obj.pk}"
             )
             return format_html('<a href="{}">Перейти ({})</a>', url, obj.products_count)
         return "-"
@@ -972,8 +971,12 @@ class BrandAdmin(admin.ModelAdmin):
     @admin.display(description="Управление ассортиментом")
     def view_products_link_detail(self, obj):
         if obj.pk:
+            # Динамически получаем имя приложения
+            app_label = obj._meta.app_label
+
             url = (
-                reverse("admin:xwear_product_changelist") + f"?brand__id__exact={obj.pk}"
+                reverse(f"admin:{app_label}_product_changelist")
+                + f"?brand__id__exact={obj.pk}"
             )
             return format_html(
                 '<a href="{}" class="button" style="background-color: #79aec8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">'
@@ -990,22 +993,61 @@ class BrandAdmin(admin.ModelAdmin):
         return super().get_queryset(request).annotate(products_count=Count("products"))
 
 
-# ------ ИЗБРАННОЕ --------
+@admin.register(Color)
+class ColorAdmin(SortableAdminMixin, admin.ModelAdmin):
+    form = ColorAdminForm
+    list_display = ["name", "color_preview", "slug", "hex_code", "hex_code_2"]
+    search_fields = ["name"]
+    prepopulated_fields = {"slug": ("name",)}
+
+    @admin.display(description="Цвет")
+    def color_preview(self, obj):
+        # Базовые стили для кружочка
+        style = "width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ccc;"
+
+        # 1. Приоритет отдаем текстуре (картинке)
+        if obj.texture:
+            style += f"background-image: url({obj.texture.url}); background-size: cover; background-position: center;"
+        # 2. Если есть второй цвет — делаем диагональный градиент
+        elif obj.hex_code_2:
+            style += f"background: linear-gradient(135deg, {obj.hex_code} 51%, {obj.hex_code_2} 49%);"
+        # 3. Обычный однотонный цвет
+        elif obj.hex_code:
+            style += f"background-color: {obj.hex_code};"
+
+        return format_html('<div title="{}" style="{}"></div>', obj.name, style)
+
+
+@admin.register(Size)
+class SizeAdmin(SortableAdminMixin, admin.ModelAdmin):
+    list_display = ["name"]
+    list_display_links = ["name"]
+    search_fields = ["name"]
+    # list_editable = ["order"]
+    # fields = (("name", "order"),)
+
+
+@admin.register(Material)
+class MaterialAdmin(admin.ModelAdmin):
+    list_display = ("name", "material_type")
+    list_filter = ("material_type",)
+
+    # Поиск по названию (обязательно для работы autocomplete_fields)
+    search_fields = ("name",)
+
+    ordering = ("material_type", "name")
 
 
 @admin.register(Favorite)
 class FavoriteAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("user", "product", "created_at")
-    list_filter = ("user", "product__brand", "created_at")
-    search_fields = ("user__email", "product__name")
+    list_display = ("user", "variant", "created_at")
+    # list_filter = ("user", "product__brand", "created_at")
+    search_fields = ("user__email", "variant__full_name", "variant__article")
     readonly_fields = (
         "user",
-        "product",
+        "variant",
         "created_at",
     )
-
-
-# ------ БАННЕР-СЛАЙДЕР --------
 
 
 @admin.register(SliderBanner)

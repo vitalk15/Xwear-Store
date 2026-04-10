@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "mptt",
     "django_mptt_admin",
     "adminsortable2",
+    "nested_admin",
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
@@ -176,41 +177,41 @@ THUMBNAIL_NAMER = "xwear.utils.clean_thumbnail_namer"
 THUMBNAIL_ALIASES = {
     "xwear.ProductImage.image": {
         "admin_preview": {  # для превью в админке
-            "size": (80, 70),
-            "crop": "smart",
-            "quality": 85,
-        },
-        "product_small": {  # для превью в корзине или мини-карточек
-            "size": (105, 95),
-            "crop": "smart",
-            "quality": 85,
-        },
-        "product_medium": {  # для плитки товаров
-            "size": (320, 320),
-            "crop": "smart",
-            "quality": 85,
-        },
-        "product_large": {  # для детальной страницы товара
-            "size": (670, 490),
+            "size": (80, 80),
             "crop": "smart",
             "quality": 90,
+        },
+        "product_small": {  # для превью в корзине или мини-карточек
+            "size": (90, 100),
+            "crop": "smart",
+            "quality": 90,
+        },
+        "product_medium": {  # для плитки товаров
+            "size": (320, 360),
+            "crop": "smart",
+            "quality": 90,
+        },
+        "product_large": {  # для детальной страницы товара
+            "size": (500, 600),
+            "crop": "smart",
+            "quality": 95,
         },
     },
     "xwear.SliderBanner.image": {
         "admin_preview": {
             "size": (250, 100),
             "crop": "smart",
-            "quality": 85,
+            "quality": 90,
         },
         "slider_small": {
             "size": (250, 100),
             "crop": "smart",
-            "quality": 85,
+            "quality": 90,
         },
         "slider_medium": {
             "size": (1000, 400),
             "crop": "smart",
-            "quality": 85,
+            "quality": 90,
         },
         "slider_large": {
             "size": (1540, 630),

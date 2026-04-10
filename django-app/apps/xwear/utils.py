@@ -6,8 +6,6 @@ from io import BytesIO
 from PIL import Image
 from django.core.files.base import ContentFile
 from django.utils.deconstruct import deconstructible
-
-# from django.utils.text import slugify
 from django.utils.html import format_html
 from django.db.models import Prefetch, Min, Max, Q
 from django.db import transaction
@@ -36,13 +34,18 @@ class UploadToPath:
         ext = "webp"  # Мы всегда конвертируем в webp
         subfolder = ""
 
+        # Пытаемся получить продукт напрямую (если он есть)
+        product = getattr(instance, "product", None)
+
+        # Если напрямую не нашли, идем через вариант (наша новая структура)
+        if not product and getattr(instance, "variant", None):
+            product = instance.variant.product
+
         # 1. Если передан префикс - используем его
         if self.prefix:
             base_name = self.prefix
         # 2. Если префикса нет, определяем базовое имя товара (слаг)
-        elif hasattr(instance, "product") and instance.product:
-            product = instance.product
-
+        elif product:
             # Берем готовый слаг товара
             base_name = getattr(product, "slug", "product")
 
@@ -248,11 +251,11 @@ def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
 
         if not options:
             # Дефолтные настройки, если алиас не найден
-            options = {"size": (80, 70), "crop": "smart", "quality": 85}
+            options = {"size": (80, 80), "crop": "smart", "quality": 90}
 
         # Генерируем миниатюру через метод поля ThumbnailerImageField (get_thumbnail)
         thumb = image_field.get_thumbnail(options)
-        width, height = options.get("size", (80, 70))
+        width, height = options.get("size", (80, 80))
 
         html = format_html(
             '<div class="admin-preview-wrapper" style="margin-bottom: 5px;">'
@@ -296,10 +299,12 @@ def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
 # Собирает данные для сайдбара (бренды, размеры, диапазон цен),
 # слайдер цены и список брендов в фильтре должны показывать все возможности категории
 def get_category_sidebar_filters(categories):
-    from .models import Product, ProductSize, Brand, Color
+    from .models import ProductVariant, ProductSize, Brand, Color
 
-    # Базовый кверисет
-    sidebar_data_qs = Product.objects.filter(category__in=categories, is_active=True)
+    # Базовый кверисет — только активные варианты активных базовых товаров
+    sidebar_data_qs = ProductVariant.objects.filter(
+        product__category__in=categories, is_active=True, product__is_active=True
+    )
 
     # 1. Цены, доступные в этой категории
     price_stats = sidebar_data_qs.aggregate(
@@ -309,22 +314,29 @@ def get_category_sidebar_filters(categories):
 
     # 2. Бренды, доступные в этой категории
     brands = Brand.objects.filter(
-        products__category__in=categories, products__is_active=True
+        products__variants__is_active=True,
+        products__category__in=categories,
+        products__is_active=True,
     ).distinct()
 
     # 3. Размеры, доступные в этой категории
     sizes = (
         ProductSize.objects.filter(
-            product__category__in=categories, product__is_active=True, is_active=True
+            variant__product__category__in=categories,
+            variant__is_active=True,
+            variant__product__is_active=True,
+            is_active=True,
         )
         .values_list("size__name", flat=True)
         .distinct()
-        .order_by("size__name")
+        # .order_by("size__name")
     )
 
     # 4. Цвета, доступные в этой категории
     colors = Color.objects.filter(
-        product__category__in=categories, product__is_active=True
+        variants__product__category__in=categories,
+        variants__is_active=True,
+        variants__product__is_active=True,
     ).distinct()
 
     return {
@@ -340,23 +352,22 @@ def get_category_sidebar_filters(categories):
 
 # Возвращает отфильтрованный QuerySet товаров для фильтров сайдбара
 def get_filtered_products(categories, query_params):
-    from .models import Product, ProductSize
+    from .models import ProductVariant, ProductSize
 
-    # Используем одну аннотацию для всех вычислений
     queryset = (
-        Product.objects.filter(category__in=categories, is_active=True)
+        ProductVariant.objects.filter(
+            product__category__in=categories, is_active=True, product__is_active=True
+        )
         .annotate(
             # Находим минимальную цену среди размеров для этого товара
             annotated_min_final_price=Min(
                 "sizes__final_price", filter=Q(sizes__is_active=True)
             )
         )
-        .select_related("brand", "category", "color", "base_product")
+        .select_related("product__brand", "product__category", "color")
         .prefetch_related(
             "images",
-            "variants__color",
-            "base_product__variants__color",
-            "base_product__color",
+            "product__variants__color",  # Соседние цвета для кружочков
             Prefetch(
                 "sizes",
                 queryset=ProductSize.objects.filter(is_active=True).select_related(
@@ -364,7 +375,8 @@ def get_filtered_products(categories, query_params):
                 ),
             ),
         )
-        .order_by("-created_at")
+        # .order_by("-product__created_at", "-id") # сортируем по дате создания родителя
+        .order_by("-created_at", "-id")  # сортируем по дате создания варианта
     )
 
     # Применяем фильтры
@@ -375,7 +387,7 @@ def get_filtered_products(categories, query_params):
         # brand_slugs = brands_param.split(",")
         # Убираем лишние пробелы и пустые элементы на всякий случай
         brand_slugs = [s.strip() for s in brands_param.split(",") if s.strip()]
-        queryset = queryset.filter(brand__slug__in=brand_slugs)
+        queryset = queryset.filter(product__brand__slug__in=brand_slugs)
 
     # Фильтр по цветам
     colors_param = query_params.get("colors")
@@ -418,20 +430,18 @@ def get_filtered_products(categories, query_params):
 
 
 # Показ рекомендаций
-def get_similar_products(product, limit=8):
+def get_similar_products(variant, limit=8):
     """
     Возвращает товары из той же подкатегории в ценовом диапазоне +/- 20% рандомно.
+    В блок рекомендаций всегда попадает только один цвет от одной базовой модели.
     """
-    from .models import Product, ProductSize
+    from .models import ProductVariant, ProductSize
 
-    # 1. Определяем ID "корневого" товара, чтобы исключить всю семью из рекомендаций
-    root_id = product.base_product_id if product.base_product_id else product.id
-
-    # 2. Получаем минимальную финальную цену текущего товара для расчета диапазона
+    # 1. Получаем минимальную финальную цену текущего варианта для расчета диапазона
     # (Берем из аннотации, если она была во вьюхе, или считаем)
-    current_min_price = getattr(product, "annotated_min_final_price", None)
+    current_min_price = getattr(variant, "annotated_min_final_price", None)
     if current_min_price is None:
-        price_data = product.sizes.filter(is_active=True).aggregate(
+        price_data = variant.sizes.filter(is_active=True).aggregate(
             min_p=Min("final_price")
         )
         current_min_price = price_data["min_p"]
@@ -439,59 +449,69 @@ def get_similar_products(product, limit=8):
     if current_min_price is None:
         return []
 
-    # 3. Расчет диапазона +/- 20%
+    # 2. Расчет диапазона +/- 20%
     min_range = float(current_min_price) * 0.8
     max_range = float(current_min_price) * 1.2
 
-    # 4. Получаем только список ID всех подходящих товаров.
-    # Фильтруем по категории, цене и исключаем всю текущую семью
-    all_similar_ids = list(
-        Product.objects.filter(
+    # 3. Ищем подходящие варианты (исключаем всю семью текущего базового товара)
+    candidates = (
+        ProductVariant.objects.filter(
             is_active=True,
-            category=product.category,
-            base_product__isnull=True,  # Только уникальные модели (базовые)
+            product__is_active=True,
+            product__category=variant.product.category,
         )
+        .exclude(product_id=variant.product_id)  # Исключаем всю текущую семью
         .annotate(
             # Аннотируем каждый товар в базе его минимальной ценой
             annotated_min_p=Min("sizes__final_price", filter=Q(sizes__is_active=True))
         )
         .filter(annotated_min_p__range=(min_range, max_range))
-        .exclude(
-            Q(id=root_id) | Q(base_product_id=root_id)
-        )  # Исключаем всю текущую семью
-        .values_list("id", flat=True)
     )
 
-    # 5. Если в ценовом диапазоне товаров мало, добираем ID просто из категории
-    if len(all_similar_ids) < 4:
-        extra_ids = list(
-            Product.objects.filter(
-                is_active=True, category=product.category, base_product__isnull=True
+    # 4. Дедупликация: берем только один вариант от каждого базового товара
+    candidate_data = list(candidates.values("id", "product_id"))
+    seen_products = set()
+    unique_variant_ids = []
+
+    for v in candidate_data:
+        if v["product_id"] not in seen_products:
+            seen_products.add(v["product_id"])
+            unique_variant_ids.append(v["id"])
+
+    # 5. Если товаров мало, добираем без учета цены (но тоже уникальные модели)
+    if len(unique_variant_ids) < 4:
+        extra_candidates = (
+            ProductVariant.objects.filter(
+                is_active=True,
+                product__is_active=True,
+                product__category=variant.product.category,
             )
-            .exclude(
-                Q(id=root_id) | Q(base_product_id=root_id) | Q(id__in=all_similar_ids)
-            )
-            .values_list("id", flat=True)
+            .exclude(product_id=variant.product_id)
+            .exclude(id__in=unique_variant_ids)
         )
-        # Добавляем столько, сколько нужно для лимита
-        all_similar_ids.extend(extra_ids)
+
+        extra_data = list(extra_candidates.values("id", "product_id"))
+        for v in extra_data:
+            if v["product_id"] not in seen_products:
+                seen_products.add(v["product_id"])
+                unique_variant_ids.append(v["id"])
 
     # 6. Выбираем случайные ID, в количестве = limit
-    sample_size = min(len(all_similar_ids), limit)
-    random_ids = random.sample(all_similar_ids, sample_size)
+    sample_size = min(len(unique_variant_ids), limit)
+    random_ids = random.sample(unique_variant_ids, sample_size)
 
-    # 7. Делаем основной запрос только по выбранным ID
+    # 7. Финальный запрос с полной подгрузкой данных
     return (
-        Product.objects.filter(id__in=random_ids)
+        ProductVariant.objects.filter(id__in=random_ids)
         .annotate(
             annotated_min_final_price=Min(
                 "sizes__final_price", filter=Q(sizes__is_active=True)
             )
         )
-        .select_related("brand", "category", "color")
+        .select_related("product__brand", "product__category", "color")
         .prefetch_related(
             "images",
-            "variants__color",
+            "product__variants__color",
             Prefetch(
                 "sizes",
                 queryset=ProductSize.objects.filter(is_active=True).select_related(
@@ -502,88 +522,139 @@ def get_similar_products(product, limit=8):
     )
 
 
-# генерация артикула для товара
-def generate_unique_article(product):
+# генерация артикула для варианта товара
+def generate_unique_article(variant):
     """
-    Генерирует артикул: [BRAND(2)][GENDER(1)][CAT(3)]-[PROD(5)][RAND(3)]
+    Генерирует артикул: [BRAND(2)][GENDER(1)][CAT(3)]-[VAR(5)][RAND(3)]
     Пример: ADM025-00142X8Z
     """
-
-    # 1. Используем category_id вместо category.id.
-    # Это спасает от лишнего запроса к БД, если объект категории еще не загружен в память.
-    # (Мы уже сделали поле category обязательным в базе, но оставим проверку для надежности)
-    if not product.category_id:
+    # 1. Проверяем наличие связи с базовым товаром и категорией.
+    # Обращаемся к родительскому товару через variant.product
+    # Используем category_id вместо category.id - это спасает от лишнего запроса к БД, если объект категории еще не загружен в память.
+    if not variant.product_id or not variant.product.category_id:
         return None
 
     try:
+        base_product = variant.product
+
         # 2. Код бренда (2 символа)
-        brand_code = product.brand.slug[:2].upper() if product.brand else "NB"
+        brand_code = base_product.brand.slug[:2].upper() if base_product.brand else "NB"
 
         # 3. Код пола (1 символ)
         # Берем значение из choices (M, F, U)
-        gender_code = product.gender if product.gender else "U"
+        gender_code = base_product.gender if base_product.gender else "U"
 
         # 4. ID категории с дополнением до 3 знаков
-        cat_id = str(product.category_id).zfill(3)
+        cat_id = str(base_product.category_id).zfill(3)
 
-        # 5. ID товара с дополнением до 5 знаков
-        # Если товар еще не сохранен (id=None), ставим нули
-        prod_id = str(product.id).zfill(5) if product.id else "00000"
+        # 5. ID варианта товара с дополнением до 5 знаков
+        # Если вариант еще не сохранен (id=None), ставим нули
+        var_id = str(variant.id).zfill(5) if variant.id else "00000"
 
         # 6. Случайный хвост (3 символа) для защиты от перебора и уникальности
         random_suffix = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=3)
         )
 
-        return f"{brand_code}{gender_code}{cat_id}-{prod_id}{random_suffix}"
+        return f"{brand_code}{gender_code}{cat_id}-{var_id}{random_suffix}"
 
     except Exception as e:
         print(f"Ошибка при генерации артикула: {e}")
         return None
 
 
-# синхронизация изображений товара (главная, порядок) и генерация alt-текста в админке
+# синхронизация изображений варианта товара (главная, порядок) и генерация alt-текста в админке
+# @transaction.atomic
+# def sync_product_images(variant, manual_selected_id=None):
+#     # 1. Получаем все фото, отсортированные по позиции
+#     images = list(variant.images.all().order_by("position", "id"))
+#     if not images:
+#         return
+
+#     # 2. Шаблон для проверки alt-текста: "Название товара - фото"
+#     base_pattern = f"{variant.full_name} - фото"
+
+#     # 3. Генерация alt-текста
+#     def get_smart_alt(instance, target_number):
+#         current_alt = instance.alt or ""
+#         # Если Alt пустой ИЛИ он совпадает со стандартным шаблоном
+#         if not current_alt or current_alt.startswith(base_pattern):
+#             return f"{base_pattern} {target_number}"
+#         # В противном случае оставляем то, что ввел пользователь
+#         return current_alt
+
+#     # 4. Определяем главное фото
+#     if manual_selected_id:
+#         # ПРИОРИТЕТ 1: Если пользователь явно кликнул на галочку (передано из admin.py)
+#         target_main = variant.images.filter(pk=manual_selected_id).first()
+#     else:
+#         # ПРИОРИТЕТ 2: В остальных случаях (включая перетаскивание)
+#         # главным становится тот, кто фактически первый в списке
+#         target_main = images[0]
+
+#     if not target_main:
+#         target_main = images[0]
+
+#     # 5. Синхронизируем флаги
+#     variant.images.all().update(is_main=False)
+#     variant.images.filter(pk=target_main.pk).update(
+#         is_main=True, position=0, alt=get_smart_alt(target_main, 1)
+#     )
+
+#     # 6. Выравниваем позиции остальных (чтобы не было двух нулевых)
+#     others = variant.images.exclude(pk=target_main.pk).order_by("position", "id")
+#     for i, img in enumerate(others, start=2):
+#         variant.images.filter(pk=img.pk).update(position=i - 1, alt=get_smart_alt(img, i))
+
+
+# синхронизация изображений варианта товара (главная, порядок) и генерация alt-текста в админке
 @transaction.atomic
-def sync_product_images(product, manual_selected_id=None):
+def sync_product_images(variant):
+    """
+    Синхронизация изображений варианта товара (главная, порядок)
+    и генерация alt-текста в админке.
+    """
     # 1. Получаем все фото, отсортированные по позиции
-    images = list(product.images.all().order_by("position", "id"))
+    images = list(variant.images.all().order_by("position", "id"))
     if not images:
         return
 
-    # 2. Шаблон для проверки alt-текста: "Название товара - фото"
-    base_pattern = f"{product.full_name} - фото"
+    # 2. Шаблон для alt-текста
+    base_pattern = f"{variant.full_name} - фото"
 
     # 3. Генерация alt-текста
     def get_smart_alt(instance, target_number):
         current_alt = instance.alt or ""
-        # Если Alt пустой ИЛИ он совпадает со стандартным шаблоном
+        # Если Alt пустой ИЛИ он совпадает со стандартным шаблоном (чтобы пересчитать номера)
         if not current_alt or current_alt.startswith(base_pattern):
             return f"{base_pattern} {target_number}"
         # В противном случае оставляем то, что ввел пользователь
         return current_alt
 
-    # 4. Определяем главное фото
-    if manual_selected_id:
-        # ПРИОРИТЕТ 1: Если пользователь явно кликнул на галочку (передано из admin.py)
-        target_main = product.images.filter(pk=manual_selected_id).first()
+    # 3. Определяем главное фото.
+    # Так как мы вызываем это ПОСЛЕ super().save_related(), то если юзер кликнул
+    # галочку is_main в инлайне, в БД этот объект уже имеет is_main=True.
+    explicit_mains = [img for img in images if img.is_main]
+
+    if explicit_mains:
+        # Если отмечено несколько галочек, берем первую
+        target_main = explicit_mains[0]
     else:
-        # ПРИОРИТЕТ 2: В остальных случаях (включая перетаскивание)
-        # главным становится тот, кто фактически первый в списке
+        # Если ни одно фото не отмечено главным, берем физически первое
         target_main = images[0]
 
-    if not target_main:
-        target_main = images[0]
-
-    # 5. Синхронизируем флаги
-    product.images.all().update(is_main=False)
-    product.images.filter(pk=target_main.pk).update(
+    # 4. Синхронизируем флаги
+    # Сначала сбрасываем у всех
+    variant.images.all().update(is_main=False)
+    # Затем жестко ставим первому позицию 0 и флаг True
+    variant.images.filter(pk=target_main.pk).update(
         is_main=True, position=0, alt=get_smart_alt(target_main, 1)
     )
 
-    # 6. Выравниваем позиции остальных (чтобы не было двух нулевых)
-    others = product.images.exclude(pk=target_main.pk).order_by("position", "id")
+    # 5. Выравниваем позиции остальных (чтобы не было двух нулевых позиций)
+    others = variant.images.exclude(pk=target_main.pk).order_by("position", "id")
     for i, img in enumerate(others, start=2):
-        product.images.filter(pk=img.pk).update(position=i - 1, alt=get_smart_alt(img, i))
+        variant.images.filter(pk=img.pk).update(position=i - 1, alt=get_smart_alt(img, i))
 
 
 # Извлекает лимиты из ImageValidator и добавляет их в data-атрибуты виджета

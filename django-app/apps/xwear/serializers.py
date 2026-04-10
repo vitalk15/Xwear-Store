@@ -3,15 +3,19 @@ from .models import (
     Category,
     Brand,
     Color,
-    Product,
+    ProductVariant,
     ProductImage,
     ProductSize,
     Material,
-    ProductSpecification,
+    ProductMaterial,
     Favorite,
     SliderBanner,
 )
 from .utils import get_thumbnail_data
+
+# ==========================================
+# БАЗОВЫЕ СЕРИАЛИЗАТОРЫ
+# ==========================================
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -53,6 +57,18 @@ class ColorSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "slug", "hex_code", "hex_code_2", "texture"]
 
 
+class MaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Material
+        fields = ["id", "name"]
+
+
+class BrandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Brand
+        fields = ["id", "name", "slug"]
+
+
 class ProductImageSerializer(serializers.ModelSerializer):
     thumbnails = serializers.SerializerMethodField()
 
@@ -84,7 +100,8 @@ class ProductSizeSerializer(serializers.ModelSerializer):
     #     return obj.stock > 0 and obj.product.is_active
 
     def get_is_available(self, obj):
-        return obj.product.is_active
+        # Размер доступен, если активен сам вариант и активен базовый товар
+        return obj.variant.is_active and obj.variant.product.is_active
 
     class Meta:
         model = ProductSize
@@ -99,60 +116,51 @@ class ProductSizeSerializer(serializers.ModelSerializer):
         ]
 
 
-class MaterialSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Material
-        fields = ["id", "name"]
-
-
-class SpecificationSerializer(serializers.ModelSerializer):
+class ProductMaterialSerializer(serializers.ModelSerializer):
     # Показываем названия вместо ID
     material_outer = MaterialSerializer(read_only=True)
     material_inner = MaterialSerializer(read_only=True)
     material_sole = MaterialSerializer(read_only=True)
 
     class Meta:
-        model = ProductSpecification
+        model = ProductMaterial
         fields = [
-            "season",
             "material_outer",
             "material_inner",
             "material_sole",
         ]
 
 
-class BrandSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Brand
-        fields = ["id", "name", "slug"]
+# ===================================
+# СЕРИАЛИЗАТОРЫ ТОВАРОВ
+# ===================================
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    gender_display = serializers.CharField(source="get_gender_display", read_only=True)
+    gender_display = serializers.CharField(
+        source="product.get_gender_display", read_only=True
+    )
     color = ColorSerializer(read_only=True)
     naming = serializers.SerializerMethodField()
     pricing = serializers.SerializerMethodField()
     available_colors = serializers.SerializerMethodField()
-
-    # min_price = serializers.SerializerMethodField()
-    # old_min_price = serializers.SerializerMethodField()
-    # discount_percent = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
     frontend_url = serializers.SerializerMethodField()
 
     def get_naming(self, obj):
+        product = obj.product
         return {
-            "type": obj.type_name,
+            "type": product.type_name,
             "brand": {
-                "name": obj.brand.name,
-                "slug": obj.brand.slug,
+                "name": product.brand.name,
+                "slug": product.brand.slug,
             },
-            "model": obj.model_name,
+            "model": product.model_name,
             "category": {
-                "name": obj.category.name,
-                "slug": obj.category.slug,
+                "name": product.category.name,
+                "slug": product.category.slug,
             },
-            # Полезно для заголовка вкладки в браузере
+            # для заголовка вкладки в браузере
             "full_title": obj.full_name,
         }
 
@@ -167,8 +175,7 @@ class ProductListSerializer(serializers.ModelSerializer):
                 "discount": getattr(obj, "annotated_discount", 0),
             }
 
-        # Фоллбек (запасной вариант), если аннотации нет
-        # ВАЖНО: убедитесь, что во вьюхе сделан prefetch_related('sizes')
+        # если аннотации нет
         active_sizes = [s for s in obj.sizes.all() if s.is_active]
         if not active_sizes:
             return {"min_price": 0, "old_price": None, "discount": 0}
@@ -191,44 +198,32 @@ class ProductListSerializer(serializers.ModelSerializer):
             }
         return None
 
-    def get_available_colors(self, obj):
-        """
-        Собирает все варианты цветов для текущей группы товаров.
-        Возвращает список с данными цвета и ссылочными данными товара.
-        """
-        # 1. Определяем "корень" группы (либо текущий товар, либо его родитель)
-        root = obj if obj.base_product_id is None else obj.base_product
-
-        # 2. Собираем всех участников группы: корень + все его дочерние варианты
-        # Используем .all(), чтобы не делать лишних запросов (при условии prefetch_related во вьюхе)
-        family = [root]
-        if hasattr(root, "variants"):
-            family.extend(root.variants.all())
-
-        results = []
-        for p in family:
-            if p.color:
-                results.append(
-                    {
-                        "color": ColorSerializer(p.color, context=self.context).data,
-                        # "product_id": p.id,
-                        # "product_slug": p.slug,
-                        # Опционально: можно сразу пробросить URL для фронтенда
-                        "frontend_url": self.get_frontend_url(p),
-                    }
-                )
-
-        # Сортируем (например, по названию цвета), чтобы порядок был всегда одинаковым
-        # return sorted(results, key=lambda x: x["color"]["name"])
-        return results
-
     def get_frontend_url(self, obj):
         # Собираем путь: /catalog/полный-путь-категории/слаг-товара-ID
-        category_path = obj.category.get_full_path()
+        category_path = obj.product.category.get_full_path()
         return f"/catalog/{category_path}/{obj.slug}-{obj.id}/"
 
+    def get_available_colors(self, obj):
+        """
+        Собирает все варианты текущего базового товара.
+        """
+        # Берем все активные варианты базового товара
+        #!!! Нужно ли проверять активность базового товара?
+        variants = obj.product.variants.filter(is_active=True).select_related("color")
+
+        results = []
+        for v in variants:
+            if v.color:
+                results.append(
+                    {
+                        "color": ColorSerializer(v.color, context=self.context).data,
+                        "frontend_url": self.get_frontend_url(v),
+                    }
+                )
+        return results
+
     class Meta:
-        model = Product
+        model = ProductVariant
         fields = [
             "id",
             "slug",
@@ -246,11 +241,22 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    gender_display = serializers.CharField(source="get_gender_display", read_only=True)
+    # Общие данные из базового товара
+    gender_display = serializers.CharField(
+        source="product.get_gender_display", read_only=True
+    )
+    season_display = serializers.CharField(
+        source="product.get_season_display", read_only=True
+    )
+    description = serializers.CharField(source="product.description", read_only=True)
+
+    # Специфичные данные варианта
     sizes = ProductSizeSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
-    specification = SpecificationSerializer(read_only=True)
+    composition = ProductMaterialSerializer(read_only=True)
     color = ColorSerializer(read_only=True)
+
+    # Динамические поля
     available_colors = serializers.SerializerMethodField()
     naming = serializers.SerializerMethodField()
     breadcrumbs = serializers.SerializerMethodField()
@@ -258,81 +264,83 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     def get_breadcrumbs(self, obj):
         # MPTT метод get_ancestors возвращает всю цепочку от корня до текущей категории
-        ancestors = obj.category.get_ancestors(include_self=True)
+        ancestors = obj.product.category.get_ancestors(include_self=True)
         return [{"name": cat.name, "slug": cat.slug} for cat in ancestors]
 
     def get_frontend_url(self, obj):
-        category_path = obj.category.get_full_path()
+        category_path = obj.product.category.get_full_path()
         return f"/catalog/{category_path}/{obj.slug}-{obj.id}/"
 
     def get_naming(self, obj):
+        product = obj.product
         return {
-            "type": obj.type_name,
+            "type": product.type_name,
             "brand": {
-                "name": obj.brand.name,
-                "slug": obj.brand.slug,
+                "name": product.brand.name,
+                "slug": product.brand.slug,
             },
-            "model": obj.model_name,
+            "model": product.model_name,
             "category": {
-                "name": obj.category.name,
-                "slug": obj.category.slug,
+                "name": product.category.name,
+                "slug": product.category.slug,
             },
-            # Полезно для заголовка вкладки в браузере
+            # для заголовка вкладки в браузере
             "full_title": obj.full_name,
         }
 
     def get_available_colors(self, obj):
-        # находим корень и собираем всех "родственников"
-        root = obj if obj.base_product_id is None else obj.base_product
-
-        family = [root]
-        if hasattr(root, "variants"):
-            family.extend(root.variants.all())
+        """
+        Собирает все варианты текущего базового товара.
+        """
+        # Берем все активные варианты базового товара
+        #!!! Нужно ли проверять активность базового товара?
+        variants = obj.product.variants.filter(is_active=True).select_related("color")
 
         results = []
-        for p in family:
-            if p.color:
+        for v in variants:
+            if v.color:
                 results.append(
                     {
-                        "color": ColorSerializer(p.color, context=self.context).data,
-                        # "product_id": p.id,
-                        # "product_slug": p.slug,
-                        "frontend_url": self.get_frontend_url(p),
-                        "is_current": p.id
+                        "color": ColorSerializer(v.color, context=self.context).data,
+                        "frontend_url": self.get_frontend_url(v),
+                        "is_current": v.id
                         == obj.id,  # Флаг, для выделения текущего цвета
                     }
                 )
-
-        # return sorted(results, key=lambda x: x["color"]["name"])
         return results
 
     class Meta:
-        model = Product
+        model = ProductVariant
         fields = [
             "id",
             "slug",
             "article",
-            "gender",
             "gender_display",
             "naming",
+            "season_display",
             "color",
             "available_colors",
             "breadcrumbs",
             "description",
             "sizes",
             "images",
-            "specification",
+            "composition",
             "is_active",
         ]
 
 
+# ==========================================
+# ОСТАЛЬНЫЕ СЕРИАЛИЗАТОРЫ
+# ==========================================
+
+
 class FavoriteSerializer(serializers.ModelSerializer):
     # При получении списка избранного будем разворачивать данные о товаре
-    product_details = ProductListSerializer(source="product", read_only=True)
+    variant_details = ProductListSerializer(source="variant", read_only=True)
 
     class Meta:
         model = Favorite
-        fields = ["id", "product", "product_details", "created_at"]
+        fields = ["id", "variant", "variant_details", "created_at"]
         read_only_fields = ["id", "created_at"]
 
 

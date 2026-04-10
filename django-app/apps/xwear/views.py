@@ -10,7 +10,7 @@ from .utils import (
     get_category_sidebar_filters,
     get_filtered_products,
 )
-from .models import Category, Product, ProductSize, Favorite, SliderBanner
+from .models import Category, ProductVariant, ProductSize, Favorite, SliderBanner
 from .serializers import (
     CategorySerializer,
     BrandSerializer,
@@ -20,6 +20,10 @@ from .serializers import (
     FavoriteSerializer,
     SliderBannerSerializer,
 )
+
+# ==========================================
+# КАТЕГОРИИ И КАТАЛОГ
+# ==========================================
 
 
 # дерево категорий
@@ -93,34 +97,55 @@ def category_detail_view(request, pk):
     return response
 
 
+# ==========================================
+# ДЕТАЛИ ТОВАРА И РЕКОМЕНДАЦИИ
+# ==========================================
+
+
 # Детали товара
 @api_view(["GET"])
 def product_detail_view(request, pk):
-    product = get_object_or_404(
-        Product.objects.filter(is_active=True, pk=pk)
+    variant = get_object_or_404(
+        ProductVariant.objects.filter(is_active=True, pk=pk)
         .select_related(
-            "category",
-            "brand",
+            "product__category",
+            "product__brand",
             "color",
-            "base_product",
-            "specification",
-            "specification__material_outer",
-            "specification__material_inner",
-            "specification__material_sole",
+            "composition__material_outer",
+            "composition__material_inner",
+            "composition__material_sole",
         )
         .prefetch_related(
             "images",
-            "variants__color",
-            "base_product__variants__color",
-            "base_product__color",
+            "product__variants__color",  # Подгружаем соседние цвета (через родительский товар)
             # Уже делаем сортировку в ProductImage, поэтому не используем здесь:
             # Prefetch("images", queryset=ProductImage.objects.order_by("-is_main", "id")),
             Prefetch("sizes", queryset=ProductSize.objects.select_related("size")),
         )
     )
 
-    serializer = ProductDetailSerializer(product, context={"request": request})
+    serializer = ProductDetailSerializer(variant, context={"request": request})
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Рекомендации товаров
+@api_view(["GET"])
+def product_recommends_view(request, pk):
+    # Находим вариант товара
+    variant = get_object_or_404(ProductVariant.objects.filter(is_active=True, pk=pk))
+
+    # Получаем рекомендации
+    recommends = get_similar_products(variant)
+
+    serializer = ProductListSerializer(
+        recommends, many=True, context={"request": request}
+    )
+    return Response(serializer.data)
+
+
+# ==========================================
+# ИЗБРАННОЕ И БАННЕРЫ
+# ==========================================
 
 
 # Список избранных товаров пользователя
@@ -128,7 +153,7 @@ def product_detail_view(request, pk):
 @permission_classes([IsAuthenticated])
 def favorite_list(request):
     favorites = Favorite.objects.filter(user=request.user).select_related(
-        "product", "product__brand"
+        "variant__color", "variant__product__brand"
     )
     serializer = FavoriteSerializer(favorites, many=True, context={"request": request})
 
@@ -139,8 +164,9 @@ def favorite_list(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def favorite_toggle(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    favorite_qs = Favorite.objects.filter(user=request.user, product=product)
+    # Добавляем в избранное конкретный цвет (вариант)
+    variant = get_object_or_404(ProductVariant, pk=pk)
+    favorite_qs = Favorite.objects.filter(user=request.user, variant=variant)
 
     if favorite_qs.exists():
         favorite_qs.delete()
@@ -148,7 +174,7 @@ def favorite_toggle(request, pk):
             {"detail": "Удалено из избранного"}, status=status.HTTP_204_NO_CONTENT
         )
 
-    Favorite.objects.create(user=request.user, product=product)
+    Favorite.objects.create(user=request.user, variant=variant)
     return Response({"detail": "Добавлено в избранное"}, status=status.HTTP_201_CREATED)
 
 
@@ -158,19 +184,4 @@ def slider_banner_list_view(request):
     banners = SliderBanner.objects.filter(is_active=True)
     serializer = SliderBannerSerializer(banners, many=True, context={"request": request})
 
-    return Response(serializer.data)
-
-
-# Рекомендации товаров
-@api_view(["GET"])
-def product_recommends_view(request, pk):
-    # Находим основной товар
-    product = get_object_or_404(Product.objects.filter(is_active=True, pk=pk))
-
-    # Получаем рекомендации
-    recommends = get_similar_products(product)
-
-    serializer = ProductListSerializer(
-        recommends, many=True, context={"request": request}
-    )
     return Response(serializer.data)

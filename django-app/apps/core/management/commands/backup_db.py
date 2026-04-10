@@ -7,16 +7,27 @@ from django.conf import settings
 
 
 class Command(BaseCommand):
-    help = "Создает по-умолчанию бинарный бэкап базы данных PostgreSQL (.backup) с текущей датой и удаляет архивы старше 7 дней. Для текстового бэкапа (.sql) используйте флаг --sql"
+    help = "Создает бэкап (по-умолчанию бинарный) всей базы или выбранных таблиц PostgreSQL. Удаляет архивы старше 7 дней."
 
     def add_arguments(self, parser):
-        # Добавляем наш кастомный флаг --sql
+        # Добавляем кастомный флаг --sql
         # action='store_true' означает, что если флаг указан, переменная будет True.
         # Если не указан — False.
         parser.add_argument(
             "--sql",
             action="store_true",
             help="Сохранить бэкап в текстовом формате (.sql) вместо бинарного",
+        )
+        # Добавляем кастомный флаг для таблиц. nargs='+' позволяет передать список через пробел
+        parser.add_argument(
+            "--tables",
+            nargs="+",
+            help="Список конкретных таблиц для бэкапа (например: core_category core_brand)",
+        )
+        parser.add_argument(
+            "--data-only",
+            action="store_true",
+            help="Сохранить только данные (через INSERT), без структуры таблиц. Принудительно включает текстовый формат.",
         )
 
     def handle(self, *args, **options):
@@ -37,15 +48,29 @@ class Command(BaseCommand):
 
         # Проверяем, передан ли флаг --sql
         is_sql_format = options["sql"]
+        # Получаем список таблиц
+        tables_to_backup = options["tables"]
+        # Проверяем, передан ли флаг --data_only
+        is_data_only = options["data_only"]
+
+        # ВАЖНО: pg_dump поддерживает --inserts только при текстовом выводе
+        if is_data_only:
+            is_sql_format = True
 
         # Динамически задаем расширение файла и формат для pg_dump
         extension = ".sql" if is_sql_format else ".backup"
         pg_format = "p" if is_sql_format else "c"  # 'p' - plain, 'c' - custom
 
-        # Формируем имя файла с датой и временем
-        # Формат: dbname_backup_2026_04_06_15_30.backup
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M")
-        filename = f"{db_name}_backup_{timestamp}{extension}"
+        # Дата и время создания
+        timestamp = datetime.now().strftime("%d_%m_%Y_%H_%M")
+        # timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M")
+
+        # Формируем имя файла
+        prefix = "partial" if tables_to_backup else "full"
+        if is_data_only:
+            prefix += "_data_only"
+
+        filename = f"{db_name}_{prefix}_{timestamp}{extension}"
 
         # Создаем папку backups в корне проекта, если её нет
         backup_dir = os.path.join(settings.BASE_DIR, "backups")
@@ -70,6 +95,21 @@ class Command(BaseCommand):
             filepath,
         ]
 
+        # Если запрошены только данные
+        if is_data_only:
+            cmd.extend(
+                [
+                    "--data-only",  # Не выгружать схему (-a)
+                    "--column-inserts",  # Использовать INSERT с указанием колонок
+                    "--disable-triggers",  # Отключить триггеры/внешние ключи при восстановлении
+                ]
+            )
+
+        # Если таблицы указаны, добавляем каждый флаг -t в команду
+        if tables_to_backup:
+            for table in tables_to_backup:
+                cmd.extend(["-t", table])
+
         # Передаем пароль через переменные окружения,
         # чтобы pg_dump не завис в ожидании ввода с клавиатуры
         env = os.environ.copy()
@@ -78,14 +118,17 @@ class Command(BaseCommand):
 
         # Запускаем процесс
         try:
-            self.stdout.write(
-                f'Создание бэкапа базы данных "{db_name}" в формате {extension}...'
-            )
+            target_desc = f'базы данных "{db_name}"'
+            if tables_to_backup:
+                target_desc = f"таблиц: {', '.join(tables_to_backup)}"
+
+            mode_desc = "(Только данные)" if is_data_only else "(Схема + Данные)"
+            self.stdout.write(f"Создание бэкапа {target_desc} {mode_desc}...")
             # check=True выбросит исключение, если команда завершится с ошибкой
             subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
             self.stdout.write(self.style.SUCCESS(f"Бэкап создан: {filepath}"))
 
-            # Опционально: можно добавить вывод размера файла
+            # Вывод размера файла
             file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
             self.stdout.write(f"Размер файла: {file_size_mb:.2f} MB")
 
@@ -93,6 +136,7 @@ class Command(BaseCommand):
             # Если что-то пошло не так, выводим ошибку из консоли PostgreSQL
             self.stderr.write(self.style.ERROR("Ошибка при создании бэкапа:"))
             self.stderr.write(self.style.ERROR(e.stderr))
+            return  # Прерываем выполнение, чтобы не удалять старые бэкапы при ошибке нового
 
         # --- 3. Очистка старых бэкапов (7 дней) ---
         days_to_keep = 7
@@ -133,8 +177,8 @@ class Command(BaseCommand):
         )
 
 
-# Как использовать
-# --------------------------
+# Как использовать для бэкапа всей БД
+# -----------------------------------
 # 1. Ручной запуск в терминале:
 # python manage.py backup_db
 # или
@@ -155,3 +199,23 @@ class Command(BaseCommand):
 # Указываем абсолютный путь к manage.py.
 # > cron.log 2>&1: Все успехи и ошибки скрипта будут перезаписываться в файл лога (отчёт только о последнем бэкапе)
 # >> cron.log 2>&1: Новые записи дописываются в конец файла. Удобно, чтобы посмотреть, не было ли сбоев неделю назад.
+
+
+# Как использовать для бэкапа таблиц
+# ----------------------------------
+# 1. Бинарный бэкап:
+# python manage.py backup_db --tables xwear_category xwear_brand xwear_size xwear_color xwear_material
+# 2. Текстовый бэкап:
+# python manage.py backup_db --sql --tables xwear_category xwear_brand xwear_size xwear_color xwear_material
+# 3. Встроенная команда Django, которая сохраняет данные в формате JSON, не привязываясь к SQL-структуре (если структура моделей изменена):
+# python manage.py dumpdata xwear.Category --indent 4 > categories.json
+# (--indent 4 добавляет в JSON-файл переносы строк и отступы в 4 пробела)
+
+# Восстановление
+# --------------
+# 1. Для .sql файла:
+# psql -U имя_пользователя -d имя_базы < table_backup.sql
+# 2. Для .backup файла:
+# pg_restore -U имя_пользователя -d имя_базы -t название_таблицы table_backup.backup
+# 3. Встроенная команда Django, которая загружает данные в формате JSON обратно:
+# python manage.py loaddata categories.json

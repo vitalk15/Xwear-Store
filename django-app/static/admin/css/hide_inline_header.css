@@ -1,3 +1,4 @@
-.inline-group h3 {
+.inline-group h3,
+.djn-item > h3 {
 	display: none;
 }
