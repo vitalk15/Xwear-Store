@@ -1,6 +1,23 @@
 from django.db import models
 
 
+class TimeStampedModel(models.Model):
+    """
+    Абстрактный базовый класс, предоставляющий поля
+    самообновляющихся дат создания и изменения.
+    """
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Создан",
+        db_index=True,  # Полезно, так как по этому полю часто идет сортировка
+    )
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлен")
+
+    class Meta:
+        abstract = True
+
+
 class City(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Название города")
     is_active = models.BooleanField(default=True, verbose_name="Доступен для доставки")
@@ -17,10 +34,9 @@ class City(models.Model):
         return self.name
 
 
-class Document(models.Model):
+class Document(TimeStampedModel):
     title = models.CharField(max_length=255, verbose_name="Название документа")
     file = models.FileField(upload_to="documents/", verbose_name="Файл (PDF)")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата добавления")
 
     class Meta:
         verbose_name = "Юридический документ"

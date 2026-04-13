@@ -46,7 +46,7 @@
 } */
 
 /* Заголовок варианта */
-#variants-group > .djn-fieldset > details > .items > #variants-0 > h3 {
+#variants-group > .djn-fieldset > details > .items > .djn-item > h3 {
 	display: block !important;
 	margin-bottom: 25px;
 	font-size: 1.1em;

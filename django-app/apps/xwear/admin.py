@@ -17,10 +17,10 @@ from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
 import nested_admin
 from adminsortable2.admin import (
-    SortableAdminBase,
     SortableAdminMixin,
-    SortableInlineAdminMixin,
-    CustomInlineFormSet,
+    # SortableAdminBase,
+    # SortableInlineAdminMixin,
+    # CustomInlineFormSet,
 )
 
 # from mptt.forms import TreeNodeChoiceField
@@ -542,7 +542,7 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
     )
 
     # Кол-во показываемых товаров на одной странице пагинации
-    list_per_page = 10
+    list_per_page = 20
     # Заменяет подсчёт количества найденных записей на ссылку "Показать всё" (ускорение загрузки)
     show_full_result_count = False
 
@@ -700,7 +700,6 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
         "get_product_name",
         "get_color_display",
         "get_gender",
-        "get_root_category",
         "get_season",
         "active_sizes_count",
         "get_price_range",
@@ -779,10 +778,10 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
     def get_gender(self, obj):
         return obj.product.get_gender_display()
 
-    @admin.display(description="Группа")
-    def get_root_category(self, obj):
-        """Отображает корневую категорию (уровень 0) через аннотацию"""
-        return getattr(obj, "root_category_name", "-") or "-"
+    # @admin.display(description="Группа")
+    # def get_root_category(self, obj):
+    #     """Отображает корневую категорию (уровень 0) через аннотацию"""
+    #     return getattr(obj, "root_category_name", "-") or "-"
 
     @admin.display(description="Цвет")
     def get_color_display(self, obj):
@@ -861,9 +860,9 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         # Подзапрос: ищем в дереве категорию с level=0, у которой tree_id совпадает
         # с tree_id категории связанного товара
-        root_category_subquery = Category.objects.filter(
-            tree_id=OuterRef("product__category__tree_id"), level=0
-        ).values("name")[:1]
+        # root_category_subquery = Category.objects.filter(
+        #     tree_id=OuterRef("product__category__tree_id"), level=0
+        # ).values("name")[:1]
         return (
             super()
             .get_queryset(request)
@@ -873,7 +872,7 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
             .prefetch_related("images")
             .annotate(
                 # Прокидываем имя корневой категории в каждый вариант
-                root_category_name=Subquery(root_category_subquery),
+                # root_category_name=Subquery(root_category_subquery),
                 # Считаем общее количество связанных размеров
                 total_count=Count("sizes"),
                 # Считаем только активные размеры, используя фильтр Q

@@ -8,6 +8,7 @@ from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from easy_thumbnails.fields import ThumbnailerImageField
 from easy_thumbnails.files import generate_all_aliases
+from core.models import TimeStampedModel
 from .utils import (
     UploadToPath,
     generate_unique_slug,
@@ -277,7 +278,7 @@ class Color(models.Model):
         return self.name
 
 
-class Product(models.Model):
+class Product(TimeStampedModel):
     class GenderChoices(models.TextChoices):
         MALE = "M", "Мужской"
         FEMALE = "F", "Женский"
@@ -349,13 +350,12 @@ class Product(models.Model):
         return self.full_name
 
     class Meta:
-        # ordering = ["brand", "model_name"]
         verbose_name = "Базовый товар"
         verbose_name_plural = "Базовые товары"
         indexes = [models.Index(fields=["is_active", "category"])]
 
 
-class ProductVariant(models.Model):
+class ProductVariant(TimeStampedModel):
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
