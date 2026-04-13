@@ -208,7 +208,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         Собирает все варианты текущего базового товара.
         """
         # Берем все активные варианты базового товара
-        #!!! Нужно ли проверять активность базового товара?
+        #!!! Нужно ли проверять активность базового товара? Проверяется во вьюхе
         variants = obj.product.variants.filter(is_active=True).select_related("color")
 
         results = []

@@ -485,6 +485,9 @@ class ProductVariantInline(nested_admin.NestedStackedInline):
             return 0
         return 1  # Если это создание нового товара
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("color")
+
     class Media:
         js = (
             "admin/js/image_preview.js",
@@ -593,12 +596,14 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
         if count == 0:
             return format_html('<span style="color: #dc3545;">0</span>')
 
-        # Динамически получаем имя приложения
-        app_label = obj._meta.app_label
+        # Динамически получаем имя приложения и имя связанной модели (ProductVariant через related_name)
+        target_model = obj.variants.model
+        app_label = target_model._meta.app_label
+        model_name = target_model._meta.model_name
 
         # Формируем URL для списка вариантов с фильтром по ID текущего базового товара
         url = (
-            reverse(f"admin:{app_label}_productvariant_changelist")
+            reverse(f"admin:{app_label}_{model_name}_changelist")
             + f"?product__id__exact={obj.id}"
         )
 
@@ -614,7 +619,7 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
         return (
             super()
             .get_queryset(request)
-            .select_related("category__parent", "brand")
+            .select_related("category", "category__parent", "brand")
             .annotate(
                 # Добавляем имя корневой категории в SQL запрос
                 root_category_name=Subquery(root_category_subquery),
@@ -743,6 +748,8 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
     list_per_page = 10
     # Заменяет подсчёт количества найденных записей на ссылку "Показать всё" (ускорение загрузки)
     show_full_result_count = False
+    # Сортировка по дате создания родителя
+    ordering = ("-product__created_at", "-id")
 
     # --- ОТОБРАЖЕНИЕ ДАННЫХ ---
 
@@ -753,7 +760,7 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
         # Динамически получаем данные для URL
         app_label = obj.product._meta.app_label
         model_name = obj.product._meta.model_name
-        # Генерируем URL (теперь код не зависит от имени приложения)
+        # Генерируем URL
         url = reverse(f"admin:{app_label}_{model_name}_change", args=[obj.product.pk])
 
         return format_html(
@@ -957,11 +964,13 @@ class BrandAdmin(admin.ModelAdmin):
     @admin.display(description="Товары")
     def view_products_link_list(self, obj):
         if obj.pk:
-            # Динамически получаем имя приложения
-            app_label = obj._meta.app_label
+            # Динамически получаем имя приложения и имя связанной модели (Product через related_name)
+            target_model = obj.products.model
+            app_label = target_model._meta.app_label
+            model_name = target_model._meta.model_name
 
             url = (
-                reverse(f"admin:{app_label}_product_changelist")
+                reverse(f"admin:{app_label}_{model_name}_changelist")
                 + f"?brand__id__exact={obj.pk}"
             )
             return format_html('<a href="{}">Перейти ({})</a>', url, obj.products_count)
@@ -971,11 +980,13 @@ class BrandAdmin(admin.ModelAdmin):
     @admin.display(description="Управление ассортиментом")
     def view_products_link_detail(self, obj):
         if obj.pk:
-            # Динамически получаем имя приложения
-            app_label = obj._meta.app_label
+            # Динамически получаем имя приложения и имя связанной модели (Product через related_name)
+            target_model = obj.products.model
+            app_label = target_model._meta.app_label
+            model_name = target_model._meta.model_name
 
             url = (
-                reverse(f"admin:{app_label}_product_changelist")
+                reverse(f"admin:{app_label}_{model_name}_changelist")
                 + f"?brand__id__exact={obj.pk}"
             )
             return format_html(

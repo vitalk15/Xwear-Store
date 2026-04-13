@@ -179,10 +179,13 @@ class Command(BaseCommand):
 
 # Как использовать для бэкапа всей БД
 # -----------------------------------
-# 1. Ручной запуск в терминале:
+# 1. Ручной запуск в терминале
+# бинарный бэкап:
 # python manage.py backup_db
-# или
+# или текстовый:
 # python manage.py backup_db --sql
+# или текстовый бэкап только данных:
+# python manage.py backup_db --data-only
 
 # 2. Автоматизация (Production):
 # Когда проект будет на сервере, можно настроить Cron (планировщик задач в Linux), чтобы команда запускалась, например, раз в сутки в 3 часа ночи.
@@ -207,7 +210,9 @@ class Command(BaseCommand):
 # python manage.py backup_db --tables xwear_category xwear_brand xwear_size xwear_color xwear_material
 # 2. Текстовый бэкап:
 # python manage.py backup_db --sql --tables xwear_category xwear_brand xwear_size xwear_color xwear_material
-# 3. Встроенная команда Django, которая сохраняет данные в формате JSON, не привязываясь к SQL-структуре (если структура моделей изменена):
+# 3. Текстовый бэкап только данных таблиц (без создания самих таблиц):
+# python manage.py backup_db --data-only --tables xwear_category xwear_brand
+# 4. Встроенная команда Django, которая сохраняет данные в формате JSON, не привязываясь к SQL-структуре (если структура моделей изменена):
 # python manage.py dumpdata xwear.Category --indent 4 > categories.json
 # (--indent 4 добавляет в JSON-файл переносы строк и отступы в 4 пробела)
 
