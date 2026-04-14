@@ -836,7 +836,7 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
             '<span style="color: {};">{} / {}</span>', text_color, active, total
         )
 
-    @admin.display(description="Цены", ordering="min_price")
+    @admin.display(description="Диапазон цен", ordering="min_price")
     def get_price_range(self, obj):
         # 1 вар. - Через список - не оптимально
         # prices = [s.final_price for s in obj.sizes.all() if s.is_active]

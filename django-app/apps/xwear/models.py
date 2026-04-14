@@ -322,7 +322,7 @@ class Product(TimeStampedModel):
     slug = models.SlugField(
         max_length=150,
         blank=True,
-        unique=True,
+        db_index=True,
         verbose_name="Слаг базовой модели",
         help_text="Генерируется автоматически на основе вида, бренда и модели",
     )
@@ -351,6 +351,12 @@ class Product(TimeStampedModel):
         verbose_name = "Базовый товар"
         verbose_name_plural = "Базовые товары"
         indexes = [models.Index(fields=["is_active", "category"])]
+        # Указываем БД, что комбинация "категория + слаг" должна быть уникальной
+        constraints = [
+            models.UniqueConstraint(
+                fields=["slug", "category"], name="unique_product_slug_per_category"
+            )
+        ]
 
 
 class ProductVariant(TimeStampedModel):
@@ -375,7 +381,7 @@ class ProductVariant(TimeStampedModel):
     slug = models.SlugField(
         max_length=200,
         blank=True,
-        unique=True,
+        db_index=True,
         verbose_name="Слаг варианта",
         help_text="Генерируется автоматически на основе вида, бренда, модели и цвета",
     )
@@ -431,10 +437,19 @@ class ProductVariant(TimeStampedModel):
         return self.full_name
 
     class Meta:
+        indexes = [models.Index(fields=["product", "is_active"])]
+        constraints = [
+            # Теперь слаг варианта должен быть уникальным только для конкретного базового товара
+            models.UniqueConstraint(
+                fields=["slug", "product"], name="unique_variant_slug_per_product"
+            ),
+            # Исключает создание двух цветовых дублей в базовом товаре
+            models.UniqueConstraint(
+                fields=["product", "color"], name="unique_product_color_variant"
+            ),
+        ]
         verbose_name = "Ассортимент"
         verbose_name_plural = "Ассортимент"
-        unique_together = ["product", "color"]  # Исключает создание двух цветовых дублей
-        indexes = [models.Index(fields=["product", "is_active"])]
 
 
 class Material(models.Model):
