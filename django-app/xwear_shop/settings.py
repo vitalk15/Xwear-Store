@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "django_mptt_admin",
     "adminsortable2",
     "nested_admin",
+    "django_quill",
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
@@ -227,6 +228,41 @@ THUMBNAIL_ALIASES = {
 #     "crop": "smart",
 #     "quality": 80,
 # }
+
+
+# Интерфейс текстового редактора
+# ------------------------------
+
+QUILL_CONFIGS = {
+    "default": {
+        "theme": "snow",  # 'snow' — стандартная панель, 'bubble' — всплывающая при выделении
+        "modules": {
+            "syntax": False,  # Включать только если нужно подсвечивать код (нужна библиотека Highlight.js)
+            "toolbar": [
+                # Группировка кнопок (каждый вложенный список — отдельный блок на панели)
+                [{"header": [2, 3, False]}],  # Заголовки (False — обычный текст)
+                [
+                    "bold",
+                    "italic",
+                    "underline",
+                ],  # Стили начертания (['bold', 'italic', 'underline', 'strike'])
+                [
+                    {"color": []},
+                    {"background": []},
+                ],  # Выбор цвета (пустой список — стандартная палитра)
+                [{"list": "ordered"}, {"list": "bullet"}],  # Списки
+                [{"align": []}],  # Выравнивание
+                ["link"],  # Медиа (['link', 'image', 'video'])
+                ["clean"],  # Кнопка «Очистить форматирование»
+            ],
+            # Дополнительно: можно настроить ограничение на вставку (например, запретить HTML-теги)
+            "clipboard": {
+                "matchVisual": False,
+            },
+        },
+        "placeholder": "Начните писать описание здесь...",
+    }
+}
 
 
 # Настройки доступа с других доменов (CORS)

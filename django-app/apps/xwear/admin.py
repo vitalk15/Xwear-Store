@@ -681,7 +681,12 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
             "admin/js/product_gender_auto.js",
             "admin/js/no_active_product.js",
         )
-        css = {"all": ("admin/css/display_inactive_products.css",)}
+        css = {
+            "all": (
+                "admin/css/display_inactive_products.css",
+                "admin/css/custom_quill.css",
+            )
+        }
 
 
 @admin.register(ProductVariant)

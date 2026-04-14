@@ -1,13 +1,11 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django.core.validators import MinValueValidator, MaxValueValidator
-
-# from django.core.exceptions import ValidationError
-# from django.utils.html import format_html
 from django.conf import settings
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from easy_thumbnails.fields import ThumbnailerImageField
 from easy_thumbnails.files import generate_all_aliases
+from django_quill.fields import QuillField
 from core.models import TimeStampedModel
 from .utils import (
     UploadToPath,
@@ -318,7 +316,7 @@ class Product(TimeStampedModel):
     season = models.CharField(
         max_length=20, choices=SeasonChoices.choices, verbose_name="Сезон"
     )
-    description = models.TextField(blank=True, verbose_name="Общее описание")
+    description = QuillField(blank=True, null=True, verbose_name="Описание")
 
     # Слаг базовой модели (например: sneakers-nike-air-force-1)
     slug = models.SlugField(
@@ -381,7 +379,7 @@ class ProductVariant(TimeStampedModel):
         verbose_name="Слаг варианта",
         help_text="Генерируется автоматически на основе вида, бренда, модели и цвета",
     )
-    is_active = models.BooleanField(default=True, verbose_name="Активен")
+    is_active = models.BooleanField(default=False, verbose_name="Активен")
 
     @property
     def full_name(self):

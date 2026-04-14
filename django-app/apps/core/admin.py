@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import City, Document, ContactSettings, CommercialConfig
+from .models import City, Document, ContactSettings, CommercialConfig, AboutUs
 
 
 # --------- МИКСИНЫ ПРАВ ДОСТУПА В АДМИНКЕ ------------
@@ -94,3 +94,11 @@ class CommercialConfigAdmin(SingletonAdminMixin, admin.ModelAdmin):
             {"fields": ("delivery_info", "payment_info")},
         ),
     )
+
+
+@admin.register(AboutUs)
+class AboutUsAdmin(SingletonAdminMixin, admin.ModelAdmin):
+    fields = ["title", "content", "is_active"]
+
+    class Media:
+        css = {"all": ("admin/css/custom_quill.css",)}

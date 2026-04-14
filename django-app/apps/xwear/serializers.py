@@ -1,3 +1,4 @@
+import json
 from rest_framework import serializers
 from .models import (
     Category,
@@ -248,7 +249,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     season_display = serializers.CharField(
         source="product.get_season_display", read_only=True
     )
-    description = serializers.CharField(source="product.description", read_only=True)
+    description = serializers.SerializerMethodField()
 
     # Специфичные данные варианта
     sizes = ProductSizeSerializer(many=True, read_only=True)
@@ -308,6 +309,16 @@ class ProductDetailSerializer(serializers.ModelSerializer):
                     }
                 )
         return results
+
+    def get_description(self, obj):
+        if obj.product and obj.product.description:
+            try:
+                # Возвращаем Delta JSON
+                return json.loads(obj.product.description.delta)
+            except (ValueError, AttributeError):
+                # На случай, если в базе оказался невалидный JSON или пустая строка
+                return None
+        return None
 
     class Meta:
         model = ProductVariant
