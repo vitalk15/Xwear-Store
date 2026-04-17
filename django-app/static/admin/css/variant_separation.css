@@ -3,7 +3,7 @@
 #variants-group > .djn-fieldset > details > .items > .djn-item {
 	border: 2px solid #417690 !important;
 	border-radius: 8px !important;
-	margin-bottom: 20px !important;
+	margin-bottom: 15px !important;
 	background: #ffffff !important;
 	display: block !important; /* Убеждаемся, что блок виден */
 	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
@@ -25,8 +25,8 @@
 
 /* Плашка */
 #variants-group > .djn-fieldset > details > summary {
-	margin-bottom: 5px;
-	border-radius: 4px !important;
+	margin-bottom: 15px;
+	border-radius: 8px !important;
 }
 
 /* 4. ЧИНИМ СКРЫТИЕ ПОЛЯ POSITION */
@@ -50,4 +50,32 @@
 	display: block !important;
 	margin-bottom: 25px;
 	font-size: 1.1em;
+}
+
+#variants-group > .djn-fieldset > details > .items > .djn-item > .aligned .fieldBox {
+	margin-right: 0;
+}
+
+#variants-group
+	> .djn-fieldset
+	> details
+	> .items
+	> .djn-item
+	> .aligned
+	.fieldBox
+	.vCheckboxLabel {
+	width: 150px;
+	min-width: 150px;
+}
+
+.variantinline-style .form-multiline .checkbox-row {
+	padding-top: 4px;
+}
+
+.variantinline-style .form-multiline .field-edit_link label {
+	padding: 6px 10px 0 0;
+}
+
+.variantinline-style .form-multiline .field-edit_link p {
+	padding: 4px 0;
 }

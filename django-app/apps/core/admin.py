@@ -98,7 +98,7 @@ class CommercialConfigAdmin(SingletonAdminMixin, admin.ModelAdmin):
 
 @admin.register(AboutUs)
 class AboutUsAdmin(SingletonAdminMixin, admin.ModelAdmin):
-    fields = ["title", "content", "is_active"]
+    fields = (("title", "is_active"), "content")
 
     class Media:
         css = {"all": ("admin/css/custom_quill.css",)}

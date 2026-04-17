@@ -22,53 +22,41 @@ tr:has(td.field-is_active input[type='checkbox']:not(:checked)) td {
 	color: #888 !important;
 }
 
-/* ========================================================= */
-/* 2. БЛОКИРОВКА ЧЕКБОКСОВ (Если нет размеров или вариантов) */
-/* ========================================================= */
+/* ======================================================================================== */
+/* 2. БЛОКИРОВКА ЧЕКБОКСОВ (Если нет размеров, вариантов или при неактивном базовом товаре) */
+/* ======================================================================================== */
 
-/* Блокируем и прячем чекбокс */
-tr.no-active-sizes td.field-is_active input[type='checkbox'],
-tr.no-active-variants td.field-is_active input[type='checkbox'] {
-	opacity: 0;
-	pointer-events: none;
+/* Общий стиль для заблокированной строки */
+tr.is-blocked td.field-is_active {
 	position: relative;
 }
 
-/* Добавляем иконку */
-tr.no-active-sizes td.field-is_active::before,
-tr.no-active-variants td.field-is_active::before {
+tr.is-blocked td.field-is_active input[type='checkbox'] {
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* Иконка блокировки */
+tr.is-blocked td.field-is_active::before {
 	content: '🚫';
 	font-size: 13px;
 	position: absolute;
-	margin-left: 0;
-	margin-top: 0;
 }
 
-/* Базовые стили для тултипа */
-tr.no-active-sizes td.field-is_active:hover::after,
-tr.no-active-variants td.field-is_active:hover::after {
+/* Универсальный тултип */
+tr.is-blocked td.field-is_active:hover::after {
+	/* берем текст из JS */
+	content: attr(data-tooltip);
+
 	position: absolute;
 	z-index: 1000;
-	background: #333;
-	color: white;
-	padding: 5px 10px;
-	border-radius: 4px;
-	font-size: 11px;
+	background: #2d3436;
+	color: #fab1a0;
+	padding: 8px 12px;
+	border-radius: 6px;
 	white-space: nowrap;
-	left: 40px;
-	top: 5px;
-}
-
-/* ======================== */
-/* 3. ТЕКСТЫ ДЛЯ ПОДСКАЗОК  */
-/* ======================== */
-
-/* Текст ошибки для вариантов (нет размеров) */
-tr.no-active-sizes td.field-is_active:hover::after {
-	content: 'Активация невозможна: нет размеров';
-}
-
-/* Текст ошибки для базовых товаров (нет цветов) */
-tr.no-active-variants td.field-is_active:hover::after {
-	content: 'Активация невозможна: нет вариантов';
+	right: 90px;
+	top: 8px;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+	border: 1px solid #636e72;
 }

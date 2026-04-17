@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
@@ -344,6 +345,11 @@ class Product(TimeStampedModel):
             )
         super().save(*args, **kwargs)
 
+        # 2. Проверяем статус: если товар деактивирован
+        if not self.is_active:
+            # Массово деактивируем все связанные варианты одним SQL-запросом
+            self.variants.update(is_active=False)
+
     def __str__(self):
         return self.full_name
 
@@ -397,6 +403,26 @@ class ProductVariant(TimeStampedModel):
         images_list = self.images.all()
         # Работаем со списком в памяти Python
         return images_list[0] if images_list else None
+
+    def clean(self):
+        # Сначала смотрим на состояние родителя в памяти (то, что в форме)
+        if not self.product.is_active:
+            # 2. Если в форме товар выключен, проверяем базу данных:
+            # А был ли он выключен ДО того, как мы нажали "Сохранить"?
+            was_parent_already_inactive = (
+                not type(self.product)
+                .objects.filter(pk=self.product_id, is_active=True)
+                .exists()
+            )
+
+            # Если он и в форме выключен, и в базе был выключен — значит,
+            # это попытка активировать вариант "втихую", не включая основной товар.
+            if was_parent_already_inactive:
+                raise ValidationError(
+                    {
+                        "is_active": "Нельзя активировать вариант, если базовый товар деактивирован."
+                    }
+                )
 
     def save(self, *args, **kwargs):
         # 1. Генерация слага, если он пуст (ID не нужен)

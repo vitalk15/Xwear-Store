@@ -56,9 +56,11 @@ class ProductAdminForm(forms.ModelForm):
     #     queryset=Category.objects.filter(children__isnull=True), level_indicator="--"
     # )
 
-    class Meta:
-        model = Product
-        fields = "__all__"
+    regen_slug = forms.BooleanField(
+        required=False,
+        label="Сбросить слаг",
+        help_text="Если был изменён ВИД, БРЕНД, МОДЕЛЬ или КАТЕГОРИЯ - отметьте, чтобы обновить слаг",
+    )
 
     # метод проверки данных поля формы
     def clean_category(self):
@@ -71,6 +73,10 @@ class ProductAdminForm(forms.ModelForm):
                 "Пожалуйста, выберите конечную подкатегорию."
             )
         return category
+
+    class Meta:
+        model = Product
+        fields = "__all__"
 
 
 class ProductVariantAdminForm(forms.ModelForm):
@@ -458,7 +464,17 @@ class ProductVariantInline(nested_admin.NestedStackedInline):
     model = ProductVariant
     # extra = 0
     inlines = [ProductImageInline, ProductMaterialInline, ProductSizeInline]
-    fields = ["color", "article", "is_active", "edit_link"]
+    # fields = ["color", "article", ("is_active", "edit_link")]
+    fieldsets = (
+        (None, {"fields": ("color", "article")}),
+        (
+            None,
+            {
+                "classes": ("variantinline-style",),
+                "fields": (("is_active", "edit_link"),),
+            },
+        ),
+    )
     readonly_fields = ["edit_link", "article"]
     verbose_name = "Вариант товара"
     verbose_name_plural = "Варианты товара (заполнять после базового товара)"
@@ -531,14 +547,21 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
     filter_horizontal = ["available_sizes"]
 
     fieldsets = (
+        (None, {"fields": ("is_active",)}),
         (
             "Классификация",
             {"fields": (("brand", "model_name"), ("category", "gender"))},
         ),
-        ("Базовая информация", {"fields": ("season", "description")}),
+        (
+            "Базовая информация",
+            {"classes": ("collapse",), "fields": ("season", "description")},
+        ),
         ("Размерная сетка", {"classes": ("collapse",), "fields": ("available_sizes",)}),
-        ("Идентификация (Авто)", {"classes": ("collapse",), "fields": ("name", "slug")}),
-        ("", {"fields": ("is_active",)}),
+        (
+            "Идентификация (Авто)",
+            {"classes": ("collapse",), "fields": ("name", "slug", "regen_slug")},
+        ),
+        # (None, {"fields": ("is_active",)}),
     )
 
     # Кол-во показываемых товаров на одной странице пагинации
@@ -629,13 +652,30 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
         )
 
     def save_model(self, request, obj, form, change):
-        # Защита от включения товара без вариантов через галочку в списке (changelist)
+        # 1. Сброс слага при необходимости
+        # Если в карточке варианта товара чекбокс перегенерации нажат — очищаем поле прямо перед сохранением
+        if form.cleaned_data.get("regen_slug"):
+            obj.slug = None
+        # 2. Защита от включения товара без вариантов через галочку в списке (changelist)
         if request.resolver_match and "changelist" in request.resolver_match.url_name:
             if obj.is_active and obj.variants.count() == 0:
                 obj.is_active = False  # Блокируем активацию
                 messages.error(
                     request,
-                    f"Товар '{obj.model_name}' не активирован: добавьте хотя бы один цвет (вариант).",
+                    f"Товар '{obj}' не активирован: добавьте хотя бы один вариант.",
+                )
+        # 3. Предупреждение о деактивации вариантов при деактивации базового товара
+        # change = True, если мы редактируем существующий товар, а не создаем новый
+        if change:
+            # Проверяем, изменился ли статус именно сейчас (был True, стал False)
+            was_active = form.initial.get("is_active")
+            is_active_now = obj.is_active
+
+            # Сообщение появится только в момент самого переключения галочки
+            if was_active and not is_active_now:
+                messages.warning(
+                    request,
+                    f"Товар «{obj}» деактивирован. Все связанные с ним варианты также автоматически деактивированы.",
                 )
 
         super().save_model(request, obj, form, change)
@@ -673,7 +713,7 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
 
             messages.warning(
                 request,
-                f"Товар '{obj.model_name}' деактивирован, так как у него нет ни одного варианта.",
+                f"Товар '{obj}' деактивирован, так как у него нет ни одного варианта.",
             )
 
     class Media:
@@ -683,6 +723,7 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
         )
         css = {
             "all": (
+                "admin/css/product_admin.css",
                 "admin/css/display_inactive_products.css",
                 "admin/css/custom_quill.css",
             )
@@ -697,8 +738,6 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
     """
 
     form = ProductVariantAdminForm
-
-    # inlines = [ProductImageInline, ProductSizeInline, ProductMaterialInline]
 
     list_display = [
         "article",
@@ -738,7 +777,7 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
                 "classes": ("collapse",),
                 "description": (
                     '<div style="color: #ba2121; font-weight: bold; margin-bottom: 10px;">'
-                    "⚠️ ИНСТРУКЦИЯ: Если вы изменили ВИД, БРЕНД, МОДЕЛЬ или КАТЕГОРИЮ у существующего товара:<br>"
+                    "⚠️ Если вы изменили ВИД, БРЕНД, МОДЕЛЬ или КАТЕГОРИЮ у базового товара:<br>"
                     '1. Отметьте галочки ниже и нажмите "Сохранить".<br>'
                     "2. Чтобы фото назывались правильно и лежали в правильных папках на сервере — удалите старые изображения и загрузите их заново."
                     "</div>"
@@ -761,6 +800,8 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
     def get_product_name(self, obj):
         if not obj.product:
             return "-"
+        # Возвращаем статус базового товара в скрытом теге для JS
+        status = "active" if obj.product.is_active else "inactive"
         # Динамически получаем данные для URL
         app_label = obj.product._meta.app_label
         model_name = obj.product._meta.model_name
@@ -770,9 +811,11 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
         return format_html(
             '<a href="{}" target="_blank" text-decoration: none; color: #447e9b;">'
             "{}"
-            "</a>",
+            "</a>"
+            '<span class="product-status-data" style="display:none;">{}</span>',
             url,
             obj.product.full_name,
+            status,
         )
 
     @admin.display(description="Сезон")
@@ -904,7 +947,7 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
                 obj.is_active = False
                 messages.error(
                     request,
-                    f"Вариант '{obj.product.model_name}' не активирован: добавьте размеры.",
+                    f"Вариант '{obj}' не активирован: добавьте размеры.",
                 )
 
         # Сохраняем сам вариант

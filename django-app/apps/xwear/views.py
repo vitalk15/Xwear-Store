@@ -106,7 +106,7 @@ def category_detail_view(request, pk):
 @api_view(["GET"])
 def product_detail_view(request, pk):
     variant = get_object_or_404(
-        ProductVariant.objects.filter(is_active=True, pk=pk)
+        ProductVariant.objects.filter(is_active=True, product__is_active=True, pk=pk)
         .select_related(
             "product__category",
             "product__brand",
@@ -132,7 +132,9 @@ def product_detail_view(request, pk):
 @api_view(["GET"])
 def product_recommends_view(request, pk):
     # Находим вариант товара
-    variant = get_object_or_404(ProductVariant.objects.filter(is_active=True, pk=pk))
+    variant = get_object_or_404(
+        ProductVariant.objects.filter(is_active=True, product__is_active=True, pk=pk)
+    )
 
     # Получаем рекомендации
     recommends = get_similar_products(variant)
