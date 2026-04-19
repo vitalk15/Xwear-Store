@@ -382,8 +382,6 @@ class ProductVariant(TimeStampedModel):
         blank=True,
         help_text="Генерируется автоматически '[BRAND(2)][GENDER(1)][CAT_ID(3)]-[PROD_ID(5)][RAND(3)]'",
     )
-
-    # Слаг для конкретного цвета (например: sneakers-nike-air-force-1-krasnyj)
     slug = models.SlugField(
         max_length=200,
         blank=True,
@@ -392,6 +390,10 @@ class ProductVariant(TimeStampedModel):
         help_text="Генерируется автоматически на основе вида, бренда, модели и цвета",
     )
     is_active = models.BooleanField(default=False, verbose_name="Активен")
+    # through='ProductSize' говорит Django использовать существующую модель
+    actual_sizes = models.ManyToManyField(
+        "Size", through="ProductSize", related_name="variants", verbose_name="Размеры"
+    )
 
     @property
     def full_name(self):

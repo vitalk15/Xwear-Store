@@ -22,6 +22,7 @@ from adminsortable2.admin import (
     # SortableInlineAdminMixin,
     # CustomInlineFormSet,
 )
+from admin_auto_filters.filters import AutocompleteFilter
 
 # from mptt.forms import TreeNodeChoiceField
 from core.admin import ReadOnlyAdminMixin, NoAddMixin
@@ -116,6 +117,43 @@ class ColorAdminForm(forms.ModelForm):
                 }
             ),
         }
+
+
+class ProductSizeForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # self.instance — это конкретная запись ProductSize (строка инлайна)
+        if self.instance and self.instance.pk:
+            # Если запись уже есть в базе, блокируем изменение размера
+            self.fields["size"].disabled = True
+        else:
+            # Если это новая строка, поле будет доступно для выбора
+            self.fields["size"].disabled = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        is_active = cleaned_data.get("is_active")
+        price = cleaned_data.get("price")
+        size = cleaned_data.get("size")
+
+        # Проверяем, не помечена ли строка на удаление (чтобы не спамить ошибками)
+        if cleaned_data.get("DELETE"):
+            return cleaned_data
+
+        # Логика валидации
+        if is_active:
+            if price is None or price <= 0:
+                # Выводим ошибку конкретно над полем цены
+                # self.add_error(
+                #     "price", f"Нельзя активировать размер {size} без указания цены!"
+                # )
+
+                # Или общую ошибку для всей строки
+                raise ValidationError(
+                    f"Нельзя активировать размер {size} без указания цены!"
+                )
+
+        return cleaned_data
 
 
 class ProductImageFormSet(nested_admin.formsets.NestedInlineFormSet):
@@ -287,31 +325,32 @@ class DiscountFilter(admin.SimpleListFilter):
             return queryset.filter(sizes__discount_percent=0).distinct()
 
 
-class SizeFilter(admin.SimpleListFilter):
+class SizeFilter(AutocompleteFilter):
     title = "Размер"
-    parameter_name = "size"
+    field_name = "actual_sizes"
+    # parameter_name = "size"
 
-    def lookups(self, request, model_admin):
-        # 1. Получаем список ID размеров, которые реально используются в товарах.
-        # model_admin.model — это наша модель Product.
-        # values_list(..., flat=True) достает только колонку с ID.
-        # distinct() убирает дубликаты, чтобы база не вернула [42, 42, 42, 43, 43...].
-        used_size_ids = model_admin.model.objects.values_list(
-            "sizes__size_id", flat=True
-        ).distinct()
+    # def lookups(self, request, model_admin):
+    #     # 1. Получаем список ID размеров, которые реально используются в товарах.
+    #     # model_admin.model — это наша модель Product.
+    #     # values_list(..., flat=True) достает только колонку с ID.
+    #     # distinct() убирает дубликаты, чтобы база не вернула [42, 42, 42, 43, 43...].
+    #     used_size_ids = model_admin.model.objects.values_list(
+    #         "sizes__size_id", flat=True
+    #     ).distinct()
 
-        # 2. Достаем из базы только те размеры, ID которых есть в нашем списке
-        # exclude(id=None) на всякий случай отсекает товары вообще без размеров
-        sizes = (
-            Size.objects.filter(id__in=used_size_ids).exclude(id=None).order_by("name")
-        )
+    #     # 2. Достаем из базы только те размеры, ID которых есть в нашем списке
+    #     # exclude(id=None) на всякий случай отсекает товары вообще без размеров
+    #     sizes = (
+    #         Size.objects.filter(id__in=used_size_ids).exclude(id=None).order_by("order")
+    #     )
 
-        return [(s.id, s.name) for s in sizes]
+    #     return [(s.id, s.name) for s in sizes]
 
-    def queryset(self, request, queryset):
-        if self.value():
-            return queryset.filter(sizes__size_id=self.value())
-        return queryset
+    # def queryset(self, request, queryset):
+    #     if self.value():
+    #         return queryset.filter(sizes__size_id=self.value())
+    #     return queryset
 
 
 class AvailabilityFilter(admin.SimpleListFilter):
@@ -393,10 +432,11 @@ class ProductImageInline(nested_admin.NestedTabularInline):
 
 class ProductSizeInline(nested_admin.NestedTabularInline):
     model = ProductSize
+    form = ProductSizeForm
     extra = 0
     fields = ["size", "price", "discount_percent", "display_final_price", "is_active"]
     # Это делает выбор размера быстрым поиском (требует search_fields в SizeAdmin)
-    # autocomplete_fields = ["size"]
+    autocomplete_fields = ["size"]
     readonly_fields = ["display_final_price"]
     classes = ["collapse"]
 
@@ -408,17 +448,6 @@ class ProductSizeInline(nested_admin.NestedTabularInline):
             )
         return "-"
 
-    def get_readonly_fields(self, request, obj=None):
-        # 1. Берем список из readonly_fields
-        readonly = list(self.readonly_fields)
-
-        # 2. Если объект уже существует в базе (режим редактирования)
-        if obj and obj.pk:
-            # Добавляем поле "size" только для чтения
-            if "size" not in readonly:
-                readonly.append("size")
-        return readonly
-
     def has_add_permission(self, request, obj=None):
         # Разрешаем добавлять новые размеры (вдруг появился нестандартный)
         return True
@@ -428,19 +457,6 @@ class ProductSizeInline(nested_admin.NestedTabularInline):
         return (
             super().get_queryset(request).select_related("size").order_by("size__order")
         )
-
-    def clean(self):
-        cleaned_data = super().clean()
-        for form in self.forms:
-            if form.cleaned_data and not form.cleaned_data.get("DELETE"):
-                is_active = form.cleaned_data.get("is_active")
-                price = form.cleaned_data.get("price")
-
-                # запрещаем активировать размер, не указав его цену
-                if is_active and (price is None or price <= 0):
-                    raise ValidationError(
-                        f"У размера {form.instance.size} включена активация, но не указана цена!"
-                    )
 
 
 class ProductMaterialInline(nested_admin.NestedStackedInline):
@@ -758,12 +774,12 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
         VariantCategoryOptimizedFilter,
         "product__season",
         ActiveColorFilter,
+        DiscountFilter,
         AvailabilityFilter,
         SizeFilter,
-        DiscountFilter,
     ]
     search_fields = ["article", "product__model_name", "product__brand__name"]
-    autocomplete_fields = ["product", "color"]
+    autocomplete_fields = ["product", "color", "actual_sizes"]
     list_editable = ["is_active"]
     readonly_fields = ["article", "slug"]
 
@@ -968,7 +984,12 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
             "admin/js/product_price_preview.js",
             "admin/js/no_active_product.js",
         )
-        css = {"all": ("admin/css/display_inactive_products.css",)}
+        css = {
+            "all": (
+                "admin/css/display_inactive_products.css",
+                "admin/css/changelist-filter.css",
+            )
+        }
 
 
 @admin.register(Category)
@@ -1081,8 +1102,19 @@ class SizeAdmin(SortableAdminMixin, admin.ModelAdmin):
     list_display = ["name"]
     list_display_links = ["name"]
     search_fields = ["name"]
-    # list_editable = ["order"]
-    # fields = (("name", "order"),)
+
+    def get_search_results(self, request, queryset, search_term):
+        # Вызываем стандартный поиск
+        queryset, use_distinct = super().get_search_results(
+            request, queryset, search_term
+        )
+
+        # Если это запрос от нашего фильтра в админке
+        if "autocomplete" in request.path:
+            # Ограничиваем выдачу только теми размерами, которые есть в ProductSize
+            queryset = queryset.filter(productsize__isnull=False).distinct()
+
+        return queryset, use_distinct
 
 
 @admin.register(Material)
