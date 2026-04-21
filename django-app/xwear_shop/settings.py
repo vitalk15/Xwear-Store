@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     "mptt",
     "django_mptt_admin",
     "adminsortable2",
-    "nested_admin",
     "admin_auto_filters",
     "django_quill",
     "rest_framework",

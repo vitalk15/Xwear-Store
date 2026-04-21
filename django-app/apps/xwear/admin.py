@@ -15,16 +15,15 @@ from django.db.models import (
 from django.utils.html import format_html
 from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
-import nested_admin
-from adminsortable2.admin import (
-    SortableAdminMixin,
-    # SortableAdminBase,
-    # SortableInlineAdminMixin,
-    # CustomInlineFormSet,
-)
-from admin_auto_filters.filters import AutocompleteFilter
 
 # from mptt.forms import TreeNodeChoiceField
+from adminsortable2.admin import (
+    SortableAdminMixin,
+    SortableAdminBase,
+    SortableInlineAdminMixin,
+    CustomInlineFormSet,
+)
+from admin_auto_filters.filters import AutocompleteFilter
 from core.admin import ReadOnlyAdminMixin, NoAddMixin
 from .models import (
     Category,
@@ -156,7 +155,7 @@ class ProductSizeForm(forms.ModelForm):
         return cleaned_data
 
 
-class ProductImageFormSet(nested_admin.formsets.NestedInlineFormSet):
+class ProductImageFormSet(CustomInlineFormSet):
     """Проверяет, что загружено хотя бы одно изображение"""
 
     def clean(self):
@@ -186,16 +185,6 @@ class CategoryOptimizedFilter(admin.SimpleListFilter):
     parameter_name = "category_id"  # Имя параметра в URL
 
     def lookups(self, request, model_admin):
-        # делаем ОДИН запрос с select_related('parent')
-        #     categories = (
-        #         model_admin.model._meta.get_field("category")
-        #         .related_model.objects.select_related("parent")
-        #         .all()
-        #     )
-        #     # Возвращаем список кортежей (id, имя_с_отступами)
-        #     # Так как мы использовали select_related, метод __str__ не будет дергать базу
-        #     return [(c.pk, str(c)) for c in categories]
-
         # 1. Получаем модель категории через _meta (без прямого импорта)
         CategoryModel = model_admin.model._meta.get_field("category").related_model
         # 2. Находим категории, где есть товары напрямую
@@ -210,12 +199,6 @@ class CategoryOptimizedFilter(admin.SimpleListFilter):
             .distinct()
         )
         return [(c.pk, str(c)) for c in categories]
-
-    # def queryset(self, request, queryset):
-    #     # Фильтруем основной список товаров
-    #     if self.value():
-    #         return queryset.filter(category_id=self.value())
-    #     return queryset
 
     def queryset(self, request, queryset):
         if self.value():
@@ -328,29 +311,6 @@ class DiscountFilter(admin.SimpleListFilter):
 class SizeFilter(AutocompleteFilter):
     title = "Размер"
     field_name = "actual_sizes"
-    # parameter_name = "size"
-
-    # def lookups(self, request, model_admin):
-    #     # 1. Получаем список ID размеров, которые реально используются в товарах.
-    #     # model_admin.model — это наша модель Product.
-    #     # values_list(..., flat=True) достает только колонку с ID.
-    #     # distinct() убирает дубликаты, чтобы база не вернула [42, 42, 42, 43, 43...].
-    #     used_size_ids = model_admin.model.objects.values_list(
-    #         "sizes__size_id", flat=True
-    #     ).distinct()
-
-    #     # 2. Достаем из базы только те размеры, ID которых есть в нашем списке
-    #     # exclude(id=None) на всякий случай отсекает товары вообще без размеров
-    #     sizes = (
-    #         Size.objects.filter(id__in=used_size_ids).exclude(id=None).order_by("order")
-    #     )
-
-    #     return [(s.id, s.name) for s in sizes]
-
-    # def queryset(self, request, queryset):
-    #     if self.value():
-    #         return queryset.filter(sizes__size_id=self.value())
-    #     return queryset
 
 
 class AvailabilityFilter(admin.SimpleListFilter):
@@ -385,29 +345,28 @@ class AvailabilityFilter(admin.SimpleListFilter):
 # ==========================================
 
 
-class ProductImageInline(nested_admin.NestedTabularInline):
+class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
     model = ProductImage
     formset = ProductImageFormSet
-    extra = 0
-    fields = ["image", "position", "is_main", "alt", "image_preview"]
+    # extra = 0
+    fields = ["image", "is_main", "alt", "image_preview"]
     classes = ["collapse"]
-    # sortable_field_name = "position"
 
     @admin.display(description="Превью")
     def image_preview(self, obj):
         return get_admin_thumb(obj.image, alias="product_small")
 
     # добавление пустой строки для внесения данных
-    # def get_extra(self, request, obj=None, **kwargs):
-    #     if obj:  # Если объект уже существует в базе (редактирование)
-    #         return 0
-    #     return 1  # Если это создание нового товара
+    def get_extra(self, request, obj=None, **kwargs):
+        if obj:  # Если объект уже существует в базе (редактирование)
+            return 0
+        return 1  # Если это создание нового товара
 
     def get_readonly_fields(self, request, obj=None):
-        # obj — это сам Товар (Product).
+        # obj — это сам Товар (ProductVariant).
         # Если он существует (obj is not None), значит мы в режиме редактирования.
-        # if obj:
-        #     return ["image_preview", "is_main"]
+        if obj:
+            return ["image_preview", "is_main"]
         # Если товара еще нет (режим создания), все поля доступны для редактирования
         return ["image_preview"]
 
@@ -430,7 +389,7 @@ class ProductImageInline(nested_admin.NestedTabularInline):
         js = ("admin/js/image_preview.js",)
 
 
-class ProductSizeInline(nested_admin.NestedTabularInline):
+class ProductSizeInline(admin.TabularInline):
     model = ProductSize
     form = ProductSizeForm
     extra = 0
@@ -458,8 +417,12 @@ class ProductSizeInline(nested_admin.NestedTabularInline):
             super().get_queryset(request).select_related("size").order_by("size__order")
         )
 
+    class Media:
+        js = ("admin/js/product_price_preview.js",)
+        css = {"all": ("admin/css/select2.css",)}
 
-class ProductMaterialInline(nested_admin.NestedStackedInline):
+
+class ProductMaterialInline(admin.StackedInline):
     model = ProductMaterial
     can_delete = False
     # Ограничиваем количество, так как это OneToOne
@@ -474,42 +437,24 @@ class ProductMaterialInline(nested_admin.NestedStackedInline):
         css = {"all": ("admin/css/hide_inline_header.css",)}
 
 
-class ProductVariantInline(nested_admin.NestedStackedInline):
+class ProductVariantInline(admin.TabularInline):
     """Инлайн для отображения вариантов (цветов) внутри базового товара"""
 
     model = ProductVariant
     # extra = 0
-    inlines = [ProductImageInline, ProductMaterialInline, ProductSizeInline]
-    # fields = ["color", "article", ("is_active", "edit_link")]
-    fieldsets = (
-        (None, {"fields": ("color", "article")}),
-        (
-            None,
-            {
-                "classes": ("variantinline-style",),
-                "fields": (("is_active", "edit_link"),),
-            },
-        ),
-    )
-    readonly_fields = ["edit_link", "article"]
+    fields = ("color", "article", "get_preview", "is_active")
+    readonly_fields = ["get_preview", "article"]
+    show_change_link = True  # Позволяет быстро перейти в ProductVariantAdmin
     verbose_name = "Вариант товара"
-    verbose_name_plural = "Варианты товара (заполнять после базового товара)"
+    verbose_name_plural = "Варианты товара (указать после базового товара)"
     classes = ["collapse"]
 
-    @admin.display(description="Управление вариантом")
-    def edit_link(self, instance):
-        if instance.pk:
-            # Динамически получаем имя приложения и модели
-            app = instance._meta.app_label
-            model = instance._meta.model_name
-            # Создаем ссылку на страницу редактирования конкретного варианта
-            url = reverse(f"admin:{app}_{model}_change", args=[instance.pk])
-            return format_html(
-                '<a href="{}" class="button" target="_blank" style="white-space: nowrap;">'
-                "Настроить детали ➔</a>",
-                url,
-            )
-        return format_html('<span style="color: #888;">Сначала сохраните товар</span>')
+    @admin.display(description="Превью")
+    def get_preview(self, obj):
+        main_img = obj.get_main_image_obj
+        if main_img:
+            return get_admin_thumb(main_img.image)
+        return "-"
 
     # добавление пустой строки для внесения данных
     def get_extra(self, request, obj=None, **kwargs):
@@ -518,20 +463,12 @@ class ProductVariantInline(nested_admin.NestedStackedInline):
         return 1  # Если это создание нового товара
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("color")
-
-    class Media:
-        js = (
-            "admin/js/image_preview.js",
-            "admin/js/product_price_preview.js",
-            "admin/js/no_active_product.js",
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("color")
+            .prefetch_related("images")
         )
-        css = {
-            "all": (
-                "admin/css/display_inactive_products.css",
-                "admin/css/variant_separation.css",
-            )
-        }
 
 
 # ==========================================
@@ -540,7 +477,7 @@ class ProductVariantInline(nested_admin.NestedStackedInline):
 
 
 @admin.register(Product)
-class ProductAdmin(nested_admin.NestedModelAdmin):
+class ProductAdmin(admin.ModelAdmin):
     """Управление БАЗОВЫМИ товарами (моделями)"""
 
     form = ProductAdminForm
@@ -702,27 +639,8 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
 
         obj = form.instance
 
-        # 2. Проходимся по сохраненным вариантам и применяем логику
-        # Получаем все варианты, привязанные к этому товару
-        variants = obj.variants.all()
-
-        for variant in variants:
-            # А. Проверка на пустые размеры и деактивация
-            if variant.is_active and not variant.sizes.filter(is_active=True).exists():
-                # Принудительно выключаем вариант
-                variant.is_active = False
-                variant.save(update_fields=["is_active"])
-                messages.warning(
-                    request, f"Вариант '{variant}' выключен: нет активных размеров."
-                )
-
-            # Б. Синхронизация главных фото и и генерация alt-текста
-            from .utils import sync_product_images
-
-            sync_product_images(variant)
-
-        # 3. Авто-отключение товара, если сохранили карточку, а вариантов нет
-        if obj.is_active and obj.variants.count() == 0:
+        # 2. Авто-отключение товара, если сохранили карточку, а вариантов нет
+        if obj.is_active and not obj.variants.exists():
             obj.is_active = False
             # Сохраняем только поле активности, чтобы не триггерить полное обновление
             obj.save(update_fields=["is_active"])
@@ -747,13 +665,13 @@ class ProductAdmin(nested_admin.NestedModelAdmin):
 
 
 @admin.register(ProductVariant)
-class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
+class ProductVariantAdmin(SortableAdminBase, NoAddMixin, admin.ModelAdmin):
     """
-    Dashboard для управления вариантами товаров.
-    Используется для быстрого поиска, фильтрации и массовых правок (цены, скидки, статус).
+    Управление вариантами товаров.
     """
 
     form = ProductVariantAdminForm
+    inlines = [ProductImageInline, ProductMaterialInline, ProductSizeInline]
 
     list_display = [
         "article",
@@ -785,8 +703,8 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
 
     fieldsets = (
         ("Привязка", {"fields": ("product", "color")}),
-        ("Опции", {"fields": ("set_discount_all_sizes", "is_active")}),
         ("Идентификация (Авто)", {"fields": ("article", "slug")}),
+        ("Опции", {"fields": ("set_discount_all_sizes", "is_active")}),
         (
             "Служебные действия",
             {
@@ -895,7 +813,7 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
             '<span style="color: {};">{} / {}</span>', text_color, active, total
         )
 
-    @admin.display(description="Диапазон цен", ordering="min_price")
+    @admin.display(description="Цены", ordering="min_price")
     def get_price_range(self, obj):
         # 1 вар. - Через список - не оптимально
         # prices = [s.final_price for s in obj.sizes.all() if s.is_active]
@@ -978,12 +896,40 @@ class ProductVariantAdmin(NoAddMixin, admin.ModelAdmin):
                 request, f"Скидка {discount_value}% применена ко всем размерам."
             )
 
+    def save_related(self, request, form, formsets, change):
+        # 1. Сохраняем инлайны (размеры, фото, материалы)
+        super().save_related(request, form, formsets, change)
+
+        variant = form.instance
+
+        # 2. Проверка на наличие активных размеров
+        # проверка на пустые размеры и деактивация
+        if variant.is_active and not variant.sizes.filter(is_active=True).exists():
+            # принудительно выключаем вариант
+            variant.is_active = False
+            variant.save(update_fields=["is_active"])
+            messages.warning(
+                request, f"Вариант '{variant}' выключен: нет активных размеров."
+            )
+
+        # 2. Ищем, в какой форме был изменен или установлен флаг is_main
+        manual_id = None
+        for formset in formsets:
+            if formset.model == ProductImage:
+                for f in formset.forms:
+                    # Если галочка is_main изменилась или она True в новой форме
+                    if "is_main" in f.changed_data and f.cleaned_data.get("is_main"):
+                        if f.instance.pk:
+                            manual_id = f.instance.pk
+                break
+
+        # 4. Передаем этот ID в функцию синхронизации
+        from .utils import sync_product_images
+
+        sync_product_images(variant, manual_selected_id=manual_id)
+
     class Media:
-        js = (
-            "admin/js/image_preview.js",
-            "admin/js/product_price_preview.js",
-            "admin/js/no_active_product.js",
-        )
+        js = ("admin/js/no_active_product.js",)
         css = {
             "all": (
                 "admin/css/display_inactive_products.css",
@@ -1142,7 +1088,7 @@ class FavoriteAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(SliderBanner)
 class SliderBannerAdmin(SortableAdminMixin, admin.ModelAdmin):
-    list_display = ("get_preview", "title", "order", "link", "is_active")
+    list_display = ("get_preview", "title", "link", "is_active")
     list_editable = ("link", "is_active")
     readonly_fields = ("get_preview_large",)
     fields = ("title", "image", "get_preview_large", "link", "is_active")

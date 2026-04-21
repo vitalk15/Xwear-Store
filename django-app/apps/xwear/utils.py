@@ -609,7 +609,7 @@ def generate_unique_article(variant):
 
 # синхронизация изображений варианта товара (главная, порядок) и генерация alt-текста в админке
 @transaction.atomic
-def sync_product_images(variant):
+def sync_product_images(variant, manual_selected_id=None):
     """
     Синхронизация изображений варианта товара (главная, порядок)
     и генерация alt-текста в админке.
@@ -631,19 +631,19 @@ def sync_product_images(variant):
         # В противном случае оставляем то, что ввел пользователь
         return current_alt
 
-    # 3. Определяем главное фото.
-    # Так как мы вызываем это ПОСЛЕ super().save_related(), то если юзер кликнул
-    # галочку is_main в инлайне, в БД этот объект уже имеет is_main=True.
-    explicit_mains = [img for img in images if img.is_main]
-
-    if explicit_mains:
-        # Если отмечено несколько галочек, берем первую
-        target_main = explicit_mains[0]
+    # 4. Определяем главное фото.
+    if manual_selected_id:
+        # ПРИОРИТЕТ 1: Если пользователь явно кликнул на галочку (передано из admin.py)
+        target_main = variant.images.filter(pk=manual_selected_id).first()
     else:
-        # Если ни одно фото не отмечено главным, берем физически первое
+        # ПРИОРИТЕТ 2: В остальных случаях (включая перетаскивание)
+        # главным становится тот, кто фактически первый в списке
         target_main = images[0]
 
-    # 4. Синхронизируем флаги
+    if not target_main:
+        target_main = images[0]
+
+    # 5. Синхронизируем флаги
     # Сначала сбрасываем у всех
     variant.images.all().update(is_main=False)
     # Затем жестко ставим первому позицию 0 и флаг True
@@ -651,7 +651,7 @@ def sync_product_images(variant):
         is_main=True, position=0, alt=get_smart_alt(target_main, 1)
     )
 
-    # 5. Выравниваем позиции остальных (чтобы не было двух нулевых позиций)
+    # 6. Выравниваем позиции остальных (чтобы не было двух нулевых позиций)
     others = variant.images.exclude(pk=target_main.pk).order_by("position", "id")
     for i, img in enumerate(others, start=2):
         variant.images.filter(pk=img.pk).update(position=i - 1, alt=get_smart_alt(img, i))
