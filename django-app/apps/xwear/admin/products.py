@@ -1,11 +1,11 @@
-from django import forms
-from django.core.exceptions import ValidationError
+# БАЗОВЫЕ ТОВАРЫ, ВАРИАНТЫ
+
 from django.contrib import admin, messages
 from django.db import transaction
 from django.db.models import (
     Count,
-    Q,
     F,
+    Q,
     Min,
     Max,
     OuterRef,
@@ -13,199 +13,31 @@ from django.db.models import (
 )
 from django.utils.html import format_html
 from django.urls import reverse
-from django_mptt_admin.admin import DjangoMpttAdmin
-
-# from mptt.forms import TreeNodeChoiceField
-from adminsortable2.admin import (
-    SortableAdminMixin,
-    SortableAdminBase,
-    SortableInlineAdminMixin,
-    CustomInlineFormSet,
-)
 from admin_auto_filters.filters import AutocompleteFilter
-from core.admin import ReadOnlyAdminMixin, NoAddMixin
-from .models import (
+from adminsortable2.admin import SortableAdminBase, SortableInlineAdminMixin
+from core.admin import NoAddMixin
+from ..forms import (
+    ProductAdminForm,
+    ProductVariantAdminForm,
+    ProductSizeForm,
+    ProductSizeFormSet,
+    ProductImageFormSet,
+)
+from ..models import (
     Category,
-    Brand,
     Color,
     Product,
     ProductVariant,
     ProductImage,
-    Size,
     ProductSize,
-    Material,
     ProductMaterial,
-    Favorite,
-    SliderBanner,
 )
-from .utils import get_admin_thumb, add_validator_attrs_to_widget
+from ..utils import add_validator_attrs_to_widget
+from .base import ImagePreviewMixin, MainPreviewMixin
 
 
 # ==========================================
-# 1. ФОРМЫ
-# ==========================================
-
-
-class ProductAdminForm(forms.ModelForm):
-    # Указываем специальное поле для выбора категории
-    # level_indicator — это символы, которые будут показывать вложенность
-    # category = TreeNodeChoiceField(queryset=Category.objects.all(), level_indicator="---")
-    # Фильтруем категории так, чтобы можно было выбрать только "листья" (leaf nodes)
-    # category = TreeNodeChoiceField(
-    #     queryset=Category.objects.filter(children__isnull=True), level_indicator="--"
-    # )
-
-    regen_slug = forms.BooleanField(
-        required=False,
-        label="Сбросить слаг",
-        help_text="Если был изменён ВИД, БРЕНД, МОДЕЛЬ или КАТЕГОРИЯ - отметьте, чтобы обновить слаг",
-    )
-
-    # метод проверки данных поля формы
-    def clean_category(self):
-        category = self.cleaned_data.get("category")
-        # Проверяем, является ли категория "листом" (т.е. нет ли у неё детей)
-        # В django-mptt для этого есть встроенный метод is_leaf_node()
-        if category and not category.is_leaf_node():
-            raise ValidationError(
-                f"Категория '{category.name}' является групповой. "
-                "Пожалуйста, выберите конечную подкатегорию."
-            )
-        return category
-
-    class Meta:
-        model = Product
-        fields = "__all__"
-
-
-class ProductVariantAdminForm(forms.ModelForm):
-    set_discount_all_sizes = forms.IntegerField(
-        label="Установить скидку (%) на все размеры",
-        required=False,
-        min_value=0,
-        max_value=100,
-        help_text="Введите число, чтобы массово обновить скидку",
-    )
-    regen_article = forms.BooleanField(
-        required=False,
-        label="Сбросить артикул",
-        help_text="Отметьте, чтобы создать новый артикул для варианта товара",
-    )
-    regen_slug = forms.BooleanField(
-        required=False,
-        label="Сбросить слаг",
-        help_text="Отметьте, чтобы обновить ссылку на вариант товара",
-    )
-
-    class Meta:
-        model = ProductVariant
-        fields = "__all__"
-
-
-class ColorAdminForm(forms.ModelForm):
-    class Meta:
-        model = Color
-        fields = "__all__"
-        widgets = {
-            # HTML5 type="color" превращает обычный input в системную палитру выбора цвета
-            "hex_code": forms.TextInput(
-                attrs={
-                    "type": "color",
-                    "style": "height: 40px; width: 60px; padding: 0; cursor: pointer;",
-                }
-            ),
-        }
-
-
-class ProductSizeForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # self.instance — это конкретная запись ProductSize (строка инлайна)
-        if self.instance and self.instance.pk:
-            # Если запись уже есть в базе, блокируем изменение размера
-            self.fields["size"].disabled = True
-        else:
-            # Если это новая строка, поле будет доступно для выбора
-            self.fields["size"].disabled = False
-
-    def clean(self):
-        cleaned_data = super().clean()
-        is_active = cleaned_data.get("is_active")
-        price = cleaned_data.get("price")
-        size = cleaned_data.get("size")
-
-        # Проверяем, не помечена ли строка на удаление (чтобы не спамить ошибками)
-        if cleaned_data.get("DELETE"):
-            return cleaned_data
-
-        # Логика валидации
-        if is_active:
-            if price is None or price <= 0:
-                # Выводим ошибку конкретно над полем цены
-                # self.add_error(
-                #     "price", f"Нельзя активировать размер {size} без указания цены!"
-                # )
-
-                # Или общую ошибку для всей строки
-                raise ValidationError(
-                    f"Нельзя активировать размер {size} без указания цены!"
-                )
-
-        return cleaned_data
-
-
-class ProductSizeFormSet(forms.BaseInlineFormSet):
-    def clean(self):
-        super().clean()
-
-        # Если есть ошибки в самих формах размеров (например, буквы в цене), не продолжаем
-        if any(self.errors):
-            return
-
-        # Проверяем, активен ли вариант (берем значение из формы, а не из базы!)
-        # self.instance — это наш ProductVariant
-        if self.instance.is_active:
-            has_active_sizes = False
-            for form in self.forms:
-                # Проверяем, что форма заполнена, не пуста и не помечена на удаление
-                if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
-                    if form.cleaned_data.get("is_active"):
-                        has_active_sizes = True
-                        break
-
-            if not has_active_sizes:
-                raise ValidationError(
-                    "Нельзя активировать вариант без активных размеров."
-                )
-
-
-class ProductImageFormSet(CustomInlineFormSet):
-    """Проверяет, что загружено хотя бы одно изображение"""
-
-    def clean(self):
-        super().clean()
-        if any(self.errors):
-            return
-
-        # Если вариант активирован, проверяем картинки
-        if self.instance.is_active:
-            has_images = False
-            for form in self.forms:
-                # Проверяем, что форма не пустая и не помечена на удаление
-                if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
-                    # Проверяем наличие самого файла изображения
-                    if form.cleaned_data.get("image"):
-                        has_images = True
-                        break
-
-            if not has_images:
-                raise ValidationError(
-                    "Для активации варианта нужно хотя бы одно изображение."
-                )
-
-
-# ==========================================
-# 2. ФИЛЬТРЫ
+# 1. ФИЛЬТРЫ
 # ==========================================
 
 
@@ -370,20 +202,18 @@ class AvailabilityFilter(admin.SimpleListFilter):
 
 
 # ==========================================
-# 3. ИНЛАЙНЫ
+# 2. ИНЛАЙНЫ
 # ==========================================
 
 
-class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
+class ProductImageInline(
+    ImagePreviewMixin, SortableInlineAdminMixin, admin.TabularInline
+):
     model = ProductImage
     formset = ProductImageFormSet
     # extra = 0
     fields = ["image", "is_main", "alt", "image_preview"]
     classes = ["collapse"]
-
-    @admin.display(description="Превью")
-    def image_preview(self, obj):
-        return get_admin_thumb(obj.image, alias="product_small")
 
     # добавление пустой строки для внесения данных
     def get_extra(self, request, obj=None, **kwargs):
@@ -468,24 +298,17 @@ class ProductMaterialInline(admin.StackedInline):
         css = {"all": ("admin/css/hide_inline_header.css",)}
 
 
-class ProductVariantInline(admin.TabularInline):
+class ProductVariantInline(MainPreviewMixin, admin.TabularInline):
     """Инлайн для отображения вариантов (цветов) внутри базового товара"""
 
     model = ProductVariant
     # extra = 0
-    fields = ("color", "article", "get_preview", "is_active")
-    readonly_fields = ["get_preview", "article"]
+    fields = ("color", "article", "get_main_preview", "is_active")
+    readonly_fields = ["get_main_preview", "article"]
     show_change_link = True  # Позволяет быстро перейти в ProductVariantAdmin
     verbose_name = "Вариант товара"
     verbose_name_plural = "Варианты товара (Создается выключенным. Сначала оформите его, а затем активируйте.)"
     classes = ["collapse"]
-
-    @admin.display(description="Превью")
-    def get_preview(self, obj):
-        main_img = obj.get_main_image_obj
-        if main_img:
-            return get_admin_thumb(main_img.image)
-        return "-"
 
     # добавление пустой строки для внесения данных
     def get_extra(self, request, obj=None, **kwargs):
@@ -503,7 +326,7 @@ class ProductVariantInline(admin.TabularInline):
 
 
 # ==========================================
-# 4. АДМИН-КЛАССЫ
+# 3. АДМИН-КЛАССЫ
 # ==========================================
 
 
@@ -696,7 +519,9 @@ class ProductAdmin(admin.ModelAdmin):
 
 
 @admin.register(ProductVariant)
-class ProductVariantAdmin(SortableAdminBase, NoAddMixin, admin.ModelAdmin):
+class ProductVariantAdmin(
+    NoAddMixin, MainPreviewMixin, SortableAdminBase, admin.ModelAdmin
+):
     """
     Управление вариантами товаров.
     """
@@ -712,7 +537,7 @@ class ProductVariantAdmin(SortableAdminBase, NoAddMixin, admin.ModelAdmin):
         "get_season",
         "active_sizes_count",
         "get_price_range",
-        "image_main",
+        "get_main_preview",
         "is_active",
     ]
     list_display_links = ["article"]
@@ -728,9 +553,9 @@ class ProductVariantAdmin(SortableAdminBase, NoAddMixin, admin.ModelAdmin):
         SizeFilter,
     ]
     search_fields = ["article", "product__model_name", "product__brand__name"]
-    autocomplete_fields = ["product", "color", "actual_sizes"]
+    autocomplete_fields = ["color", "actual_sizes"]
     list_editable = ["is_active"]
-    readonly_fields = ["article", "slug"]
+    readonly_fields = ["product", "article", "slug"]
 
     fieldsets = (
         ("Привязка", {"fields": ("product", "color")}),
@@ -860,13 +685,6 @@ class ProductVariantAdmin(SortableAdminBase, NoAddMixin, admin.ModelAdmin):
             return f"{obj.min_price} – {obj.max_price}"
         return format_html('<span style="color: #999;">Нет цен</span>')
 
-    @admin.display(description="Главное фото")
-    def image_main(self, obj):
-        main_img = obj.get_main_image_obj
-        if main_img:
-            return get_admin_thumb(main_img.image)
-        return "-"
-
     # --- ЛОГИКА И ОПТИМИЗАЦИЯ ---
 
     # Оптимизация запросов
@@ -956,7 +774,7 @@ class ProductVariantAdmin(SortableAdminBase, NoAddMixin, admin.ModelAdmin):
                 break
 
         # 4. Передаем этот ID в функцию синхронизации
-        from .utils import sync_product_images
+        from ..utils import sync_product_images
 
         sync_product_images(variant, manual_selected_id=manual_id)
 
@@ -968,177 +786,3 @@ class ProductVariantAdmin(SortableAdminBase, NoAddMixin, admin.ModelAdmin):
                 "admin/css/changelist-filter.css",
             )
         }
-
-
-@admin.register(Category)
-class CategoryAdmin(DjangoMpttAdmin):
-    # атр. prepopulated_fields - автогенерация slug по name (показ подсказки в админке)
-    prepopulated_fields = {"slug": ("name",)}
-    list_display = ["name", "slug", "level", "is_active"]
-    list_display_links = ["name"]
-    list_filter = ["is_active", "level"]
-    list_editable = ["is_active"]
-    search_fields = ["name"]
-
-    # Это ускорит работу __str__, так как родители будут в памяти
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("parent")
-
-
-@admin.register(Brand)
-class BrandAdmin(admin.ModelAdmin):
-    list_display = ["name", "slug", "view_products_link_list"]
-    readonly_fields = ["view_products_link_detail"]
-    prepopulated_fields = {"slug": ("name",)}
-    search_fields = ["name"]
-
-    fieldsets = (
-        (
-            None,
-            {
-                "fields": (("name", "slug"), "view_products_link_detail"),
-            },
-        ),
-    )
-
-    # @admin.display(description="Кол-во товаров", ordering="products_count")
-    # def get_products_count(self, obj):
-    #     # Берем значение из аннотации
-    #     return obj.products_count
-
-    # Ссылка для общего СПИСКА брендов (компактная)
-    @admin.display(description="Товары")
-    def view_products_link_list(self, obj):
-        if obj.pk:
-            # Динамически получаем имя приложения и имя связанной модели (Product через related_name)
-            target_model = obj.products.model
-            app_label = target_model._meta.app_label
-            model_name = target_model._meta.model_name
-
-            url = (
-                reverse(f"admin:{app_label}_{model_name}_changelist")
-                + f"?brand__id__exact={obj.pk}"
-            )
-            return format_html('<a href="{}">Перейти ({})</a>', url, obj.products_count)
-        return "-"
-
-    # 3. Кнопка для СТРАНИЦЫ редактирования бренда
-    @admin.display(description="Управление ассортиментом")
-    def view_products_link_detail(self, obj):
-        if obj.pk:
-            # Динамически получаем имя приложения и имя связанной модели (Product через related_name)
-            target_model = obj.products.model
-            app_label = target_model._meta.app_label
-            model_name = target_model._meta.model_name
-
-            url = (
-                reverse(f"admin:{app_label}_{model_name}_changelist")
-                + f"?brand__id__exact={obj.pk}"
-            )
-            return format_html(
-                '<a href="{}" class="button" style="background-color: #79aec8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">'
-                'Посмотреть все товары бренда "{}" ({})'
-                "</a>",
-                url,
-                obj.name,
-                obj.products_count,
-            )
-        return "Сначала сохраните бренд"
-
-    def get_queryset(self, request):
-        # Используем аннотацию
-        return super().get_queryset(request).annotate(products_count=Count("products"))
-
-
-@admin.register(Color)
-class ColorAdmin(SortableAdminMixin, admin.ModelAdmin):
-    form = ColorAdminForm
-    list_display = ["name", "color_preview", "slug", "hex_code", "hex_code_2"]
-    search_fields = ["name"]
-    prepopulated_fields = {"slug": ("name",)}
-
-    @admin.display(description="Цвет")
-    def color_preview(self, obj):
-        # Базовые стили для кружочка
-        style = "width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ccc;"
-
-        # 1. Приоритет отдаем текстуре (картинке)
-        if obj.texture:
-            style += f"background-image: url({obj.texture.url}); background-size: cover; background-position: center;"
-        # 2. Если есть второй цвет — делаем диагональный градиент
-        elif obj.hex_code_2:
-            style += f"background: linear-gradient(135deg, {obj.hex_code} 51%, {obj.hex_code_2} 49%);"
-        # 3. Обычный однотонный цвет
-        elif obj.hex_code:
-            style += f"background-color: {obj.hex_code};"
-
-        return format_html('<div title="{}" style="{}"></div>', obj.name, style)
-
-
-@admin.register(Size)
-class SizeAdmin(SortableAdminMixin, admin.ModelAdmin):
-    list_display = ["name"]
-    list_display_links = ["name"]
-    search_fields = ["name"]
-
-    def get_search_results(self, request, queryset, search_term):
-        # Вызываем стандартный поиск
-        queryset, use_distinct = super().get_search_results(
-            request, queryset, search_term
-        )
-
-        # Если это запрос от нашего фильтра в админке
-        if "autocomplete" in request.path:
-            # Ограничиваем выдачу только теми размерами, которые есть в ProductSize
-            queryset = queryset.filter(productsize__isnull=False).distinct()
-
-        return queryset, use_distinct
-
-
-@admin.register(Material)
-class MaterialAdmin(admin.ModelAdmin):
-    list_display = ("name", "material_type")
-    list_filter = ("material_type",)
-
-    # Поиск по названию (обязательно для работы autocomplete_fields)
-    search_fields = ("name",)
-
-    ordering = ("material_type", "name")
-
-
-@admin.register(Favorite)
-class FavoriteAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("user", "variant", "created_at")
-    # list_filter = ("user", "product__brand", "created_at")
-    search_fields = ("user__email", "variant__full_name", "variant__article")
-    readonly_fields = (
-        "user",
-        "variant",
-        "created_at",
-    )
-
-
-@admin.register(SliderBanner)
-class SliderBannerAdmin(SortableAdminMixin, admin.ModelAdmin):
-    list_display = ("get_preview", "title", "link", "is_active")
-    list_editable = ("link", "is_active")
-    readonly_fields = ("get_preview_large",)
-    fields = ("title", "image", "get_preview_large", "link", "is_active")
-
-    @admin.display(description="Превью")
-    def get_preview(self, obj):
-        return get_admin_thumb(obj.image, alias="admin_preview")
-
-    @admin.display(description="Текущее изображение")
-    def get_preview_large(self, obj):
-        return get_admin_thumb(obj.image, alias="slider_large", show_info=True)
-
-    def formfield_for_dbfield(self, db_field, request, **kwargs):
-        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
-        if db_field.name == "image":
-            # Прокидываем лимиты ImageValidator в админку (в data-атрибуты поля)
-            add_validator_attrs_to_widget(db_field, formfield)
-        return formfield
-
-    class Media:
-        js = ("admin/js/image_preview.js",)
