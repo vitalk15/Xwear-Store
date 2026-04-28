@@ -1,21 +1,22 @@
 from django import forms
 from django.contrib import admin
+from core.admin import NoDeleteAddMixin, ReadOnlyAdminMixin
 from .models import Cart, CartItem, Order, OrderItem, PickupPoint
 
 
-class CartItemInline(admin.TabularInline):
+class CartItemInline(NoDeleteAddMixin, admin.TabularInline):
     model = CartItem
     extra = 0
     readonly_fields = ("product_size", "quantity", "total_item_price")
 
 
 @admin.register(Cart)
-class CartAdmin(admin.ModelAdmin):
+class CartAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
     inlines = [CartItemInline]
 
-    list_display = ("id", "user", "total_price")
-    fields = ("user", "total_price")
+    list_display = ("user", "total_price")
     readonly_fields = ("user", "total_price")
+    search_fields = ("user__email",)
 
 
 # --- ЗАКАЗЫ ---
@@ -61,7 +62,7 @@ class OrderAdminForm(forms.ModelForm):
 
 
 @admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(NoDeleteAddMixin, admin.ModelAdmin):
     form = OrderAdminForm
     inlines = [OrderItemInline]
 
@@ -110,11 +111,3 @@ class OrderAdmin(admin.ModelAdmin):
     @admin.action(description="Отменить выбранные заказы")
     def make_cancelled(self, _request, queryset):
         queryset.update(status="cancelled")
-
-    # Запрещаем удалять заказы админу
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    # Запрещаем админу создавать заказы вручную через админку
-    def has_add_permission(self, request):
-        return False

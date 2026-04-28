@@ -1,0 +1,7 @@
+#composition-group > fieldset > details > .inline-related > h3 {
+	display: none;
+}
+
+/* #composition-group > fieldset > details > .inline-related > fieldset {
+	margin-top: 10px;
+} */

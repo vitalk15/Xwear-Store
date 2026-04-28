@@ -1,5 +1,55 @@
 from django.contrib import admin
-from .models import City, Document, ContactSettings, CommercialConfig
+from .models import City, Document, ContactSettings, CommercialConfig, AboutUs
+
+
+# --------- МИКСИНЫ ПРАВ ДОСТУПА В АДМИНКЕ ------------
+
+
+class SingletonAdminMixin:
+    """Запрещаем добавлять новые записи, если одна уже есть"""
+
+    def has_add_permission(self, request):
+        return not self.model.objects.exists()
+
+
+class ReadOnlyAdminMixin:
+    """Миксин для создания интерфейса 'только просмотр'"""
+
+    # Запрещаем добавление записи
+    def has_add_permission(self, request):
+        return False
+
+    # Запрещаем удаление записи
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    # Запрещаем правку записи. Это уберет кнопку "Сохранить" и "Сохранить и продолжить"
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    # Разрешаем просмотр записи
+    def has_view_permission(self, request, obj=None):
+        return True
+
+
+class NoDeleteAddMixin:
+    """Миксин запрещающий удаление и добавление, но разрешающий правку"""
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class NoAddMixin:
+    """Миксин запрещающий добавление, но разрешающий правку"""
+
+    def has_add_permission(self, request):
+        return False
+
+
+# --------------------------------------------------------
 
 
 @admin.register(City)
@@ -14,15 +64,8 @@ class DocumentAdmin(admin.ModelAdmin):
     list_display = ("title", "created_at")
 
 
-# Базовый класс для синглтонов
-class SingletonAdmin(admin.ModelAdmin):
-    # Запрещаем добавлять новые записи, если одна уже есть
-    def has_add_permission(self, request):
-        return not self.model.objects.exists()
-
-
 @admin.register(ContactSettings)
-class ContactSettingsAdmin(SingletonAdmin):
+class ContactSettingsAdmin(SingletonAdminMixin, admin.ModelAdmin):
     fieldsets = (
         (
             "Основная связь",
@@ -40,7 +83,7 @@ class ContactSettingsAdmin(SingletonAdmin):
 
 
 @admin.register(CommercialConfig)
-class CommercialConfigAdmin(SingletonAdmin):
+class CommercialConfigAdmin(SingletonAdminMixin, admin.ModelAdmin):
     fieldsets = (
         (
             "Бесплатная доставка",
@@ -51,3 +94,11 @@ class CommercialConfigAdmin(SingletonAdmin):
             {"fields": ("delivery_info", "payment_info")},
         ),
     )
+
+
+@admin.register(AboutUs)
+class AboutUsAdmin(SingletonAdminMixin, admin.ModelAdmin):
+    fields = (("title", "is_active"), "content")
+
+    class Media:
+        css = {"all": ("admin/css/custom_quill.css",)}

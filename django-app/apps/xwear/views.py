@@ -10,15 +10,20 @@ from .utils import (
     get_category_sidebar_filters,
     get_filtered_products,
 )
-from .models import Category, Product, ProductSize, Favorite, SliderBanner
+from .models import Category, ProductVariant, ProductSize, Favorite, SliderBanner
 from .serializers import (
     CategorySerializer,
     BrandSerializer,
+    ColorSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
     FavoriteSerializer,
     SliderBannerSerializer,
 )
+
+# ==========================================
+# КАТЕГОРИИ И КАТАЛОГ
+# ==========================================
 
 
 # дерево категорий
@@ -30,20 +35,20 @@ def category_tree_view(request):
     # Строим дерево в памяти с помощью mptt метода - это исключает N+1 запросов в сериализаторе
     tree = queryset.get_cached_trees()
 
-    # без корневой mptt-категории
-    categories = [node for node in tree if node.level == 1]
+    # без корневой mptt-категории [node for node in tree if node.level == 1]
+    categories = [node for node in tree if node.level == 0]
     serializer = CategorySerializer(categories, many=True, context={"request": request})
     return Response(serializer.data)
 
 
 # товары категории
 @api_view(["GET"])
-def category_detail_view(request, category_slug):
-    category = get_object_or_404(Category, slug=category_slug, is_active=True)
+def category_detail_view(request, pk):
+    category = get_object_or_404(Category, pk=pk, is_active=True)
 
     # MPTT breadcrumbs
     breadcrumbs = [
-        {"name": cat.name, "slug": cat.slug}
+        {"name": cat.name, "slug": cat.slug, "id": cat.id}
         for cat in category.get_ancestors(include_self=True)
     ]
 
@@ -62,47 +67,87 @@ def category_detail_view(request, category_slug):
     page = paginator.paginate_queryset(products_queryset, request)
     serializer = ProductListSerializer(page, many=True, context={"request": request})
 
-    return paginator.get_paginated_response(
-        {
-            "category": {
-                "id": category.id,
-                "name": category.name,
-                "slug": category.slug,
-                "breadcrumbs": breadcrumbs,
-            },
-            "filters": {
-                "brands": BrandSerializer(filters_data["brands"], many=True).data,
-                "sizes": filters_data["sizes"],
-                "price_range": filters_data["price_range"],
-            },
-            "products": serializer.data,
-        }
-    )
+    # По стандарту REST API метаданные (категория, фильтры) должны лежать на одном уровне с ключами пагинации (count, next, previous), а сами товары — внутри списка results.
+    # Получаем стандартный ответ DRF (где сериализованные товары лежат в "results")
+    response = paginator.get_paginated_response(serializer.data)
+
+    # Внедряем наши кастомные данные на верхний уровень JSON
+    response.data["category"] = {
+        "id": category.id,
+        "name": category.name,
+        "breadcrumbs": breadcrumbs,
+    }
+    response.data["filters"] = {
+        "brands": BrandSerializer(filters_data["brands"], many=True).data,
+        "colors": ColorSerializer(filters_data["colors"], many=True).data,
+        "sizes": filters_data["sizes"],
+        "price_range": filters_data["price_range"],
+    }
+
+    # В результате структура JSON-ответа будет:
+    # {
+    #   "count": 150,
+    #   "next": "http://api.../?limit=20&offset=20",
+    #   "previous": null,
+    #   "category": { ... },
+    #   "filters": { ... },
+    #   "results": [ ...массив товаров... ]
+    # }
+
+    return response
+
+
+# ==========================================
+# ДЕТАЛИ ТОВАРА И РЕКОМЕНДАЦИИ
+# ==========================================
 
 
 # Детали товара
 @api_view(["GET"])
-def product_detail_view(request, category_slug, product_slug):
-    product = get_object_or_404(
-        Product.objects.filter(
-            is_active=True, category__slug=category_slug, slug=product_slug
+def product_detail_view(request, pk):
+    variant = get_object_or_404(
+        ProductVariant.objects.filter(is_active=True, product__is_active=True, pk=pk)
+        .select_related(
+            "product__category",
+            "product__brand",
+            "color",
+            "composition__material_outer",
+            "composition__material_inner",
+            "composition__material_sole",
         )
-        .select_related("category", "brand", "specification")
         .prefetch_related(
             "images",
+            "product__variants__color",  # Подгружаем соседние цвета (через родительский товар)
             # Уже делаем сортировку в ProductImage, поэтому не используем здесь:
             # Prefetch("images", queryset=ProductImage.objects.order_by("-is_main", "id")),
-            Prefetch(
-                "sizes",
-                queryset=ProductSize.objects.filter(is_active=True).select_related(
-                    "size"
-                ),
-            ),
+            Prefetch("sizes", queryset=ProductSize.objects.select_related("size")),
         )
     )
 
-    serializer = ProductDetailSerializer(product, context={"request": request})
+    serializer = ProductDetailSerializer(variant, context={"request": request})
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Рекомендации товаров
+@api_view(["GET"])
+def product_recommends_view(request, pk):
+    # Находим вариант товара
+    variant = get_object_or_404(
+        ProductVariant.objects.filter(is_active=True, product__is_active=True, pk=pk)
+    )
+
+    # Получаем рекомендации
+    recommends = get_similar_products(variant)
+
+    serializer = ProductListSerializer(
+        recommends, many=True, context={"request": request}
+    )
+    return Response(serializer.data)
+
+
+# ==========================================
+# ИЗБРАННОЕ И БАННЕРЫ
+# ==========================================
 
 
 # Список избранных товаров пользователя
@@ -110,7 +155,7 @@ def product_detail_view(request, category_slug, product_slug):
 @permission_classes([IsAuthenticated])
 def favorite_list(request):
     favorites = Favorite.objects.filter(user=request.user).select_related(
-        "product", "product__brand"
+        "variant__color", "variant__product__brand"
     )
     serializer = FavoriteSerializer(favorites, many=True, context={"request": request})
 
@@ -121,8 +166,9 @@ def favorite_list(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def favorite_toggle(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    favorite_qs = Favorite.objects.filter(user=request.user, product=product)
+    # Добавляем в избранное конкретный цвет (вариант)
+    variant = get_object_or_404(ProductVariant, pk=pk)
+    favorite_qs = Favorite.objects.filter(user=request.user, variant=variant)
 
     if favorite_qs.exists():
         favorite_qs.delete()
@@ -130,7 +176,7 @@ def favorite_toggle(request, pk):
             {"detail": "Удалено из избранного"}, status=status.HTTP_204_NO_CONTENT
         )
 
-    Favorite.objects.create(user=request.user, product=product)
+    Favorite.objects.create(user=request.user, variant=variant)
     return Response({"detail": "Добавлено в избранное"}, status=status.HTTP_201_CREATED)
 
 
@@ -140,23 +186,4 @@ def slider_banner_list_view(request):
     banners = SliderBanner.objects.filter(is_active=True)
     serializer = SliderBannerSerializer(banners, many=True, context={"request": request})
 
-    return Response(serializer.data)
-
-
-# Рекомендации товаров
-@api_view(["GET"])
-def product_recommendations_view(request, category_slug, product_slug):
-    # Находим основной товар
-    product = get_object_or_404(
-        Product.objects.filter(
-            is_active=True, category__slug=category_slug, slug=product_slug
-        )
-    )
-
-    # Получаем рекомендации
-    recommendations = get_similar_products(product)
-
-    serializer = ProductListSerializer(
-        recommendations, many=True, context={"request": request}
-    )
     return Response(serializer.data)

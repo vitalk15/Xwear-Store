@@ -1,14 +1,31 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from mptt.models import MPTTModel, TreeForeignKey
-from easy_thumbnails.fields import ThumbnailerImageField
-from .utils import UploadToPath, generate_unique_slug, validate_banner_image
+
+# from easy_thumbnails.fields import ThumbnailerImageField
+from easy_thumbnails.files import generate_all_aliases
+from django_quill.fields import QuillField
+from core.models import TimeStampedModel
+from .utils import (
+    UploadToPath,
+    generate_unique_slug,
+    prepare_image_for_save,
+)
+from .validators import ImageValidator
 
 
 class Category(MPTTModel):
     name = models.CharField(max_length=30, verbose_name="Название")
+    singular_name = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        verbose_name="Название (ед. ч.)",
+        help_text="Оставьте пустым, если совпадает с основным названием или не требуется",
+    )
     slug = models.SlugField(max_length=30, blank=True, verbose_name="Слаг")
     is_active = models.BooleanField(default=True, db_index=True, verbose_name="Активна")
     parent = TreeForeignKey(
@@ -20,14 +37,40 @@ class Category(MPTTModel):
         verbose_name="Родительская категория",
     )
 
+    def get_full_path(self):
+        """Возвращает полный путь к категории, если она не корневая"""
+        # Если это корень, возвращаем пустую строку или None
+        if self.is_root_node():
+            return ""
+
+        # Только для вложенных категорий лезем в дерево за предками
+        ancestors = self.get_ancestors(include_self=True)
+        return "/".join([ancestor.slug for ancestor in ancestors])
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(self, scope_field="parent")
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.name
-        # return f"{self.parent} -> {self.name}"
+        # корневая категория
+        # if self.is_root_node():
+        #     return self.name.upper()
+        if self.parent_id is None:
+            return self.name.upper()
+
+        # для глубоких категорий
+        indent = "--" * self.level
+        return (
+            f"{indent} {self.parent.name} / {self.name}"
+            if self.level > 1
+            else f"{indent} {self.name}"
+        )
+        # return (
+        #     f"{self.parent.name} / {self.name}"
+        #     if self.level > 1
+        #     else f"{self.parent.name.upper()} > {self.name}"
+        # )
 
     class MPTTMeta:
         order_insertion_by = ["name"]
@@ -41,15 +84,9 @@ class Category(MPTTModel):
         ]  # уникальная комбинация род.категории и слага
 
 
-class GenderChoices(models.TextChoices):
-    MALE = "M", "Мужской"
-    FEMALE = "F", "Женский"
-    UNISEX = "U", "Унисекс"
-
-
 class Brand(models.Model):
     name = models.CharField(max_length=50, verbose_name="Название")
-    slug = models.SlugField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50, unique=True, verbose_name="Слаг")
 
     class Meta:
         verbose_name = "Бренд"
@@ -62,7 +99,9 @@ class Brand(models.Model):
 
 class Size(models.Model):
     name = models.CharField(max_length=10, verbose_name="Размер")
-    order = models.PositiveSmallIntegerField(default=0, verbose_name="Порядок")
+    order = models.PositiveSmallIntegerField(
+        default=0, db_index=True, verbose_name="Порядок"
+    )
 
     def __str__(self):
         return self.name
@@ -74,12 +113,21 @@ class Size(models.Model):
 
 
 class ProductSize(models.Model):
-    product = models.ForeignKey(
-        "Product", on_delete=models.CASCADE, related_name="sizes", verbose_name="Товар"
+    variant = models.ForeignKey(
+        "ProductVariant",
+        on_delete=models.CASCADE,
+        related_name="sizes",
+        verbose_name="Вариант товара",
     )
     size = models.ForeignKey(Size, on_delete=models.CASCADE, verbose_name="Размер")
     # stock = models.PositiveIntegerField(default=0, verbose_name="Остаток")
-    price = models.DecimalField(max_digits=6, decimal_places=2, verbose_name="Цена")
+    price = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Цена",
+    )
     discount_percent = models.PositiveIntegerField(
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
@@ -90,9 +138,9 @@ class ProductSize(models.Model):
         max_digits=10,
         decimal_places=2,
         verbose_name="Итоговая цена",
+        null=True,
         blank=True,
         editable=False,  # Скрываем из админки (пользователь не должен менять её вручную)
-        default=0,  # Временный дефолт для старых записей
     )
 
     is_active = models.BooleanField(default=True, verbose_name="В наличии")
@@ -105,7 +153,7 @@ class ProductSize(models.Model):
                 Decimal(self.discount_percent) / Decimal("100")
             )
             new_price = self.price * discount_multiplier
-            self.final_price = Decimal(round(new_price))
+            self.final_price = new_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         else:
             self.final_price = self.price
 
@@ -116,128 +164,402 @@ class ProductSize(models.Model):
     def has_discount(self):
         return self.discount_percent > 0
 
+    def __str__(self):
+        return ""
+
     class Meta:
-        unique_together = ["product", "size"]
-        verbose_name = "Размер/цена товара"
-        verbose_name_plural = "Размеры/цены товаров"
+        ordering = ["size"]
+        unique_together = ["variant", "size"]
+        verbose_name = "Размер и цена"
+        verbose_name_plural = "Размеры и цены"
+        indexes = [models.Index(fields=["variant", "is_active"])]
 
 
 class ProductImage(models.Model):
-    product = models.ForeignKey(
-        "Product", on_delete=models.CASCADE, related_name="images", verbose_name="Товар"
+    variant = models.ForeignKey(
+        "ProductVariant",
+        on_delete=models.CASCADE,
+        related_name="images",
+        verbose_name="Вариант товара",
     )
-    image = ThumbnailerImageField(
-        upload_to=UploadToPath("products", "prod"), verbose_name="Фото"
+    image = models.ImageField(
+        upload_to=UploadToPath("products", use_category_subdir=True),
+        validators=[ImageValidator(min_width=500, min_height=600, max_mb=1.5)],
+        verbose_name="Фото (min 500x600, max 1,5Мб)",
     )
     is_main = models.BooleanField(default=False, verbose_name="Главное фото")
-    alt = models.CharField(max_length=200, blank=True, verbose_name="Alt текст")
+    alt = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Alt текст",
+        help_text="Оставьте пустым для автогенерации",
+    )
+    position = models.PositiveIntegerField(
+        default=0, db_index=True, verbose_name="Порядок"
+    )
 
     def save(self, *args, **kwargs):
-        # Если ставим is_main=True, сбрасываем у всех остальных фото этого товара
-        if self.is_main:
-            ProductImage.objects.filter(product=self.product, id__ne=self.id).update(
-                is_main=False  # __ne - не равно (альтернатива .exclude(id=self.id))
+        # Базовая сортировка
+        # Если позиция не задана (новое фото)
+        if self.position is None:
+            last_image = (
+                ProductImage.objects.filter(variant=self.variant)
+                .order_by("-position")
+                .first()
             )
+            self.position = (last_image.position + 1) if last_image else 0
+
+        # Конвертация загружаемого изображения в WebP и генерация миниатюр
+        # 1. Обновляем продукт перед обработкой пути, чтобы подтянуть сгенерированный слаг
+        # Если это новое изображение (еще нет PK) и у него привязан вариант
+        if not self.pk and self.variant_id:
+            try:
+                self.product = self.variant.product
+            except AttributeError:
+                # На случай, если связь в моделях называется иначе
+                pass
+
+        # 2. Обработка загружаемого изображения
+        is_new = prepare_image_for_save(
+            self, "image", folder="products/", use_category_subdir=True
+        )
+
         super().save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
-        # Если удаляем главное фото, первое другое фото становиться главным
+        # 3. Генерируем миниатюры ТОЛЬКО после успешного коммита в базу
+        if is_new:
+            transaction.on_commit(
+                lambda: generate_all_aliases(self.image, include_global=True)
+            )
+
+    def __str__(self):
         if self.is_main:
-            other_main = self.product.images.filter(is_main=False).first()
-            if other_main:
-                other_main.is_main = True
-                other_main.save()
-        super().delete(*args, **kwargs)
+            return f"ГЛАВНОЕ ФОТО ({self.variant.full_name})"
+        return f"Фото №{self.position + 1} ({self.variant.full_name})"
 
     class Meta:
-        verbose_name = "Фото товара"
-        verbose_name_plural = "Фото товаров"
-        ordering = ["-is_main", "id"]
+        verbose_name = "Фото"
+        verbose_name_plural = "Фото"
+        # ordering = ["-is_main"]
+        ordering = ["position"]
 
 
-class Product(models.Model):
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.SET_NULL,
+class Color(models.Model):
+    name = models.CharField(verbose_name="Название цвета", max_length=50, unique=True)
+    slug = models.SlugField(verbose_name="Слаг", max_length=50, unique=True)
+    hex_code = models.CharField(
+        verbose_name="Основной HEX-код",
+        max_length=7,
+        help_text="Обязательно для однотонных и двухцветных",
+        default="#000000",
+    )
+    hex_code_2 = models.CharField(
+        verbose_name="Дополнительный HEX",
+        max_length=7,
         blank=True,
-        null=True,
-        related_name="products",
-        verbose_name="Категория товара",
+        help_text="Заполните для двухцветных товаров (например, черно-белый)",
     )
-    name = models.CharField(max_length=50, verbose_name="Наименование")
-    slug = models.SlugField(max_length=50, blank=True, verbose_name="Слаг")
-    description = models.TextField(blank=True, verbose_name="Описание")
-    gender = models.CharField(
-        max_length=1, choices=GenderChoices.choices, verbose_name="Пол"
-    )
-    brand = models.ForeignKey(
-        Brand,
-        on_delete=models.SET_NULL,
+    texture = models.ImageField(
+        verbose_name="Текстура (Паттерн)",
+        upload_to="color_textures/",
         blank=True,
-        null=True,
-        related_name="products",
-        verbose_name="Бренд",
+        help_text="Загрузите картинку (например, камуфляж). Если загружена, HEX-коды игнорируются.",
     )
-    is_active = models.BooleanField(default=True, verbose_name="Активен")
+    order = models.PositiveSmallIntegerField(
+        default=0, db_index=True, verbose_name="Порядок"
+    )
 
-    @property
-    def get_main_image_obj(self):
-        images = list(self.images.all())
-        return images[0] if images else None
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = generate_unique_slug(self, scope_field="category")
-        super().save(*args, **kwargs)
+    class Meta:
+        verbose_name = "Цвет"
+        verbose_name_plural = "Цвета"
+        ordering = ["order"]
 
     def __str__(self):
         return self.name
 
+
+class Product(TimeStampedModel):
+    class GenderChoices(models.TextChoices):
+        MALE = "M", "Мужской"
+        FEMALE = "F", "Женский"
+        UNISEX = "U", "Унисекс"
+
+    class SeasonChoices(models.TextChoices):
+        WINTER = "WINTER", "Зима"
+        SUMMER = "SUMMER", "Лето"
+        AUTUMN_SPRING = "AUTUMN_SPRING", "Демисезон"
+        ALL_SEASON = "ALL_SEASON", "Всесезонный"
+
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        related_name="products",
+        verbose_name="Категория",
+    )
+    brand = models.ForeignKey(
+        Brand, on_delete=models.PROTECT, related_name="products", verbose_name="Бренд"
+    )
+    available_sizes = models.ManyToManyField(
+        Size,
+        blank=True,
+        verbose_name="Размеры",
+        help_text="Этот перечень размеров будет автоматически добавляться при создании новых вариантов товара.",
+    )
+    name = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Вид товара",
+        help_text="Оставьте пустым, для автогенерации из категории",
+    )
+    model_name = models.CharField(max_length=50, verbose_name="Модель")
+    gender = models.CharField(
+        max_length=1, choices=GenderChoices.choices, verbose_name="Пол"
+    )
+    season = models.CharField(
+        max_length=20, choices=SeasonChoices.choices, verbose_name="Сезон"
+    )
+    description = QuillField(blank=True, null=True, verbose_name="Описание")
+
+    # Слаг базовой модели (например: sneakers-nike-air-force-1)
+    slug = models.SlugField(
+        max_length=150,
+        blank=True,
+        db_index=True,
+        verbose_name="Слаг базовой модели",
+        help_text="Генерируется автоматически на основе вида, бренда и модели",
+    )
+    is_active = models.BooleanField(default=True, verbose_name="Активен")
+
+    @property
+    def type_name(self):
+        return self.name or self.category.singular_name or self.category.name
+
+    @property
+    def full_name(self):
+        return f"{self.type_name} {self.brand.name} {self.model_name}".strip()
+
+    def save(self, *args, **kwargs):
+        # 1. Генерация слага, если он пуст
+        if not self.slug:
+            self.slug = generate_unique_slug(
+                self, base_field="full_name", scope_field="category"
+            )
+        super().save(*args, **kwargs)
+
+        # 2. Проверяем статус: если товар деактивирован
+        if not self.is_active:
+            # Массово деактивируем все связанные варианты одним SQL-запросом
+            self.variants.update(is_active=False)
+
+    def __str__(self):
+        return self.full_name
+
     class Meta:
-        ordering = ["name"]
-        verbose_name = "Товар"
-        verbose_name_plural = "Товары"
-        unique_together = [
-            "category",
-            "slug",
-        ]
-        indexes = [
-            models.Index(fields=["is_active", "category"]),
-            models.Index(fields=["slug"]),
+        verbose_name = "Базовый товар"
+        verbose_name_plural = "Базовые товары"
+        indexes = [models.Index(fields=["is_active", "category"])]
+        # Указываем БД, что комбинация "категория + слаг" должна быть уникальной
+        constraints = [
+            models.UniqueConstraint(
+                fields=["slug", "category"], name="unique_product_slug_per_category"
+            )
         ]
 
 
-class ProductSpecification(models.Model):
-    product = models.OneToOneField(
+class ProductVariant(TimeStampedModel):
+    product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
-        related_name="specification",
-        verbose_name="Характеристики",
+        related_name="variants",
+        verbose_name="Базовая модель",
     )
-    article = models.CharField(max_length=50, verbose_name="Артикул", unique=True)
-    season = models.CharField(max_length=50, verbose_name="Сезон")
+    color = models.ForeignKey(
+        Color, on_delete=models.PROTECT, related_name="variants", verbose_name="Цвет"
+    )
+    article = models.CharField(
+        max_length=50,
+        verbose_name="Артикул",
+        unique=True,
+        blank=True,
+        help_text="Генерируется автоматически '[BRAND(2)][GENDER(1)][CAT_ID(3)]-[PROD_ID(5)][RAND(3)]'",
+    )
+    slug = models.SlugField(
+        max_length=200,
+        blank=True,
+        db_index=True,
+        verbose_name="Слаг варианта",
+        help_text="Генерируется автоматически на основе вида, бренда, модели и цвета",
+    )
+    is_active = models.BooleanField(default=False, verbose_name="Активен")
+    # through='ProductSize' говорит Django использовать существующую модель
+    actual_sizes = models.ManyToManyField(
+        "Size", through="ProductSize", related_name="variants", verbose_name="Размеры"
+    )
 
-    # Состав (общие и специфические поля)
-    material_outer = models.CharField(max_length=255, verbose_name="Материал верха")
-    material_inner = models.CharField(
-        max_length=255,
-        verbose_name="Материал подкладки",
-        blank=True,
-        null=True,
-    )
-    material_sole = models.CharField(
-        max_length=255,
-        verbose_name="Материал подошвы",
-        blank=True,
-        null=True,
+    @property
+    def full_name(self):
+        return f"{self.product.full_name} ({self.color.name})"
+
+    @property
+    def get_main_image_obj(self):
+        # .all() возвращает кэшированный список, если был prefetch_related
+        images_list = self.images.all()
+        # Работаем со списком в памяти Python
+        return images_list[0] if images_list else None
+
+    def clean(self):
+        # Если менеджер пытается активировать вариант (или оставить его активным)
+        if self.is_active:
+            # 1. ЗАПРЕТ АКТИВАЦИИ ПРИ СОЗДАНИИ
+            # Если self.pk равно None, значит объект еще никогда не сохранялся в БД
+            if self.pk is None:
+                raise ValidationError(
+                    {
+                        "is_active": "Новый вариант нельзя активировать при создании. Сначала сохраните его, перейдите в карточку варианта, оформите, и затем активируйте."
+                    }
+                )
+
+            # 2. ПРОВЕРКА РОДИТЕЛЯ
+            # Сначала смотрим на состояние родителя в памяти (то, что в форме)
+            if not self.product.is_active:
+                # Если в форме товар выключен, проверяем базу данных:
+                # А был ли он выключен ДО того, как мы нажали "Сохранить"?
+                was_parent_already_inactive = (
+                    not type(self.product)
+                    .objects.filter(pk=self.product_id, is_active=True)
+                    .exists()
+                )
+                # Если он и в форме выключен, и в базе был выключен
+                if was_parent_already_inactive:
+                    raise ValidationError(
+                        {
+                            "is_active": "Нельзя активировать вариант, если базовый товар деактивирован."
+                        }
+                    )
+
+    def save(self, *args, **kwargs):
+        # 1. Генерация слага, если он пуст (ID не нужен)
+        if not self.slug:
+            # Собираем слаг из базового товара и слага цвета
+            self.slug = f"{self.product.slug}-{self.color.slug}"
+
+        # Если мы сохраняем вариант и он НЕ активен,
+        # то принудительно выключаем активность у его размеров (опционально)
+        # if not self.is_active:
+        #     self.sizes.all().update(is_active=False)
+
+        # Проверяем, создается ли объект впервые
+        is_new = self.pk is None
+
+        # 2. ОСНОВНОЕ СОХРАНЕНИЕ
+        # Здесь Django создаст запись (если новый) или обновит (если существующий)
+        # После этого шага у нас 100% есть self.pk (даже у новых товаров)
+        super().save(*args, **kwargs)
+
+        # 3. Генерация (если пуст)/обновление артикула
+        if not self.article:
+            from .utils import generate_unique_article
+
+            self.article = generate_unique_article(self)
+            # Используем update_fields, чтобы обновить только артикул.
+            # Используем .update() вместо super().save(update_fields=...)
+            # Это быстрее и НЕ вызывает повторные сигналы или методы save().
+            self.__class__.objects.filter(pk=self.pk).update(article=self.article)
+
+        # 4. Автогенерация перечня размеров
+        # Если это новый вариант и у родителя задана размерная сетка
+        if is_new and self.product.available_sizes.exists():
+            # Генерируем размеры
+            sizes_to_create = [
+                ProductSize(variant=self, size=size, is_active=False)
+                for size in self.product.available_sizes.all()
+            ]
+            # Массово сохраняем в базу одним запросом
+            ProductSize.objects.bulk_create(sizes_to_create)
+
+    def __str__(self):
+        return self.full_name
+
+    class Meta:
+        indexes = [models.Index(fields=["product", "is_active"])]
+        constraints = [
+            # Теперь слаг варианта должен быть уникальным только для конкретного базового товара
+            models.UniqueConstraint(
+                fields=["slug", "product"], name="unique_variant_slug_per_product"
+            ),
+            # Исключает создание двух цветовых дублей в базовом товаре
+            models.UniqueConstraint(
+                fields=["product", "color"], name="unique_product_color_variant"
+            ),
+        ]
+        verbose_name = "Ассортимент"
+        verbose_name_plural = "Ассортимент"
+
+
+class Material(models.Model):
+    class MaterialType(models.TextChoices):
+        OUTER = "OUTER", "Верх"
+        INNER = "INNER", "Подкладка"
+        SOLE = "SOLE", "Подошва"
+
+    name = models.CharField(max_length=100, verbose_name="Название")
+    material_type = models.CharField(
+        max_length=10, choices=MaterialType.choices, verbose_name="Назначение"
     )
 
     class Meta:
-        verbose_name = "Характеристики товара"
-        verbose_name_plural = "Характеристики товаров"
+        verbose_name = "Материал"
+        verbose_name_plural = "Материалы"
+        unique_together = (
+            "name",
+            "material_type",
+        )
 
-    # def __str__(self):
-    #     return f"Характеристики для {self.product.name}"
+    def __str__(self):
+        # return f"{self.name} ({self.get_material_type_display()})"
+        return self.name
+
+
+class ProductMaterial(models.Model):
+    variant = models.OneToOneField(
+        ProductVariant,
+        on_delete=models.CASCADE,
+        related_name="composition",
+        verbose_name="Вариант товара",
+    )
+
+    material_outer = models.ForeignKey(
+        Material,
+        on_delete=models.PROTECT,
+        limit_choices_to={"material_type": "OUTER"},  # Фильтр только для верха
+        related_name="outer_material",
+        verbose_name="Материал верха",
+    )
+    material_inner = models.ForeignKey(
+        Material,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={"material_type": "INNER"},  # Фильтр только для подкладки
+        related_name="inner_material",
+        verbose_name="Материал подкладки",
+    )
+    material_sole = models.ForeignKey(
+        Material,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={"material_type": "SOLE"},  # Фильтр только для подошвы
+        related_name="sole_material",
+        verbose_name="Материал подошвы",
+    )
+
+    class Meta:
+        verbose_name = "Состав"
+        verbose_name_plural = "Состав"
+
+    def __str__(self):
+        return "Список материалов"
 
 
 class Favorite(models.Model):
@@ -247,39 +569,52 @@ class Favorite(models.Model):
         related_name="favorites",
         verbose_name="Пользователь",
     )
-    product = models.ForeignKey(
-        Product,
+    variant = models.ForeignKey(
+        ProductVariant,
         on_delete=models.CASCADE,
         related_name="favorited_by",
-        verbose_name="Товар",
+        verbose_name="Вариант товара",
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Добавлено")
 
     class Meta:
         # Это гарантирует, что пользователь не сможет добавить один и тот же товар в избранное дважды
-        unique_together = ("user", "product")
+        unique_together = ("user", "variant")
         verbose_name = "Избранное"
         verbose_name_plural = "Избранное"
 
     def __str__(self):
-        return f"{self.user} -> {self.product.name}"
+        return f"{self.user} -> {self.variant.full_name}"
 
 
 class SliderBanner(models.Model):
     title = models.CharField(max_length=100, verbose_name="Заголовок")
-    image = ThumbnailerImageField(
-        upload_to=UploadToPath("slider", "slide"),
-        validators=[validate_banner_image],
-        verbose_name="Изображение (min 1540x630)",
+    image = models.ImageField(
+        upload_to=UploadToPath("banner", "slide"),
+        validators=[ImageValidator(min_width=1540, min_height=630, max_mb=2.0)],
+        verbose_name="Изображение (min 1540x630, max 2Мб)",
     )
     link = models.URLField(blank=True, verbose_name="Ссылка")
     order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
-    class Meta:
-        verbose_name = "Слайд"
-        verbose_name_plural = "Слайды"
-        ordering = ["order", "-id"]
+    def save(self, *args, **kwargs):
+        # Конвертация загружаемого изображения в WebP и генерация миниатюр
+        # 1. Обработка загружаемого изображения
+        is_new = prepare_image_for_save(
+            self, "image", folder="banner", prefix="slide", quality=100
+        )
+
+        super().save(*args, **kwargs)
+
+        # 2. Генерируем миниатюры
+        if is_new:
+            generate_all_aliases(self.image, include_global=True)
 
     def __str__(self):
         return self.title
+
+    class Meta:
+        verbose_name = "Баннер"
+        verbose_name_plural = "Баннеры"
+        ordering = ["order", "-id"]

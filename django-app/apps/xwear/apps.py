@@ -7,8 +7,11 @@ class XwearConfig(AppConfig):
     verbose_name = "Магазин"
 
     def ready(self):
-        # Пре-генерация миниатюр при сохранении изображения
-        from easy_thumbnails.signals import saved_file
-        from easy_thumbnails.signal_handlers import generate_aliases_global
+        # pylint: disable=unused-import, import-outside-toplevel
+        import xwear.signals
 
-        saved_file.connect(generate_aliases_global)
+        # Пре-генерация миниатюр при сохранении изображения
+        # from easy_thumbnails.signals import saved_file
+        # from easy_thumbnails.signal_handlers import generate_aliases_global
+
+        # saved_file.connect(generate_aliases_global)

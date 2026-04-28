@@ -1,12 +1,14 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from .models import City, Document, ContactSettings, CommercialConfig
+from rest_framework import status
+from .models import City, Document, ContactSettings, CommercialConfig, AboutUs
 from .serializers import (
     CitySerializer,
     DocumentSerializer,
     ContactSettingsSerializer,
     CommercialConfigSerializer,
+    AboutUsSerializer,
 )
 
 
@@ -46,3 +48,22 @@ def commercial_config_detail(request):
     config, _ = CommercialConfig.objects.get_or_create(id=1)
     serializer = CommercialConfigSerializer(config)
     return Response(serializer.data)
+
+
+# страница "О нас"
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def about_us_detail(request):
+    """
+    Возвращает актуальную информацию о компании.
+    """
+    # Берем активную запись
+    instance = AboutUs.objects.filter(is_active=True)
+
+    if not instance:
+        return Response(
+            {"detail": "Информация не найдена"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    serializer = AboutUsSerializer(instance)
+    return Response(serializer.data, status=status.HTTP_200_OK)

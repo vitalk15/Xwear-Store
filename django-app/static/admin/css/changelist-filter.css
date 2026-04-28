@@ -1,0 +1,18 @@
+/* 1. Возвращаем стандартную ширину сайдбара */
+#changelist-filter {
+	width: 240px !important; /* Стандартная ширина в Django, можно уменьшить до 200px */
+}
+
+/* 2. Заставляем поле автокомплита вписаться в границы */
+#changelist-filter .select2-container {
+	width: 100% !important; /* Поле будет занимать всю доступную ширину сайдбара */
+	min-width: 100% !important;
+	max-width: 220px !important; /* Ограничиваем максимум, чтобы не раздувало */
+}
+
+/* 3. Если внутри поля текст слишком длинный — обрезаем его */
+#changelist-filter .select2-selection__rendered {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}

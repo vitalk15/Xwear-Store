@@ -1,4 +1,22 @@
 from django.db import models
+from django_quill.fields import QuillField
+
+
+class TimeStampedModel(models.Model):
+    """
+    Абстрактный базовый класс, предоставляющий поля
+    самообновляющихся дат создания и изменения.
+    """
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Создан",
+        db_index=True,  # Полезно, так как по этому полю часто идет сортировка
+    )
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлен")
+
+    class Meta:
+        abstract = True
 
 
 class City(models.Model):
@@ -17,10 +35,9 @@ class City(models.Model):
         return self.name
 
 
-class Document(models.Model):
+class Document(TimeStampedModel):
     title = models.CharField(max_length=255, verbose_name="Название документа")
     file = models.FileField(upload_to="documents/", verbose_name="Файл (PDF)")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата добавления")
 
     class Meta:
         verbose_name = "Юридический документ"
@@ -58,8 +75,8 @@ class ContactSettings(models.Model):
         verbose_name = "Контакты и соцсети"
         verbose_name_plural = "Контакты и соцсети"
 
-    # def __str__(self):
-    #     return "Контакты сайта"
+    def __str__(self):
+        return "Контакты сайта"
 
 
 class CommercialConfig(models.Model):
@@ -84,3 +101,22 @@ class CommercialConfig(models.Model):
     class Meta:
         verbose_name = "Условия доставки и оплаты"
         verbose_name_plural = "Условия доставки и оплаты"
+
+    def __str__(self):
+        return "Доставка и оплата"
+
+
+class AboutUs(models.Model):
+    title = models.CharField(max_length=50, verbose_name="Заголовок", default="О нас")
+    content = QuillField(verbose_name="Содержимое")
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Активна",
+    )
+
+    class Meta:
+        verbose_name = "Страница 'О нас'"
+        verbose_name_plural = "Страница 'О нас'"
+
+    def __str__(self):
+        return self.title

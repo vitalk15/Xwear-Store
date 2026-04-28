@@ -1,5 +1,6 @@
 import os
 import sys
+import mimetypes
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
@@ -28,6 +29,11 @@ SITE_URL = config("SITE_URL", default="http://127.0.0.1:8000")
 # FRONTEND_URL используется для всех ссылок, по которым пользователь должен кликнуть.
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
 
+# Регистрируем MIME-тип для WebP (для режима разработки)
+mimetypes.add_type("image/webp", ".webp", True)
+
+# Для DebugToolbar
+INTERNAL_IPS = ["127.0.0.1", "localhost"]
 
 # Application definition
 
@@ -46,9 +52,13 @@ INSTALLED_APPS = [
     "django_cleanup",
     "mptt",
     "django_mptt_admin",
+    "adminsortable2",
+    "admin_auto_filters",
+    "django_quill",
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
+    "debug_toolbar",
     # 'rest_framework_simplejwt',  # НЕ обязательно для базового JWT
     # 'rest_framework_simplejwt.token_blacklist',  # Только для blacklist (если используем, то убираем кастомный token_version)
 ]
@@ -57,6 +67,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -144,7 +155,7 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-# КУДА Django соберет всю статику при деплое (команда collectstatic)
+# КУДА Django соберет всю статику при деплое (команда python manage.py collectstatic)
 # В разработке обычно не используется
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -163,38 +174,94 @@ MEDIA_URL = "media/"
 THUMBNAIL_BASEDIR = "thumbnails"
 THUMBNAIL_EXTENSION = "webp"
 THUMBNAIL_CACHE_DIMENSIONS = True
+THUMBNAIL_NAMER = "xwear.utils.clean_thumbnail_namer"
 THUMBNAIL_ALIASES = {
     "xwear.ProductImage.image": {
-        "product_small": {  # для превью в корзине или мини-карточек
-            "size": (105, 95),
-            "crop": "smart",
-            "quality": 75,
-        },
-        "product_medium": {  # для плитки товаров
-            "size": (320, 320),
-            "crop": "smart",
-            "quality": 80,
-        },
-        "product_large": {  # для детальной страницы товара
-            "size": (670, 490),
+        "admin_preview": {  # для превью в админке
+            "size": (80, 80),
             "crop": "smart",
             "quality": 90,
+        },
+        "product_small": {  # для превью в корзине или мини-карточек
+            "size": (90, 100),
+            "crop": "smart",
+            "quality": 90,
+        },
+        "product_medium": {  # для плитки товаров
+            "size": (320, 360),
+            "crop": "smart",
+            "quality": 90,
+        },
+        "product_large": {  # для детальной страницы товара
+            "size": (500, 600),
+            "crop": "smart",
+            "quality": 95,
         },
     },
     "xwear.SliderBanner.image": {
-        "slider_main": {
-            "size": (1540, 630),
+        "admin_preview": {
+            "size": (250, 100),
             "crop": "smart",
             "quality": 90,
+        },
+        "slider_small": {
+            "size": (250, 100),
+            "crop": "smart",
+            "quality": 90,
+        },
+        "slider_medium": {
+            "size": (1000, 400),
+            "crop": "smart",
+            "quality": 90,
+        },
+        "slider_large": {
+            "size": (1540, 630),
+            "crop": "smart",
+            "quality": 100,
         },
     },
 }
 
-THUMBNAIL_WIDGET_OPTIONS = {
-    "size": (100, 90),  # Размер превью в админке
-    "crop": "smart",  # Умная обрезка (фокус на деталях)
-    "quality": 75,
-    "format": "WEBP",
+# Превью для админки
+# THUMBNAIL_WIDGET_OPTIONS = {
+#     "size": (80, 70),
+#     "crop": "smart",
+#     "quality": 80,
+# }
+
+
+# Интерфейс текстового редактора
+# ------------------------------
+
+QUILL_CONFIGS = {
+    "default": {
+        "theme": "snow",  # 'snow' — стандартная панель, 'bubble' — всплывающая при выделении
+        "modules": {
+            "syntax": False,  # Включать только если нужно подсвечивать код (нужна библиотека Highlight.js)
+            "toolbar": [
+                # Группировка кнопок (каждый вложенный список — отдельный блок на панели)
+                [{"header": [2, 3, False]}],  # Заголовки (False — обычный текст)
+                [
+                    "bold",
+                    "italic",
+                    "underline",
+                ],  # Стили начертания (['bold', 'italic', 'underline', 'strike'])
+                [
+                    {"color": []},
+                    {"background": []},
+                ],  # Выбор цвета (пустой список — стандартная палитра)
+                [{"list": "ordered"}, {"list": "bullet"}],  # Списки
+                [{"align": []}],  # Выравнивание
+                ["link"],  # Медиа (['link', 'image', 'video'])
+                ["clean"],  # Кнопка «Очистить форматирование»
+            ],
+            # Дополнительно: можно настроить ограничение на вставку (например, запретить HTML-теги)
+            "clipboard": {
+                "matchVisual": False,
+            },
+        },
+        "placeholder": "Начните писать описание здесь...",
+    }
 }
 
 
@@ -332,6 +399,15 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_PATCH": True,
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "jwtAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+            }
+        }
+    },
     "SECURITY": [{"jwt": []}],
 }
 

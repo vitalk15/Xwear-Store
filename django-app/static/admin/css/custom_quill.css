@@ -1,0 +1,21 @@
+/* Делаем область редактора повыше, чтобы было удобнее писать длинные тексты */
+.ql-container {
+	min-height: 200px;
+}
+
+.ql-snow .ql-editor h2,
+.ql-snow .ql-editor h3 {
+	font-weight: bold !important;
+	text-align: left !important;
+	background: transparent !important;
+	color: inherit !important;
+}
+
+.ql-snow .ql-editor ul {
+	margin-left: 0;
+	padding-left: 1.5em;
+}
+
+.ql-snow .ql-editor ul > li {
+	padding: 0 1.5em 0;
+}

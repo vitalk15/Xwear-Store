@@ -1,0 +1,62 @@
+/* =============================== */
+/* 1. ЗАТЕМНЕНИЕ НЕАКТИВНЫХ СТРОК  */
+/* =============================== */
+
+/* Находим строку, в которой чекбокс в колонке is_active НЕ отмечен */
+/* Селектор :not(:checked) ловит именно состояние "пустого" квадратика */
+tr:has(td.field-is_active input[type='checkbox']:not(:checked)) {
+	opacity: 0.5;
+	background-color: #f9f9f9 !important; /* !important нужен, чтобы перебить стандартную "зебру" Django */
+	filter: grayscale(0.6); /* Дополнительно обесцветим строку для наглядности */
+	transition: all 0.3s ease;
+}
+
+/* При наведении возвращаем немного яркости */
+tr:has(td.field-is_active input[type='checkbox']:not(:checked)):hover {
+	opacity: 0.8;
+	filter: grayscale(0.2);
+}
+
+/* Чтобы текст не расплывался при прозрачности, можно чуть затемнить его */
+tr:has(td.field-is_active input[type='checkbox']:not(:checked)) td {
+	color: #888 !important;
+}
+
+/* ======================================================================================== */
+/* 2. БЛОКИРОВКА ЧЕКБОКСОВ (Если нет размеров, вариантов или при неактивном базовом товаре) */
+/* ======================================================================================== */
+
+/* Общий стиль для заблокированной строки */
+tr.is-blocked td.field-is_active {
+	position: relative;
+}
+
+tr.is-blocked td.field-is_active input[type='checkbox'] {
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* Иконка блокировки */
+tr.is-blocked td.field-is_active::before {
+	content: '🚫';
+	font-size: 13px;
+	position: absolute;
+}
+
+/* Универсальный тултип */
+tr.is-blocked td.field-is_active:hover::after {
+	/* берем текст из JS */
+	content: attr(data-tooltip);
+
+	position: absolute;
+	z-index: 1000;
+	background: #2d3436;
+	color: #fab1a0;
+	padding: 8px 12px;
+	border-radius: 6px;
+	white-space: nowrap;
+	right: 90px;
+	top: 8px;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+	border: 1px solid #636e72;
+}

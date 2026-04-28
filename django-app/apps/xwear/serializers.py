@@ -1,24 +1,37 @@
+import json
 from rest_framework import serializers
 from .models import (
     Category,
     Brand,
-    Product,
+    Color,
+    ProductVariant,
     ProductImage,
     ProductSize,
-    ProductSpecification,
+    Material,
+    ProductMaterial,
     Favorite,
     SliderBanner,
 )
 from .utils import get_thumbnail_data
 
+# ==========================================
+# БАЗОВЫЕ СЕРИАЛИЗАТОРЫ
+# ==========================================
+
 
 class CategorySerializer(serializers.ModelSerializer):
+    full_path = serializers.CharField(source="get_full_path", read_only=True)
     children = serializers.SerializerMethodField()
+    is_clickable = serializers.SerializerMethodField()
     # has_children = serializers.SerializerMethodField()
+
+    def get_is_clickable(self, obj):
+        # Кликабельны все категории, кроме корневых (level 0)
+        return not obj.is_root_node()
 
     class Meta:
         model = Category
-        fields = ["id", "name", "slug", "level", "children"]
+        fields = ["id", "name", "slug", "level", "full_path", "is_clickable", "children"]
 
     # рекурсивная сериализация активных дочерних элементов (до 300-500 категорий)
     def get_children(self, obj):
@@ -37,6 +50,24 @@ class CategorySerializer(serializers.ModelSerializer):
     # def get_has_children(self, obj):
     #     # Проверяем наличие активных детей в кэше
     #     return any(child.is_active for child in obj.get_children())
+
+
+class ColorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Color
+        fields = ["id", "name", "slug", "hex_code", "hex_code_2", "texture"]
+
+
+class MaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Material
+        fields = ["id", "name"]
+
+
+class BrandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Brand
+        fields = ["id", "name", "slug"]
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -62,21 +93,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSizeSerializer(serializers.ModelSerializer):
     size_name = serializers.CharField(source="size.name", read_only=True)
-    # final_price — цена со скидкой или обычная
-    final_price = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
-    # old_price — это исходная цена из поля price
-    old_price = serializers.DecimalField(
-        source="price", max_digits=6, decimal_places=2, read_only=True
-    )
-    # has_discount — метод-свойство модели
-    has_discount = serializers.BooleanField(read_only=True)
-
-    # Если планируем только отдавать данные (read-only), и не нужна специальная валидация на входе, можно использовать serializers.ReadOnlyField. Он просто берет значение «как есть»:
-    # size_name = serializers.ReadOnlyField(source="size.name")
-    # final_price = serializers.ReadOnlyField()
-    # old_price = serializers.ReadOnlyField(source="price")
-    # has_discount = serializers.ReadOnlyField()
-
+    has_discount = serializers.ReadOnlyField()
     is_available = serializers.SerializerMethodField()
 
     # Если будем использовать остатки
@@ -84,7 +101,8 @@ class ProductSizeSerializer(serializers.ModelSerializer):
     #     return obj.stock > 0 and obj.product.is_active
 
     def get_is_available(self, obj):
-        return obj.product.is_active
+        # Размер доступен, если активен сам вариант и активен базовый товар
+        return obj.variant.is_active and obj.variant.product.is_active
 
     class Meta:
         model = ProductSize
@@ -92,71 +110,83 @@ class ProductSizeSerializer(serializers.ModelSerializer):
             "id",
             "size_name",
             "final_price",
-            "old_price",
+            "price",
             "discount_percent",
             "has_discount",
             "is_available",
         ]
 
 
-class SpecificationSerializer(serializers.ModelSerializer):
+class ProductMaterialSerializer(serializers.ModelSerializer):
+    # Показываем названия вместо ID
+    material_outer = MaterialSerializer(read_only=True)
+    material_inner = MaterialSerializer(read_only=True)
+    material_sole = MaterialSerializer(read_only=True)
+
     class Meta:
-        model = ProductSpecification
+        model = ProductMaterial
         fields = [
-            "article",
-            "season",
             "material_outer",
             "material_inner",
             "material_sole",
         ]
 
 
-class BrandSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Brand
-        fields = ["id", "name", "slug"]
+# ===================================
+# СЕРИАЛИЗАТОРЫ ТОВАРОВ
+# ===================================
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source="category.name", read_only=True)
-    category_slug = serializers.CharField(source="category.slug", read_only=True)
-    brand_name = serializers.CharField(source="brand.name", read_only=True)
-    min_price = serializers.SerializerMethodField()
-    old_min_price = serializers.SerializerMethodField()
-    discount_percent = serializers.SerializerMethodField()
+    gender_display = serializers.CharField(
+        source="product.get_gender_display", read_only=True
+    )
+    color = ColorSerializer(read_only=True)
+    naming = serializers.SerializerMethodField()
+    pricing = serializers.SerializerMethodField()
+    available_colors = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
-    # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
+    frontend_url = serializers.SerializerMethodField()
 
-    def _get_cheapest_size(self, obj):
-        """Вспомогательный метод для поиска самого дешевого активного размера"""
+    def get_naming(self, obj):
+        product = obj.product
+        return {
+            "type": product.type_name,
+            "brand": {
+                "name": product.brand.name,
+                "slug": product.brand.slug,
+            },
+            "model": product.model_name,
+            "category": {
+                "name": product.category.name,
+                "slug": product.category.slug,
+            },
+            # для заголовка вкладки в браузере
+            "full_title": obj.full_name,
+        }
+
+    def get_pricing(self, obj):
+        # Используем аннотацию, если она есть (для скорости)
+        annotated_price = getattr(obj, "annotated_min_final_price", None)
+
+        if annotated_price is not None:
+            return {
+                "min_price": annotated_price,
+                "old_price": getattr(obj, "annotated_old_price", None),
+                "discount": getattr(obj, "annotated_discount", 0),
+            }
+
+        # если аннотации нет
         active_sizes = [s for s in obj.sizes.all() if s.is_active]
         if not active_sizes:
-            return None
-        # Находим объект размера с минимальной ценой final_price
-        return min(active_sizes, key=lambda s: s.final_price)
+            return {"min_price": 0, "old_price": None, "discount": 0}
 
-    def get_min_price(self, obj):
-        # Если мы пришли из вьюхи рекомендаций, цена уже посчитана в БД
-        annotated_price = getattr(obj, "annotated_min_final_price", None)
-        if annotated_price is not None:
-            return annotated_price
-
-        # В остальных случаях используем
-        size = self._get_cheapest_size(obj)
-        return size.final_price if size else 0
-
-    def get_old_min_price(self, obj):
-        size = self._get_cheapest_size(obj)
-        # Показываем старую цену только если на этот конкретный размер есть скидка
-        if size and size.has_discount:
-            return size.price
-        return None
-
-    def get_discount_percent(self, obj):
-        size = self._get_cheapest_size(obj)
-        if size and size.has_discount:
-            return size.discount_percent
-        return 0
+        cheapest = min(active_sizes, key=lambda s: s.final_price)
+        return {
+            "min_price": cheapest.final_price,
+            "old_price": cheapest.price if cheapest.has_discount else None,
+            "discount": cheapest.discount_percent if cheapest.has_discount else 0,
+        }
 
     def get_main_image(self, obj):
         img_obj = obj.get_main_image_obj
@@ -169,67 +199,159 @@ class ProductListSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def get_frontend_url(self, obj):
+        # Собираем путь: /catalog/полный-путь-категории/слаг-товара-ID
+        category_path = obj.product.category.get_full_path()
+        return f"/catalog/{category_path}/{obj.slug}-{obj.id}/"
+
+    def get_available_colors(self, obj):
+        """
+        Собирает все варианты текущего базового товара.
+        """
+        # Берем все активные варианты базового товара
+        #!!! Нужно ли проверять активность базового товара? Проверяется во вьюхе
+        variants = obj.product.variants.filter(is_active=True).select_related("color")
+
+        results = []
+        for v in variants:
+            if v.color:
+                results.append(
+                    {
+                        "color": ColorSerializer(v.color, context=self.context).data,
+                        "frontend_url": self.get_frontend_url(v),
+                    }
+                )
+        return results
+
     class Meta:
-        model = Product
+        model = ProductVariant
         fields = [
             "id",
-            "name",
             "slug",
-            "category_name",
-            "category_slug",
-            "brand_name",
+            "article",
             "gender",
-            "min_price",
-            "old_min_price",
-            "discount_percent",
+            "gender_display",
+            "naming",
+            "pricing",
+            "color",
+            "available_colors",
             "main_image",
+            "frontend_url",
             "is_active",
         ]
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source="category.name", read_only=True)
-    category_slug = serializers.CharField(source="category.slug", read_only=True)
-    brand = BrandSerializer(read_only=True)
-    sizes = ProductSizeSerializer(
-        source='sizes.order_by("-size")', many=True, read_only=True
+    # Общие данные из базового товара
+    gender_display = serializers.CharField(
+        source="product.get_gender_display", read_only=True
     )
-    # gender_display = serializers.CharField(source="get_gender_display", read_only=True)
+    season_display = serializers.CharField(
+        source="product.get_season_display", read_only=True
+    )
+    description = serializers.SerializerMethodField()
+
+    # Специфичные данные варианта
+    sizes = ProductSizeSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
-    specification = SpecificationSerializer(read_only=True)
+    composition = ProductMaterialSerializer(read_only=True)
+    color = ColorSerializer(read_only=True)
+
+    # Динамические поля
+    available_colors = serializers.SerializerMethodField()
+    naming = serializers.SerializerMethodField()
     breadcrumbs = serializers.SerializerMethodField()
+    frontend_url = serializers.SerializerMethodField()
 
     def get_breadcrumbs(self, obj):
         # MPTT метод get_ancestors возвращает всю цепочку от корня до текущей категории
-        ancestors = obj.category.get_ancestors(include_self=True)
+        ancestors = obj.product.category.get_ancestors(include_self=True)
         return [{"name": cat.name, "slug": cat.slug} for cat in ancestors]
 
+    def get_frontend_url(self, obj):
+        category_path = obj.product.category.get_full_path()
+        return f"/catalog/{category_path}/{obj.slug}-{obj.id}/"
+
+    def get_naming(self, obj):
+        product = obj.product
+        return {
+            "type": product.type_name,
+            "brand": {
+                "name": product.brand.name,
+                "slug": product.brand.slug,
+            },
+            "model": product.model_name,
+            "category": {
+                "name": product.category.name,
+                "slug": product.category.slug,
+            },
+            # для заголовка вкладки в браузере
+            "full_title": obj.full_name,
+        }
+
+    def get_available_colors(self, obj):
+        """
+        Собирает все варианты текущего базового товара.
+        """
+        # Берем все активные варианты базового товара
+        #!!! Нужно ли проверять активность базового товара?
+        variants = obj.product.variants.filter(is_active=True).select_related("color")
+
+        results = []
+        for v in variants:
+            if v.color:
+                results.append(
+                    {
+                        "color": ColorSerializer(v.color, context=self.context).data,
+                        "frontend_url": self.get_frontend_url(v),
+                        "is_current": v.id
+                        == obj.id,  # Флаг, для выделения текущего цвета
+                    }
+                )
+        return results
+
+    def get_description(self, obj):
+        if obj.product and obj.product.description:
+            try:
+                # Возвращаем Delta JSON
+                return json.loads(obj.product.description.delta)
+            except (ValueError, AttributeError):
+                # На случай, если в базе оказался невалидный JSON или пустая строка
+                return None
+        return None
+
     class Meta:
-        model = Product
+        model = ProductVariant
         fields = [
             "id",
-            "name",
             "slug",
-            "category_name",
-            "category_slug",
-            "brand",
+            "article",
+            "gender_display",
+            "naming",
+            "season_display",
+            "color",
+            "available_colors",
             "breadcrumbs",
             "description",
-            "gender",
             "sizes",
             "images",
-            "specification",
+            "composition",
             "is_active",
         ]
 
 
+# ==========================================
+# ОСТАЛЬНЫЕ СЕРИАЛИЗАТОРЫ
+# ==========================================
+
+
 class FavoriteSerializer(serializers.ModelSerializer):
     # При получении списка избранного будем разворачивать данные о товаре
-    product_details = ProductListSerializer(source="product", read_only=True)
+    variant_details = ProductListSerializer(source="variant", read_only=True)
 
     class Meta:
         model = Favorite
-        fields = ["id", "product", "product_details", "created_at"]
+        fields = ["id", "variant", "variant_details", "created_at"]
         read_only_fields = ["id", "created_at"]
 
 
@@ -239,7 +361,7 @@ class SliderBannerSerializer(serializers.ModelSerializer):
     def get_thumbnails(self, obj):
         request = self.context.get("request")
         aliases = {
-            "main": "slider_main",
+            "large": "slider_large",
         }
         return get_thumbnail_data(obj.image, aliases, request)
 

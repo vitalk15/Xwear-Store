@@ -1,0 +1,12 @@
+.field-size .select2-container {
+	width: 80px !important;
+	min-width: 80px;
+	max-width: 100px;
+}
+
+/* Если внутри поля текст слишком длинный — обрезаем его */
+.field-size .select2-selection__rendered {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}

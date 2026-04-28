@@ -117,7 +117,7 @@ def order_create(request):
         if not item.product_size.product.is_active:
             return Response(
                 {
-                    "error": f"К сожалению, товар '{item.product_size.product.name}' больше недоступен."
+                    "error": f"К сожалению, товар '{item.product_size.product.full_name}' больше недоступен."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -185,7 +185,7 @@ def order_create(request):
             #     if not ps.product.is_active or ps.stock < item.quantity:
             #         return Response(
             #             {
-            #                 "error": f"Товар {ps.product.name} (размер {ps.size.name}) недоступен."
+            #                 "error": f"Товар {ps.product.full_name} (размер {ps.size.name}) недоступен."
             #             },
             #             status=status.HTTP_400_BAD_REQUEST,
             #         )
@@ -220,7 +220,7 @@ def order_create(request):
                     OrderItem(
                         order=order,
                         product=item.product_size.product,
-                        product_name=item.product_size.product.name,  # Снимок названия
+                        product_name=item.product_size.product.full_name,  # Снимок названия
                         size_name=item.product_size.size.name,  # Снимок размера
                         price_at_purchase=price,  # Снимок цены
                         quantity=item.quantity,  # Снимок кол-ва
@@ -230,7 +230,7 @@ def order_create(request):
             #     OrderItem(
             #         order=order,
             #         product=item.product_size.product,
-            #         product_name=item.product_size.product.name,  # Снимок имени
+            #         product_name=item.product_size.product.full_name,  # Снимок имени
             #         size_name=item.product_size.size.name,  # Снимок размера
             #         price_at_purchase=item.product_size.final_price,  # Снимок цены
             #         quantity=item.quantity,
