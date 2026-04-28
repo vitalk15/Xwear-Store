@@ -1,18 +1,7 @@
-/* .inline-group h3,
-.djn-item h3 {
-	display: none;
-} */
-
-#variants-group
-	> .djn-fieldset
-	> details
-	> .items
-	> .djn-item
-	> .inline-group
-	> .djn-fieldset
-	details
-	> .items
-	> .djn-item
-	> h3 {
+#composition-group > fieldset > details > .inline-related > h3 {
 	display: none;
 }
+
+/* #composition-group > fieldset > details > .inline-related > fieldset {
+	margin-top: 10px;
+} */

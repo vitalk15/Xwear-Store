@@ -5,12 +5,13 @@ from uuid import uuid4
 from io import BytesIO
 from PIL import Image
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import UploadedFile
 from django.utils.deconstruct import deconstructible
 from django.utils.html import format_html
 from django.db.models import Prefetch, Min, Max, Q
 from django.db import transaction
 
-# from easy_thumbnails.files import get_thumbnailer
+from easy_thumbnails.files import get_thumbnailer
 from easy_thumbnails.alias import aliases as et_aliases
 from pytils.translit import slugify
 
@@ -241,10 +242,28 @@ def get_thumbnail_data(image_field, aliases, request=None):
 
 # Генерация превью в админке и показ информации о фото
 def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
-    if not image_field or not hasattr(image_field, "url"):
+    # 1. Базовая проверка на наличие файла
+    if not image_field or not hasattr(image_field, "url") or not image_field.name:
         return "Нет фото"
+
+    # 2. ПРОВЕРКА НА "НОВЫЙ" ФАЙЛ
+    # Если файл только что загружен (UploadedFile) или его еще нет на диске
+    is_uploaded = isinstance(image_field.file, UploadedFile)
+
+    # Проверяем физическое наличие файла, чтобы не пугать ошибками
     try:
-        # Автоматически определяем target для алиаса на основе модели
+        exists = image_field.storage.exists(image_field.name)
+    except Exception:
+        exists = False
+
+    if is_uploaded or not exists:
+        return format_html(
+            '<span style="color: #666; font-size: 11px; font-style: italic;">'
+            "⚠️ Оформите правильно товар</span>"
+        )
+
+    try:
+        # 2. Определяем настройки миниатюры (алиас)
         target = f"{image_field.instance._meta.app_label}.{image_field.instance._meta.object_name}.{image_field.field.name}"
         options = et_aliases.get(alias, target=target)
         # options = et_aliases.get("admin_preview", target="xwear.ProductImage.image")
@@ -254,7 +273,10 @@ def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
             options = {"size": (80, 80), "crop": "smart", "quality": 90}
 
         # Генерируем миниатюру через метод поля ThumbnailerImageField (get_thumbnail)
-        thumb = image_field.get_thumbnail(options)
+        # thumb = image_field.get_thumbnail(options)
+
+        thumbnailer = get_thumbnailer(image_field)
+        thumb = thumbnailer.get_thumbnail(options)
         width, height = options.get("size", (80, 80))
 
         html = format_html(
@@ -291,9 +313,12 @@ def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
 
         return html + format_html("</div>")
 
-    except Exception as e:
+    except Exception:
         # В продакшене логировать
-        return f"Ошибка генерации превью: {e}"
+        # return f"Ошибка генерации превью: {e}"
+        return format_html(
+            '<span title="Ошибка обработки изображения">⚠️ Ошибка превью</span>'
+        )
 
 
 # Собирает данные для сайдбара (бренды, размеры, диапазон цен),

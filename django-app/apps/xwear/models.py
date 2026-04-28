@@ -2,9 +2,10 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from mptt.models import MPTTModel, TreeForeignKey
-from easy_thumbnails.fields import ThumbnailerImageField
+
+# from easy_thumbnails.fields import ThumbnailerImageField
 from easy_thumbnails.files import generate_all_aliases
 from django_quill.fields import QuillField
 from core.models import TimeStampedModel
@@ -170,9 +171,7 @@ class ProductSize(models.Model):
         ordering = ["size"]
         unique_together = ["variant", "size"]
         verbose_name = "Размер и цена"
-        verbose_name_plural = (
-            "Размеры и цены (Сохраните товар для автоматического проставления размеров)"
-        )
+        verbose_name_plural = "Размеры и цены"
         indexes = [models.Index(fields=["variant", "is_active"])]
 
 
@@ -183,7 +182,7 @@ class ProductImage(models.Model):
         related_name="images",
         verbose_name="Вариант товара",
     )
-    image = ThumbnailerImageField(
+    image = models.ImageField(
         upload_to=UploadToPath("products", use_category_subdir=True),
         validators=[ImageValidator(min_width=500, min_height=600, max_mb=1.5)],
         verbose_name="Фото (min 500x600, max 1,5Мб)",
@@ -227,9 +226,11 @@ class ProductImage(models.Model):
 
         super().save(*args, **kwargs)
 
-        # 3. Запускаем генерацию миниатюр
+        # 3. Генерируем миниатюры ТОЛЬКО после успешного коммита в базу
         if is_new:
-            generate_all_aliases(self.image, include_global=True)
+            transaction.on_commit(
+                lambda: generate_all_aliases(self.image, include_global=True)
+            )
 
     def __str__(self):
         if self.is_main:
@@ -407,30 +408,45 @@ class ProductVariant(TimeStampedModel):
         return images_list[0] if images_list else None
 
     def clean(self):
-        # Сначала смотрим на состояние родителя в памяти (то, что в форме)
-        if not self.product.is_active:
-            # 2. Если в форме товар выключен, проверяем базу данных:
-            # А был ли он выключен ДО того, как мы нажали "Сохранить"?
-            was_parent_already_inactive = (
-                not type(self.product)
-                .objects.filter(pk=self.product_id, is_active=True)
-                .exists()
-            )
-
-            # Если он и в форме выключен, и в базе был выключен — значит,
-            # это попытка активировать вариант "втихую", не включая основной товар.
-            if was_parent_already_inactive:
+        # Если менеджер пытается активировать вариант (или оставить его активным)
+        if self.is_active:
+            # 1. ЗАПРЕТ АКТИВАЦИИ ПРИ СОЗДАНИИ
+            # Если self.pk равно None, значит объект еще никогда не сохранялся в БД
+            if self.pk is None:
                 raise ValidationError(
                     {
-                        "is_active": "Нельзя активировать вариант, если базовый товар деактивирован."
+                        "is_active": "Новый вариант нельзя активировать при создании. Сначала сохраните его, перейдите в карточку варианта, оформите, и затем активируйте."
                     }
                 )
+
+            # 2. ПРОВЕРКА РОДИТЕЛЯ
+            # Сначала смотрим на состояние родителя в памяти (то, что в форме)
+            if not self.product.is_active:
+                # Если в форме товар выключен, проверяем базу данных:
+                # А был ли он выключен ДО того, как мы нажали "Сохранить"?
+                was_parent_already_inactive = (
+                    not type(self.product)
+                    .objects.filter(pk=self.product_id, is_active=True)
+                    .exists()
+                )
+                # Если он и в форме выключен, и в базе был выключен
+                if was_parent_already_inactive:
+                    raise ValidationError(
+                        {
+                            "is_active": "Нельзя активировать вариант, если базовый товар деактивирован."
+                        }
+                    )
 
     def save(self, *args, **kwargs):
         # 1. Генерация слага, если он пуст (ID не нужен)
         if not self.slug:
             # Собираем слаг из базового товара и слага цвета
             self.slug = f"{self.product.slug}-{self.color.slug}"
+
+        # Если мы сохраняем вариант и он НЕ активен,
+        # то принудительно выключаем активность у его размеров (опционально)
+        # if not self.is_active:
+        #     self.sizes.all().update(is_active=False)
 
         # Проверяем, создается ли объект впервые
         is_new = self.pk is None
@@ -450,7 +466,7 @@ class ProductVariant(TimeStampedModel):
             # Это быстрее и НЕ вызывает повторные сигналы или методы save().
             self.__class__.objects.filter(pk=self.pk).update(article=self.article)
 
-        # 3. Автогенерация перечня размеров
+        # 4. Автогенерация перечня размеров
         # Если это новый вариант и у родителя задана размерная сетка
         if is_new and self.product.available_sizes.exists():
             # Генерируем размеры
@@ -542,6 +558,9 @@ class ProductMaterial(models.Model):
         verbose_name = "Состав"
         verbose_name_plural = "Состав"
 
+    def __str__(self):
+        return "Список материалов"
+
 
 class Favorite(models.Model):
     user = models.ForeignKey(
@@ -570,7 +589,7 @@ class Favorite(models.Model):
 
 class SliderBanner(models.Model):
     title = models.CharField(max_length=100, verbose_name="Заголовок")
-    image = ThumbnailerImageField(
+    image = models.ImageField(
         upload_to=UploadToPath("banner", "slide"),
         validators=[ImageValidator(min_width=1540, min_height=630, max_mb=2.0)],
         verbose_name="Изображение (min 1540x630, max 2Мб)",

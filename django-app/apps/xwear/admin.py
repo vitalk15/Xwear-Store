@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib import admin, messages
+from django.db import transaction
 from django.db.models import (
     Count,
     Q,
@@ -10,8 +11,6 @@ from django.db.models import (
     OuterRef,
     Subquery,
 )
-
-# from django.db.models.functions import Coalesce
 from django.utils.html import format_html
 from django.urls import reverse
 from django_mptt_admin.admin import DjangoMpttAdmin
@@ -155,6 +154,31 @@ class ProductSizeForm(forms.ModelForm):
         return cleaned_data
 
 
+class ProductSizeFormSet(forms.BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+
+        # Если есть ошибки в самих формах размеров (например, буквы в цене), не продолжаем
+        if any(self.errors):
+            return
+
+        # Проверяем, активен ли вариант (берем значение из формы, а не из базы!)
+        # self.instance — это наш ProductVariant
+        if self.instance.is_active:
+            has_active_sizes = False
+            for form in self.forms:
+                # Проверяем, что форма заполнена, не пуста и не помечена на удаление
+                if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
+                    if form.cleaned_data.get("is_active"):
+                        has_active_sizes = True
+                        break
+
+            if not has_active_sizes:
+                raise ValidationError(
+                    "Нельзя активировать вариант без активных размеров."
+                )
+
+
 class ProductImageFormSet(CustomInlineFormSet):
     """Проверяет, что загружено хотя бы одно изображение"""
 
@@ -163,16 +187,21 @@ class ProductImageFormSet(CustomInlineFormSet):
         if any(self.errors):
             return
 
-        count = 0
-        for form in self.forms:
-            # Проверяем, что форма не пустая и не помечена на удаление
-            if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
-                # Проверяем наличие самого файла изображения
-                if form.cleaned_data.get("image"):
-                    count += 1
+        # Если вариант активирован, проверяем картинки
+        if self.instance.is_active:
+            has_images = False
+            for form in self.forms:
+                # Проверяем, что форма не пустая и не помечена на удаление
+                if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
+                    # Проверяем наличие самого файла изображения
+                    if form.cleaned_data.get("image"):
+                        has_images = True
+                        break
 
-        if count < 1:
-            raise ValidationError("У варианта должно быть хотя бы одно изображение.")
+            if not has_images:
+                raise ValidationError(
+                    "Для активации варианта нужно хотя бы одно изображение."
+                )
 
 
 # ==========================================
@@ -358,16 +387,17 @@ class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
 
     # добавление пустой строки для внесения данных
     def get_extra(self, request, obj=None, **kwargs):
-        if obj:  # Если объект уже существует в базе (редактирование)
+        # Если у варианта еще нет фото, показываем 1 пустое поле
+        # Если фото уже есть - не показываем лишних пустых строк
+        if obj and obj.images.exists():
             return 0
-        return 1  # Если это создание нового товара
+        return 1
 
     def get_readonly_fields(self, request, obj=None):
-        # obj — это сам Товар (ProductVariant).
-        # Если он существует (obj is not None), значит мы в режиме редактирования.
-        if obj:
+        # Если у варианта еще нет фото - даём возможность выбрать главное фото чекбоксом
+        # Если фото уже есть - поле is_main делаем только для чтения (будет уже работать перетаскивание)
+        if obj and obj.images.exists():
             return ["image_preview", "is_main"]
-        # Если товара еще нет (режим создания), все поля доступны для редактирования
         return ["image_preview"]
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
@@ -392,6 +422,7 @@ class ProductImageInline(SortableInlineAdminMixin, admin.TabularInline):
 class ProductSizeInline(admin.TabularInline):
     model = ProductSize
     form = ProductSizeForm
+    formset = ProductSizeFormSet
     extra = 0
     fields = ["size", "price", "discount_percent", "display_final_price", "is_active"]
     # Это делает выбор размера быстрым поиском (требует search_fields в SizeAdmin)
@@ -446,7 +477,7 @@ class ProductVariantInline(admin.TabularInline):
     readonly_fields = ["get_preview", "article"]
     show_change_link = True  # Позволяет быстро перейти в ProductVariantAdmin
     verbose_name = "Вариант товара"
-    verbose_name_plural = "Варианты товара (указать после базового товара)"
+    verbose_name_plural = "Варианты товара (Создается выключенным. Сначала оформите его, а затем активируйте.)"
     classes = ["collapse"]
 
     @admin.display(description="Превью")
@@ -506,14 +537,14 @@ class ProductAdmin(admin.ModelAdmin):
             {"fields": (("brand", "model_name"), ("category", "gender"))},
         ),
         (
-            "Базовая информация",
-            {"classes": ("collapse",), "fields": ("season", "description")},
-        ),
-        ("Размерная сетка", {"classes": ("collapse",), "fields": ("available_sizes",)}),
-        (
             "Идентификация (Авто)",
             {"classes": ("collapse",), "fields": ("name", "slug", "regen_slug")},
         ),
+        (
+            "Описание товара",
+            {"classes": ("collapse",), "fields": ("season", "description")},
+        ),
+        ("Размерная сетка", {"classes": ("collapse",), "fields": ("available_sizes",)}),
         # (None, {"fields": ("is_active",)}),
     )
 
@@ -887,32 +918,33 @@ class ProductVariantAdmin(SortableAdminBase, NoAddMixin, admin.ModelAdmin):
         # Сохраняем сам вариант
         super().save_model(request, obj, form, change)
 
-        # 3. Применение массовой скидки
-        discount_value = form.cleaned_data.get("set_discount_all_sizes")
-        if discount_value is not None:
-            # Обновляем все активные размеры этого товара одним запросом к базе
-            obj.sizes.filter(is_active=True).update(discount_percent=discount_value)
-            messages.info(
-                request, f"Скидка {discount_value}% применена ко всем размерам."
-            )
-
     def save_related(self, request, form, formsets, change):
         # 1. Сохраняем инлайны (размеры, фото, материалы)
         super().save_related(request, form, formsets, change)
 
         variant = form.instance
 
-        # 2. Проверка на наличие активных размеров
-        # проверка на пустые размеры и деактивация
-        if variant.is_active and not variant.sizes.filter(is_active=True).exists():
-            # принудительно выключаем вариант
-            variant.is_active = False
-            variant.save(update_fields=["is_active"])
-            messages.warning(
-                request, f"Вариант '{variant}' выключен: нет активных размеров."
+        # 2. Проверяем, была ли введена массовая скидка
+        discount_value = form.cleaned_data.get("set_discount_all_sizes")
+
+        if discount_value is not None:
+            # Получаем все активные размеры варианта
+            sizes = variant.sizes.filter(is_active=True)
+
+            # Используем транзакцию для надежности
+            with transaction.atomic():
+                for size in sizes:
+                    # Устанавливаем скидку
+                    size.discount_percent = discount_value
+                    # Вызываем .save(), чтобы сработал расчет final_price
+                    size.save()
+
+            self.message_user(
+                request,
+                f"Скидка {discount_value}% успешно применена для всех размеров.",
             )
 
-        # 2. Ищем, в какой форме был изменен или установлен флаг is_main
+        # 3. Ищем, в какой форме был изменен или установлен флаг is_main
         manual_id = None
         for formset in formsets:
             if formset.model == ProductImage:

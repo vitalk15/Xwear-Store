@@ -1,8 +1,9 @@
 # from django.db.models.signals import post_delete, m2m_changed
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, pre_save
 from django.dispatch import receiver
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
+from easy_thumbnails.files import get_thumbnailer
 from .models import ProductImage
 
 # from .models import ProductImage, ProductVariant
@@ -10,6 +11,20 @@ from .models import ProductImage
 
 @receiver(post_delete, sender=ProductImage)
 def signal_post_delete(sender, instance, **kwargs):
+    """
+    1. Удаляет кэш миниатюр при удалении объекта.
+    2. Синхронизирует позиции оставшихся фото.
+    """
+    # --- 1: Очистка миниатюр ---
+    if instance.image:
+        try:
+            # get_thumbnailer найдет все превью, связанные с этим файлом в папке thumbnails
+            get_thumbnailer(instance.image).delete_thumbnails()
+        except Exception:
+            # Ошибка удаления миниатюр не должна прерывать работу сигнала
+            pass
+
+    # --- 2: Логика синхронизации ---
     # post_delete срабатывает, когда объекта уже нет в базе,
     # поэтому мы просто пересчитываем оставшихся
     try:
@@ -22,6 +37,23 @@ def signal_post_delete(sender, instance, **kwargs):
             transaction.on_commit(lambda: sync_product_images(variant))
     except ObjectDoesNotExist:
         # Если товара уже нет в базе (каскадное удаление), просто ничего не делаем
+        pass
+
+
+@receiver(pre_save, sender=ProductImage)
+def signal_pre_save_image_cleanup(sender, instance, **kwargs):
+    """
+    Удаляет миниатюры старого изображения, если файл был заменен на новый.
+    """
+    if not instance.pk:
+        return  # Это новый объект, чистить нечего
+
+    try:
+        old_instance = sender.objects.get(pk=instance.pk)
+        # Если путь к файлу изменился (заменили картинку)
+        if old_instance.image and old_instance.image != instance.image:
+            get_thumbnailer(old_instance.image).delete_thumbnails()
+    except sender.DoesNotExist:
         pass
 
 
