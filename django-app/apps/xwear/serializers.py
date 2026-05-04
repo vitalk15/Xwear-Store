@@ -367,4 +367,4 @@ class SliderBannerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SliderBanner
-        fields = ["id", "title", "link", "thumbnails"]
+        fields = ["id", "title", "links", "thumbnails"]

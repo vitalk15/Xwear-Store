@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "adminsortable2",
     "admin_auto_filters",
     "django_quill",
+    "django_jsonform",
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
@@ -199,11 +200,6 @@ THUMBNAIL_ALIASES = {
         },
     },
     "xwear.SliderBanner.image": {
-        "admin_preview": {
-            "size": (250, 100),
-            "crop": "smart",
-            "quality": 90,
-        },
         "slider_small": {
             "size": (250, 100),
             "crop": "smart",

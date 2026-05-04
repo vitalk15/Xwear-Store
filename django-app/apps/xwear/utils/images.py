@@ -196,7 +196,7 @@ def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
     if is_uploaded or not exists:
         return format_html(
             '<span style="color: #666; font-size: 11px; font-style: italic;">'
-            "⚠️ Оформите правильно товар</span>"
+            "⚠️ Оформите правильно данные</span>"
         )
 
     try:
@@ -223,7 +223,8 @@ def get_admin_thumb(image_field, alias="admin_preview", show_info=False):
             "justify-content: center; background: #f8f9fa; border-radius: 4px; overflow: hidden; "
             'box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #ddd;">'
             '<img src="{0}" style="flex-shrink: 0; max-width: 100%; max-height: 100%; object-fit: contain;" />'
-            "</div>",
+            "</div>"
+            "</a>",
             thumb.url,
             width,
             image_field.url,

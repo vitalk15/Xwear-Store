@@ -588,15 +588,42 @@ class Favorite(models.Model):
 
 
 class SliderBanner(models.Model):
-    title = models.CharField(max_length=100, verbose_name="Заголовок")
+    title = models.CharField(max_length=100, blank=True, verbose_name="Заголовок слайда")
     image = models.ImageField(
         upload_to=UploadToPath("banner", "slide"),
         validators=[ImageValidator(min_width=1540, min_height=630, max_mb=2.0)],
         verbose_name="Изображение (min 1540x630, max 2Мб)",
     )
-    link = models.URLField(blank=True, verbose_name="Ссылка")
+    links = models.JSONField(default=list, blank=True, verbose_name="Ссылки")
     order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
+
+    # Описываем структуру JSON
+    LINKS_SCHEMA = {
+        "type": "array",
+        "items": {
+            "type": "object",  # Каждый элемент — объект (словарь)
+            "keys": {
+                "title": {
+                    "type": "string",
+                    "title": "Текст ссылки",
+                    "minLength": 1,  # Запрещаем пустую строку
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL адрес",
+                    "help": "Абсолютный (https://...) или относительный (/catalog/) путь",
+                    # Вариант А: Строгая проверка на полный URL (с http/https)
+                    # 'format': 'url',
+                    # Вариант Б: Гибкая проверка через регулярку (разрешает и /path/, и http://)
+                    "pattern": r"^(\/|http|https).*$",
+                    "minLength": 1,
+                },
+            },
+            # Делаем оба поля обязательными, если элемент списка был добавлен
+            "required": ["title", "url"],
+        },
+    }
 
     def save(self, *args, **kwargs):
         # Конвертация загружаемого изображения в WebP и генерация миниатюр
