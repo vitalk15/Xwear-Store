@@ -12,8 +12,8 @@ class ImagePreviewMixin:
         return get_admin_thumb(obj.image)
 
     @admin.display(description="Текущее изображение")
-    def image_preview_large(self, obj):
-        return get_admin_thumb(obj.image, alias="slider_large", show_info=True)
+    def image_preview_small(self, obj):
+        return get_admin_thumb(obj.image, alias="slider_small", show_info=True)
 
 
 class MainPreviewMixin:
