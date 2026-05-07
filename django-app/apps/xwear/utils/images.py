@@ -336,3 +336,125 @@ def prepare_image_for_save(
     image_field.name = new_path
 
     return True
+
+
+def generate_banner_html(obj, image_url, max_width, is_list=False):
+    """Генератор HTML для баннера с адаптивностью через cqw"""
+
+    if not image_url:
+        return format_html('<span style="color: #999;">Нет изображения</span>')
+
+    # Получаем данные
+    title = obj.title or ""
+    links = obj.links if isinstance(obj.links, list) else []
+    layout_links = obj.layout_links
+
+    # Определяем цвет текста
+    text_color = "#000" if obj.text_color == "dark" else "#fff"
+    # Легкая тень для читаемости даже без затемнения фона
+    shadow_size = "0.3cqw"
+    text_shadow = (
+        f"0 {shadow_size} {shadow_size} rgba(0,0,0,0.5)"
+        if obj.text_color == "light"
+        else "none"
+    )
+
+    # Логика расположения (Flexbox)
+    active_layout = layout_links
+    if layout_links == "auto":
+        active_layout = "bottom_center" if len(links) <= 1 else "left_column"
+
+    if active_layout == "left_column":
+        flex_css = "justify-content: center; align-items: flex-start; text-align: left; padding-left: 5.5cqw;"
+    else:  # bottom_center
+        flex_css = "justify-content: flex-end; align-items: center; text-align: center; padding-bottom: 5cqw;"
+
+    # Генерируем HTML для кнопок
+    buttons_html = ""
+    for link in links:
+        btn_title = link.get("title", "Кнопка")
+        btn_style = link.get("style", "primary")
+
+        # Базовые стили кнопки (размеры через cqw)
+        btn_base_style = """
+                display: block; 
+                margin: 0.5cqw;  
+                border-radius: 0.5cqw; 
+                font-family: sans-serif; 
+                font-size: 1.8cqw; 
+                font-weight: bold;
+            """
+
+        # Простая имитация стилей кнопок для админки
+        if btn_style == "primary":
+            btn_css = f"{btn_base_style} background: #222; color: #fff; border: 0.1cqw solid #222; padding: 1cqw 2.5cqw;"
+        elif btn_style == "secondary":
+            btn_css = f"{btn_base_style} background: #fff; color: #222; border: 0.1cqw solid #ddd; padding: 1cqw 2.5cqw;"
+        elif btn_style == "outline":
+            btn_css = f"{btn_base_style} background: transparent; color: {text_color}; border: 0.1cqw solid {text_color}; padding: 1cqw 2.5cqw;"
+        else:  # style == "link"
+            btn_css = f"{btn_base_style} background: transparent; color: {text_color}; border: none; padding: 1cqw 0cqw;"
+
+        buttons_html += f'<div style="{btn_css}">{btn_title}</div>'
+
+    # Если это список, оставляем обычный блок
+    extra_styles = ""
+    if not is_list:
+        extra_styles = "min-width: 100%; width: calc(100vw - 350px);"
+
+    # Настройки обертки контента (текст + кнопки)
+    content_wrapper_style = "max-width: 40%; pointer-events: auto;"
+    if active_layout == "bottom_center":
+        # Центрируем сам блок контента
+        content_wrapper_style += " margin: 0 auto; text-align: center;"
+        button_container_justify = "justify-content: center;"
+    else:
+        # Прижимаем к левому краю (с учетом отступа родителя)
+        content_wrapper_style += " margin: 0; text-align: left;"
+        button_container_justify = "flex-direction: column; align-items: flex-start;"
+
+    # Итоговая сборка HTML
+    # container-type: inline-size — это ключ, заставляющий cqw работать внутри этого div.
+    html = f"""
+            <div style="
+                display: block;
+                {extra_styles}
+                max-width: {max_width}; 
+                position: relative; 
+                container-type: inline-size; 
+                border: 1px solid #ccc; 
+                border-radius: 4px; 
+                overflow: hidden;
+                line-height: 1.2;
+            ">
+                <img src="{image_url}" style="
+                    display: block; 
+                    width: 100%; 
+                    height: auto;" />
+                <div style="
+                    position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+                    display: flex; flex-direction: column; {flex_css}
+                    pointer-events: none;
+                ">
+                    <div style="{content_wrapper_style}">
+                        <h2 style="
+                            background: none;
+                            margin: 0;
+                            padding: 2cqw 0;
+                            color: {text_color}; 
+                            text-shadow: {text_shadow};  
+                            font-size: 4cqw; 
+                            font-family: sans-serif;
+                            font-weight: bold;
+                            text-align: inherit;
+                            word-wrap: break-word;
+                        ">{title}</h2>
+                        <div style="
+                            display: flex; 
+                            {button_container_justify}
+                        ">{buttons_html}</div>
+                    </div>
+                </div>
+            </div>
+        """
+    return format_html(html)

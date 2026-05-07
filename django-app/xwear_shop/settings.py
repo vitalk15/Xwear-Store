@@ -201,12 +201,12 @@ THUMBNAIL_ALIASES = {
     },
     "xwear.SliderBanner.image": {
         "slider_small": {
-            "size": (250, 100),
+            "size": (280, 115),
             "crop": "smart",
             "quality": 90,
         },
         "slider_medium": {
-            "size": (1000, 400),
+            "size": (1000, 410),
             "crop": "smart",
             "quality": 90,
         },

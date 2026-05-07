@@ -588,19 +588,42 @@ class Favorite(models.Model):
 
 
 class SliderBanner(models.Model):
+    # Добавляем варианты расположения ссылок
+    LAYOUT_LINKS_CHOICES = [
+        ("auto", "Автоматически (1 ссылка — снизу по центру, более 1 — слева)"),
+        ("bottom_center", "Снизу по центру"),
+        ("left_column", "Слева под заголовком"),
+    ]
+    COLOR_TITLE_CHOICES = [
+        ("light", "Светлый (Белый текст)"),
+        ("dark", "Темный (Черный текст)"),
+    ]
     title = models.CharField(max_length=100, blank=True, verbose_name="Заголовок слайда")
     image = models.ImageField(
         upload_to=UploadToPath("banner", "slide"),
         validators=[ImageValidator(min_width=1540, min_height=630, max_mb=2.0)],
         verbose_name="Изображение (min 1540x630, max 2Мб)",
     )
-    links = models.JSONField(default=list, blank=True, verbose_name="Ссылки")
+    links = models.JSONField(default=list, blank=True, verbose_name="Ссылки (макс. 3)")
+    layout_links = models.CharField(
+        max_length=50,
+        choices=LAYOUT_LINKS_CHOICES,
+        default="auto",
+        verbose_name="Расположение ссылок",
+    )
+    text_color = models.CharField(
+        max_length=10,
+        choices=COLOR_TITLE_CHOICES,
+        default="dark",
+        verbose_name="Цвет текста",
+    )
     order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
     # Описываем структуру JSON
     LINKS_SCHEMA = {
         "type": "array",
+        "maxItems": 3,  # ОГРАНИЧЕНИЕ: не более 3-х ссылок
         "items": {
             "type": "object",  # Каждый элемент — объект (словарь)
             "keys": {
@@ -618,6 +641,17 @@ class SliderBanner(models.Model):
                     # Вариант Б: Гибкая проверка через регулярку (разрешает и /path/, и http://)
                     "pattern": r"^(\/|http|https).*$",
                     "minLength": 1,
+                },
+                "style": {
+                    "type": "string",
+                    "title": "Стиль кнопки",
+                    "choices": [
+                        {"title": "Тёмная", "value": "primary"},
+                        {"title": "Светлая", "value": "secondary"},
+                        {"title": "Контурная", "value": "outline"},
+                        {"title": "Текстовая (Просто ссылка)", "value": "link"},
+                    ],
+                    "default": "primary",
                 },
             },
             # Делаем оба поля обязательными, если элемент списка был добавлен

@@ -6,7 +6,7 @@ from django_jsonform.widgets import JSONFormWidget
 from core.admin import ReadOnlyAdminMixin
 from ..models import SliderBanner, Favorite
 from ..utils import add_validator_attrs_to_widget
-from .base import ImagePreviewMixin
+from .base import BannerPreviewMixin
 
 
 @admin.register(Favorite)
@@ -22,32 +22,16 @@ class FavoriteAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(SliderBanner)
-class SliderBannerAdmin(ImagePreviewMixin, SortableAdminMixin, admin.ModelAdmin):
-    list_display = ("image_preview_small", "display_title", "is_active")
+class SliderBannerAdmin(BannerPreviewMixin, SortableAdminMixin, admin.ModelAdmin):
+    list_display = ("banner_preview_small", "is_active")
     list_editable = ("is_active",)
-    list_display_links = ("display_title",)
+    list_display_links = ("banner_preview_small", "display_title")
     fieldsets = (
-        (
-            "Изображение слайда",
-            {
-                "fields": (("image", "image_preview_small"), "title"),
-            },
-        ),
-        (
-            "Ссылки",
-            {
-                "fields": ("links",),
-            },
-        ),
-        (
-            "Настройки отображения",
-            {
-                "fields": ("is_active",),
-                "classes": ("collapse",),
-            },
-        ),
+        (None, {"fields": ("title", "text_color", "is_active")}),
+        ("Изображение слайда", {"fields": ("image", "banner_preview")}),
+        ("Ссылки", {"classes": ("collapse",), "fields": ("links", "layout_links")}),
     )
-    readonly_fields = ("image_preview_small",)
+    readonly_fields = ("banner_preview",)
 
     @admin.display(description="Заголовок")
     def display_title(self, obj):
