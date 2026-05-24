@@ -237,7 +237,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             "available_colors",
             "main_image",
             "frontend_url",
-            "is_active",
         ]
 
 
@@ -336,7 +335,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "sizes",
             "images",
             "composition",
-            "is_active",
         ]
 
 
