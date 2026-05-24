@@ -27,9 +27,21 @@ class SliderBannerAdmin(BannerPreviewMixin, SortableAdminMixin, admin.ModelAdmin
     list_editable = ("is_active",)
     list_display_links = ("banner_preview_small", "display_title")
     fieldsets = (
-        (None, {"fields": ("title", "text_color", "is_active")}),
+        ("Основная информация", {"fields": ("title", "is_active")}),
         ("Изображение слайда", {"fields": ("image", "banner_preview")}),
-        ("Ссылки", {"classes": ("collapse",), "fields": ("links", "layout_links")}),
+        (
+            "Настройки дизайна",
+            {
+                "fields": (
+                    "grid_layout",
+                    "content_width",
+                    "text_color",
+                    "font_size_title",
+                    "font_size_link",
+                )
+            },
+        ),
+        ("Ссылки", {"classes": ("collapse",), "fields": ("links",)}),
     )
     readonly_fields = ("banner_preview",)
 

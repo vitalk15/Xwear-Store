@@ -588,15 +588,37 @@ class Favorite(models.Model):
 
 
 class SliderBanner(models.Model):
-    # Добавляем варианты расположения ссылок
-    LAYOUT_LINKS_CHOICES = [
-        ("auto", "Автоматически (1 ссылка — снизу по центру, более 1 — слева)"),
+    # Настройка сетки 3х3 для расположения контента
+    GRID_LAYOUT_CHOICES = [
+        ("top_left", "Сверху слева"),
+        ("top_center", "Сверху по центру"),
+        ("top_right", "Сверху справа"),
+        ("center_left", "По центру слева"),
+        ("center_center", "По центру"),
+        ("center_right", "По центру справа"),
+        ("bottom_left", "Снизу слева"),
         ("bottom_center", "Снизу по центру"),
-        ("left_column", "Слева под заголовком"),
+        ("bottom_right", "Снизу справа"),
     ]
+    # Выбор цвета текста
     COLOR_TITLE_CHOICES = [
         ("light", "Светлый (Белый текст)"),
         ("dark", "Темный (Черный текст)"),
+    ]
+    # Относительный размер текста заголовка
+    FONT_SIZE_TITLE_CHOICES = [
+        ("3.5cqw", "Мелкий"),
+        ("4.0cqw", "Средне-мелкий"),
+        ("4.5cqw", "Средний"),
+        ("5.0cqw", "Средне-крупный"),
+        ("5.5cqw", "Крупный"),
+        ("6.0cqw", "Экстра-крупный"),
+    ]
+    # Относительный размер текста ссылок
+    FONT_SIZE_LINK_CHOICES = [
+        ("1.2cqw", "Мелкий"),
+        ("1.5cqw", "Средний"),
+        ("1.8cqw", "Крупный"),
     ]
     title = models.CharField(max_length=100, blank=True, verbose_name="Заголовок слайда")
     image = models.ImageField(
@@ -605,11 +627,16 @@ class SliderBanner(models.Model):
         verbose_name="Изображение (min 1540x630, max 2Мб)",
     )
     links = models.JSONField(default=list, blank=True, verbose_name="Ссылки (макс. 3)")
-    layout_links = models.CharField(
-        max_length=50,
-        choices=LAYOUT_LINKS_CHOICES,
-        default="auto",
-        verbose_name="Расположение ссылок",
+    grid_layout = models.CharField(
+        max_length=20,
+        choices=GRID_LAYOUT_CHOICES,
+        default="center_left",
+        verbose_name="Расположение контента",
+    )
+    content_width = models.PositiveIntegerField(
+        default=50,
+        validators=[MinValueValidator(20), MaxValueValidator(90)],
+        verbose_name="Ширина контента (%)",
     )
     text_color = models.CharField(
         max_length=10,
@@ -617,8 +644,20 @@ class SliderBanner(models.Model):
         default="dark",
         verbose_name="Цвет текста",
     )
+    font_size_title = models.CharField(
+        max_length=10,
+        choices=FONT_SIZE_TITLE_CHOICES,
+        default="4.5cqw",
+        verbose_name="Размер заголовка",
+    )
+    font_size_link = models.CharField(
+        max_length=10,
+        choices=FONT_SIZE_LINK_CHOICES,
+        default="1.5cqw",
+        verbose_name="Размер ссылок",
+    )
     order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
-    is_active = models.BooleanField(default=True, verbose_name="Активен")
+    is_active = models.BooleanField(default=False, verbose_name="Активен")
 
     # Описываем структуру JSON
     LINKS_SCHEMA = {

@@ -367,4 +367,14 @@ class SliderBannerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SliderBanner
-        fields = ["id", "title", "links", "thumbnails"]
+        fields = [
+            "id",
+            "title",
+            "links",
+            "grid_layout",
+            "content_width",
+            "text_color",
+            "font_size_title",
+            "font_size_link",
+            "thumbnails",
+        ]
