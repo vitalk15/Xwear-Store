@@ -6,6 +6,7 @@ from .images import (
     get_admin_thumb,
     sync_product_images,
     prepare_image_for_save,
+    generate_banner_html,
 )
 from .models import generate_unique_slug, generate_unique_article, is_field_changed
 from .forms import add_validator_attrs_to_widget

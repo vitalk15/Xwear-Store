@@ -9,6 +9,7 @@ from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
 from django.utils.deconstruct import deconstructible
 from django.utils.html import format_html
+from django.templatetags.static import static
 from easy_thumbnails.files import get_thumbnailer
 from easy_thumbnails.alias import aliases as et_aliases
 from .models import is_field_changed
@@ -336,3 +337,235 @@ def prepare_image_for_save(
     image_field.name = new_path
 
     return True
+
+
+def generate_banner_html(obj, image_url, max_width, is_list=False):
+    """Генератор HTML для баннера с адаптивностью через cqw"""
+
+    if not image_url:
+        return format_html('<span style="color: #999;">Нет изображения</span>')
+
+    # Конфигурация стилей для карточки админки (распор контейнера)
+    extra_styles = ""
+    if not is_list:
+        extra_styles = "min-width: 100%; width: calc(100vw - 350px);"
+
+    # --- МАППИНГ СЕТКИ ПОЗИЦИОНИРОВАНИЯ (3х3) ---
+    # Переводим grid_layout в flex-инструкции для абсолютного контейнера
+    grid_maps = {
+        "top_left": {
+            "vertical": "flex-start",
+            "horizontal": "flex-start",
+            "text_align": "left",
+        },
+        "top_center": {
+            "vertical": "flex-start",
+            "horizontal": "center",
+            "text_align": "center",
+        },
+        "top_right": {
+            "vertical": "flex-start",
+            "horizontal": "flex-end",
+            "text_align": "right",
+        },
+        "center_left": {
+            "vertical": "center",
+            "horizontal": "flex-start",
+            "text_align": "left",
+        },
+        "center_center": {
+            "vertical": "center",
+            "horizontal": "center",
+            "text_align": "center",
+        },
+        "center_right": {
+            "vertical": "center",
+            "horizontal": "flex-end",
+            "text_align": "right",
+        },
+        "bottom_left": {
+            "vertical": "flex-end",
+            "horizontal": "flex-start",
+            "text_align": "left",
+        },
+        "bottom_center": {
+            "vertical": "flex-end",
+            "horizontal": "center",
+            "text_align": "center",
+        },
+        "bottom_right": {
+            "vertical": "flex-end",
+            "horizontal": "flex-end",
+            "text_align": "right",
+        },
+    }
+
+    # Получаем настройки сетки (токены по умолчанию на случай отсутствия полей)
+    layout_settings = grid_maps.get(
+        getattr(obj, "grid_layout", "center_left"), grid_maps["center_left"]
+    )
+
+    # Стили для главного Flex-контейнера, покрывающего картинку
+    flex_css = f"""
+        justify-content: {layout_settings['vertical']};
+        align-items: {layout_settings['horizontal']};
+        padding: 4cqw;
+    """
+
+    # Динамические настройки из параметров модели
+    font_size_title_val = getattr(obj, "font_size_title", "4.5cqw")
+    font_size_link_val = getattr(obj, "font_size_link", "1.8cqw")
+    content_width_val = getattr(obj, "content_width", 50)
+
+    # Определяем цвет текста
+    text_color = "#171819" if obj.text_color == "dark" else "#fff"
+    # Легкая тень для читаемости даже без затемнения фона
+    shadow_size = "0.1em"
+    text_shadow = (
+        f"0 {shadow_size} {shadow_size} rgba(0,0,0,0.5)"
+        if obj.text_color == "light"
+        else "none"
+    )
+
+    # Получаем заголовок и список ссылок
+    title = obj.title or ""
+    links = obj.links if isinstance(obj.links, list) else []
+
+    # Выравнивание кнопок (ссылок) внутри контейнера кнопок
+    btn_justify_map = {"left": "flex-start", "center": "center", "right": "flex-end"}
+    btn_justify = btn_justify_map.get(layout_settings["text_align"], "flex-start")
+
+    # Абсолютные пути к веб-шрифтам
+    black_woff2 = static("admin/fonts/RFDewiExpanded-Black.woff2")
+    black_woff = static("admin/fonts/RFDewiExpanded-Black.woff")
+
+    ultrabold_woff2 = static("admin/fonts/RFDewiExpanded-Ultrabold.woff2")
+    ultrabold_woff = static("admin/fonts/RFDewiExpanded-Ultrabold.woff")
+
+    # Генерируем HTML для кнопок
+    buttons_list = []
+    for link in links:
+        btn_title = link.get("title", "Кнопка")
+        btn_style = link.get("style", "primary")
+
+        # Базовые стили кнопки (размеры через cqw)
+        style_parts = [
+            "display: block",
+            "margin: 0.4em",
+            "padding: 1em 1.2em",
+            "border-radius: 0.35em",
+            "font-family: 'RF Dewi Expanded', 'Helvetica Neue', sans-serif !important",
+            f"font-size: {font_size_link_val} !important",
+            "font-weight: 800 !important",
+        ]
+
+        if btn_style == "primary":
+            style_parts.extend(
+                [
+                    "background: #222222",
+                    "color: #ffffff",
+                ]
+            )
+        elif btn_style == "secondary":
+            style_parts.extend(
+                [
+                    "background: #ffffff",
+                    "color: #222222",
+                ]
+            )
+        elif btn_style == "outline":
+            style_parts.extend(
+                [
+                    "background: transparent",
+                    f"color: {text_color}",
+                ]
+            )
+        else:  # link
+            style_parts.extend(
+                [
+                    "background: transparent",
+                    f"color: {text_color}",
+                    f"text-shadow: {text_shadow}",
+                    "padding: 0.5em 0",
+                ]
+            )
+
+        style_string = "; ".join(style_parts)
+        buttons_list.append(f'<div style="{style_string}">{btn_title}</div>')
+
+    buttons_html = "".join(buttons_list)
+
+    # Итоговая сборка HTML
+    # container-type: inline-size — это ключ, заставляющий cqw работать внутри этого div.
+    html = f"""
+        <style>
+            /* Регистрируем шрифты */
+            @font-face {{{{
+                font-family: 'RF Dewi Expanded';
+                src: url('{black_woff2}') format('woff2'),
+                     url('{black_woff}') format('woff');
+                font-weight: 900;
+                font-style: normal;
+                font-display: swap;
+            }}}}
+            @font-face {{{{
+                font-family: 'RF Dewi Expanded';
+                src: url('{ultrabold_woff2}') format('woff2'),
+                     url('{ultrabold_woff}') format('woff');
+                font-weight: 800;
+                font-style: normal;
+                font-display: swap;
+            }}}}
+        </style>
+
+        <div style="
+            display: block;
+            {extra_styles}
+            max-width: {max_width}; 
+            position: relative; 
+            container-type: inline-size; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            overflow: hidden;
+            line-height: 1.2;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        ">
+            <img src="{image_url}" style="
+                display: block; 
+                width: 100%; 
+                height: auto;" />
+            <div style="
+                position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+                display: flex; flex-direction: column; 
+                {flex_css}
+                pointer-events: none;
+            ">
+                <div style="
+                    max-width: {content_width_val}%; 
+                    text-align: {layout_settings['text_align']};
+                    pointer-events: auto;
+                ">
+                    <h2 style="
+                        background: none;
+                        margin: 0 0 0.5em 0 !important;
+                        padding: 0 !important;
+                        color: {text_color}; 
+                        text-shadow: {text_shadow};  
+                        font-size: {font_size_title_val} !important; 
+                        font-family: 'RF Dewi Expanded', 'Helvetica Neue', sans-serif !important;
+                        font-weight: 900 !important;
+                        text-align: inherit;
+                        word-wrap: break-word;
+                    ">{title}</h2>
+                    <div style="
+                        display: flex;
+                        flex-direction: column;
+                        flex-wrap: wrap;
+                        justify-content: {btn_justify};
+                        align-items: {btn_justify}; 
+                    ">{buttons_html}</div>
+                </div>
+            </div>
+        </div>
+    """
+    return format_html(html)
