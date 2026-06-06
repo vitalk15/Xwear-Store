@@ -1,0 +1,43 @@
+@use 'variables' as c;
+@use 'sass:math';
+
+// Вспомогательная функция очистки от единиц измерения (px/rem)
+@function strip-unit($number) {
+	@if type-of($number) == 'number' and not unitless($number) {
+		@return math.div($number, ($number * 0 + 1));
+	}
+	@return $number;
+}
+
+@function fluid(
+	$min-size,
+	$max-size,
+	$min-width: c.$min-screen,
+	$max-width: c.$max-screen
+) {
+	// Очищаем входные данные
+	$minSize: strip-unit($min-size);
+	$maxSize: strip-unit($max-size);
+	$minWidth: strip-unit($min-width);
+	$maxWidth: strip-unit($max-width);
+
+	// Вычисляем наклон и смещение
+	$slope: math.div(($maxSize - $minSize), ($maxWidth - $minWidth));
+	$dynamic-part: $slope * 100;
+	$intersection: $minSize - ($minWidth * $slope);
+
+	// Округляем до 5 знаков
+	$dynamic-part-rounded: math.div(math.round($dynamic-part * 100000), 100000);
+	$intersection-rounded: math.div(math.round($intersection * 100000), 100000);
+
+	// Логика красивого знака
+	$sign: if($intersection-rounded >= 0, '+', '-');
+	$intersection-abs: math.abs($intersection-rounded);
+
+	// Собираем и возвращаем чистую CSS-строку clamp()
+	@return clamp(
+		#{$minSize * 1px},
+		#{$dynamic-part-rounded * 1cqw} #{$sign} #{$intersection-abs * 1px},
+		#{$maxSize * 1px}
+	);
+}

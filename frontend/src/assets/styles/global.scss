@@ -1,0 +1,8 @@
+@use 'normalize';
+@use 'fonts';
+
+body {
+	font-family: 'RF Dewi Expanded', sans-serif; // Теперь этот шрифт доступен везде
+	background-color: #fff;
+	color: #000;
+}
