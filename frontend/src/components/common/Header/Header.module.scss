@@ -1,0 +1,139 @@
+.headerWrapper {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	background-color: $color-black;
+	color: #ffffff;
+	z-index: 100;
+	transition: transform 0.3s ease-in-out;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.headerHidden {
+	transform: translateY(-100%);
+}
+
+.headerContainer {
+	max-width: 1920px;
+	margin: 0 auto;
+	padding: 0 40px;
+	height: 80px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.logoArea {
+	display: flex;
+	align-items: center;
+	// Если по макету дизайнером заложена определенная ширина под область логотипа,
+	// можно зафиксировать её здесь, например: flex-shrink: 0;
+}
+
+.navArea {
+	flex: 1 1 auto;
+	display: flex;
+	justify-content: center;
+	gap: 32px;
+}
+
+.navItem {
+	position: relative;
+	display: flex;
+	align-items: center;
+	color: #ffffff;
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 500;
+	letter-spacing: 0.5px;
+	cursor: pointer;
+	height: 80px;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: $color-blue;
+
+		.dropdown {
+			opacity: 1;
+			visibility: visible;
+			transform: translateX(-50%) translateY(0);
+		}
+	}
+}
+
+.dropdown {
+	position: absolute;
+	top: 80px;
+	left: 50%;
+	transform: translateX(-50%) translateY(10px);
+	background: $color-black;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	padding: 16px;
+	min-width: 200px;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.2s ease;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.dropdownItem {
+	display: block;
+	color: $color-light_gray;
+	padding: 8px 12px;
+	text-decoration: none;
+	transition: color 0.2s;
+
+	&:hover {
+		color: #ffffff;
+	}
+}
+
+.actionsArea {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 24px;
+}
+
+.actionBtn {
+	background: none;
+	border: none;
+	color: #ffffff;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: $color-blue;
+	}
+}
+
+.cartBtn {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.cartInfo {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.cartBadge {
+	background-color: $color-blue;
+	color: $color-black;
+	border-radius: 50%;
+	width: 20px;
+	height: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	font-weight: bold;
+}

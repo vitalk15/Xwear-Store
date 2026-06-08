@@ -31,7 +31,9 @@
 	$intersection-rounded: math.div(math.round($intersection * 100000), 100000);
 
 	// Логика красивого знака
-	$sign: if($intersection-rounded >= 0, '+', '-');
+	$sign: if(
+		sass($intersection-rounded >= 0): '+' ; else: '-',
+	);
 	$intersection-abs: math.abs($intersection-rounded);
 
 	// Собираем и возвращаем чистую CSS-строку clamp()

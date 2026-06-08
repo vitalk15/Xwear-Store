@@ -2,7 +2,11 @@
 @use 'fonts';
 
 body {
-	font-family: 'RF Dewi Expanded', sans-serif; // Теперь этот шрифт доступен везде
+	display: flex;
+	justify-content: center;
+	align-items: start;
+	min-height: 100vh;
+	font-family: 'RF Dewi Expanded', sans-serif;
 	background-color: #fff;
 	color: #000;
 }

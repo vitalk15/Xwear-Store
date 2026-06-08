@@ -8,15 +8,27 @@ export default defineConfig({
 	css: {
 		preprocessorOptions: {
 			scss: {
-				// Автоматически внедряет указанные файлы во все ваши .scss и .module.scss файлы.
-				// Больше не нужно вручную писать @use во всех компонентах!
-				additionalData: `
-	        @use "@/assets/styles/_variables.scss" as *;
-	        @use "@/assets/styles/_functions.scss" as *;
-	        @use "@/assets/styles/_mixins.scss" as *;
-	      `,
+				additionalData: (content, resolvePath) => {
+					// Если Vite обрабатывает базовые файлы утилит, отдаем их как есть, без инъекций
+					if (
+						resolvePath.includes('_variables.scss') ||
+						resolvePath.includes('_functions.scss') ||
+						resolvePath.includes('_mixins.scss')
+					) {
+						return content
+					}
+
+					// Во все остальные файлы (например, *.module.scss) автоматически внедряем утилиты
+					return `
+            @use "@/assets/styles/_variables.scss" as *;
+            @use "@/assets/styles/_functions.scss" as *;
+            @use "@/assets/styles/_mixins.scss" as *;
+            ${content}
+          `
+				},
 			},
 		},
+		devSourcemap: true, // Включает карты кода для стилей в режиме разработки
 	},
 	resolve: {
 		alias: {
