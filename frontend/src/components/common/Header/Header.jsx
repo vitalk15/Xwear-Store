@@ -11,8 +11,7 @@ const MOCK_MENU = [
 	{ id: 2, title: 'Обувь', url: paths.shoes, hasDropdown: true },
 	{ id: 3, title: 'Аксессуары', url: paths.accessories, hasDropdown: true },
 	{ id: 4, title: 'Бренды', url: paths.brands, hasDropdown: true },
-	{ id: 5, title: 'Расчет стоимости', url: paths.calculator, hasDropdown: false },
-	{ id: 6, title: 'Информация', url: paths.info, hasDropdown: true },
+	{ id: 5, title: 'Информация', url: paths.info, hasDropdown: true },
 ]
 
 const Header = () => {
@@ -24,7 +23,7 @@ const Header = () => {
 	const isHomePage = location.pathname === paths.home
 
 	// Хук скрытия/появления хедера при скролле
-	const isVisible = useScrollVisibility(100)
+	const isVisible = useScrollVisibility(300)
 
 	// Имитация состояния авторизации (потом заменим на Zustand useAuthStore)
 	const isAuthenticated = true

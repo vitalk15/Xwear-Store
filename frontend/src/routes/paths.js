@@ -4,6 +4,5 @@ export const paths = {
 	shoes: '/shoes',
 	accessories: '/accessories',
 	brands: '/brands',
-	calculator: '/calculator',
 	info: '/info',
 }

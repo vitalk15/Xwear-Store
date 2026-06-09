@@ -1,7 +1,7 @@
 export const SearchIcon = () => (
 	<svg
-		width="24"
-		height="24"
+		width="20"
+		height="20"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"
@@ -16,8 +16,8 @@ export const SearchIcon = () => (
 
 export const StarIcon = () => (
 	<svg
-		width="24"
-		height="24"
+		width="20"
+		height="20"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"
@@ -31,8 +31,8 @@ export const StarIcon = () => (
 
 export const UserIcon = () => (
 	<svg
-		width="24"
-		height="24"
+		width="20"
+		height="20"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"
@@ -47,8 +47,8 @@ export const UserIcon = () => (
 
 export const BagIcon = () => (
 	<svg
-		width="24"
-		height="24"
+		width="20"
+		height="20"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"

@@ -1,9 +1,10 @@
 @use 'variables' as c;
 @use 'sass:math';
+@use 'sass:meta';
 
 // Вспомогательная функция очистки от единиц измерения (px/rem)
 @function strip-unit($number) {
-	@if type-of($number) == 'number' and not unitless($number) {
+	@if meta.type-of($number) == 'number' and not math.is-unitless($number) {
 		@return math.div($number, ($number * 0 + 1));
 	}
 	@return $number;
@@ -39,7 +40,8 @@
 	// Собираем и возвращаем чистую CSS-строку clamp()
 	@return clamp(
 		#{$minSize * 1px},
-		#{$dynamic-part-rounded * 1cqw} #{$sign} #{$intersection-abs * 1px},
+		#{'calc(' + $dynamic-part-rounded * 1cqw + ' ' + $sign + ' ' + $intersection-abs *
+			1px + ')'},
 		#{$maxSize * 1px}
 	);
 }
