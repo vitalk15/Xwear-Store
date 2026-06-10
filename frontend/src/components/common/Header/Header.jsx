@@ -29,7 +29,7 @@ const Header = () => {
 	const isAuthenticated = true
 
 	// Имитация данных корзины (потом заменим на Zustand useCartStore)
-	const cartTotalItems = 7
+	const cartTotalItems = 5
 	const cartTotalPrice = '11 899'
 
 	return (

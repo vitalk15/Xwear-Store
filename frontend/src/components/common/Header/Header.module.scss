@@ -79,12 +79,12 @@
 	opacity: 0;
 	visibility: hidden;
 	transition: all 0.2s ease;
-	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
 }
 
 .dropdownItem {
 	display: block;
-	color: $color-light_gray;
+	color: #d4d4dd;
 	padding: 14px 12px;
 	text-decoration: none;
 	transition: color 0.2s;
@@ -98,7 +98,7 @@
 	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 }
 
 .actionBtn {
@@ -119,16 +119,18 @@
 .cartBtn {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	padding: 16px 0 16px 12px;
 }
 
 .cartInfo {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	font-size: 13px;
+	gap: 5px;
+	font-family: 'Cera Pro', sans-serif;
+	font-size: 15px;
 	font-weight: 700;
+	line-height: normal;
 	color: $color-light_gray;
 }
 
@@ -136,8 +138,8 @@
 	background-color: $color-blue;
 	color: #fff;
 	border-radius: 50%;
-	width: 20px;
-	height: 20px;
+	width: 18px;
+	height: 18px;
 	display: flex;
 	align-items: center;
 	justify-content: center;

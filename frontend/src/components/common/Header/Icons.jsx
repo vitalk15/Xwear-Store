@@ -1,7 +1,7 @@
 export const SearchIcon = () => (
 	<svg
-		width="20"
-		height="20"
+		width="18"
+		height="18"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"
@@ -16,8 +16,8 @@ export const SearchIcon = () => (
 
 export const StarIcon = () => (
 	<svg
-		width="20"
-		height="20"
+		width="18"
+		height="18"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"
@@ -31,8 +31,8 @@ export const StarIcon = () => (
 
 export const UserIcon = () => (
 	<svg
-		width="20"
-		height="20"
+		width="18"
+		height="18"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"
@@ -47,8 +47,8 @@ export const UserIcon = () => (
 
 export const BagIcon = () => (
 	<svg
-		width="20"
-		height="20"
+		width="18"
+		height="18"
 		viewBox="0 0 24 24"
 		fill="none"
 		stroke="currentColor"
@@ -72,7 +72,7 @@ export const ChevronDownIcon = () => (
 		strokeWidth="2"
 		strokeLinecap="round"
 		strokeLinejoin="round"
-		style={{ marginLeft: '4px', marginTop: '2px' }}
+		style={{ marginLeft: '4px', marginTop: '2px', opacity: '0.4' }}
 	>
 		<polyline points="6 9 12 15 18 9"></polyline>
 	</svg>
