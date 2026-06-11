@@ -1,0 +1,53 @@
+.actionsList {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	list-style: none;
+}
+
+.actionBtn {
+	background: none;
+	border: none;
+	color: #ffffff;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	transition: color 0.2s ease;
+	padding: 16px 12px;
+
+	&:hover {
+		color: $color-blue;
+	}
+}
+
+.cartBtn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 16px 0 16px 12px;
+}
+
+.cartInfo {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-family: 'Cera Pro', sans-serif;
+	font-size: 15px;
+	font-weight: 700;
+	line-height: normal;
+	color: $color-light_gray;
+}
+
+.cartBadge {
+	background-color: $color-blue;
+	color: #fff;
+	border-radius: 50%;
+	width: 18px;
+	height: 18px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	font-weight: 700;
+}

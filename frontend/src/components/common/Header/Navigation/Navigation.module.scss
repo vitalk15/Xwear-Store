@@ -1,0 +1,132 @@
+.navArea {
+	display: flex;
+	align-items: center;
+}
+
+.status {
+	color: #8c8f96;
+	font-size: 14px;
+}
+
+.navList {
+	display: flex;
+	gap: 12px;
+	margin: 0 28px 0 40px;
+	padding: 0;
+	list-style: none; /* Семантический список без точек */
+}
+
+.navItem {
+	position: relative;
+	display: flex;
+	align-items: center;
+	height: 100px;
+	padding: 0 10px;
+	cursor: default;
+
+	&.clickable {
+		cursor: pointer;
+	}
+
+	&:hover {
+		.navLink {
+			color: $color-blue;
+		}
+		.dropdown {
+			opacity: 1;
+			visibility: visible;
+			transform: translateX(-50%) translateY(0);
+		}
+	}
+}
+
+.navLink {
+	color: #ffffff;
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: 0.5px;
+	transition: color 0.2s ease;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+/* --- ВЫПАДАЮЩЕЕ МЕНЮ С КОЛОНКАМИ --- */
+.dropdown {
+	position: absolute;
+	top: 100px;
+	left: 50%;
+	transform: translateX(-50%) translateY(10px);
+	background: $color-black;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 3px;
+	padding: 24px 32px;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.2s ease;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+
+	display: flex;
+	gap: 40px; /* Расстояние между колонками */
+}
+
+.dropdownColumn {
+	display: flex;
+	flex-direction: column;
+	min-width: 140px;
+}
+
+.columnTitle {
+	font-size: 14px;
+	font-weight: 700;
+	color: #d4d4dd;
+	padding: 8px 12px;
+	border-radius: 3px;
+	text-decoration: none;
+	transition: all 0.2s ease;
+
+	&[href]:hover {
+		color: #ffffff;
+		background-color: rgba(255, 255, 255, 0.08); /* Плавное высветление фона */
+	}
+}
+
+.subList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.dropdownItem {
+	display: block;
+	color: #d4d4dd;
+	padding: 8px 12px;
+	border-radius: 3px;
+	text-decoration: none;
+	transition: all 0.2s ease;
+	font-size: 14px;
+
+	&:hover {
+		color: #ffffff;
+		background-color: rgba(255, 255, 255, 0.08); /* Плавное высветление фона */
+	}
+}
+
+.dropdownSimple {
+	/* Убираем широкий gap, так как колонка всего одна */
+	padding: 16px 20px;
+}
+
+.simpleList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 160px; /* Минимальная ширина для меню аксессуаров */
+}
