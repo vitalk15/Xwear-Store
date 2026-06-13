@@ -13,7 +13,7 @@
 	gap: 12px;
 	margin: 0 28px 0 40px;
 	padding: 0;
-	list-style: none; /* Семантический список без точек */
+	list-style: none;
 }
 
 .navItem {
@@ -78,18 +78,8 @@
 }
 
 .columnTitle {
-	font-size: 14px;
 	font-weight: 700;
-	color: #d4d4dd;
-	padding: 8px 12px;
-	border-radius: 3px;
-	text-decoration: none;
-	transition: all 0.2s ease;
-
-	&[href]:hover {
-		color: #ffffff;
-		background-color: rgba(255, 255, 255, 0.08); /* Плавное высветление фона */
-	}
+	margin-bottom: 4px;
 }
 
 .subList {
@@ -98,7 +88,7 @@
 	margin: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 4px;
 }
 
 .dropdownItem {
@@ -106,9 +96,9 @@
 	color: #d4d4dd;
 	padding: 8px 12px;
 	border-radius: 3px;
+	font-size: 14px;
 	text-decoration: none;
 	transition: all 0.2s ease;
-	font-size: 14px;
 
 	&:hover {
 		color: #ffffff;
@@ -116,17 +106,6 @@
 	}
 }
 
-.dropdownSimple {
-	/* Убираем широкий gap, так как колонка всего одна */
-	padding: 16px 20px;
-}
-
 .simpleList {
-	list-style: none;
-	padding: 0;
-	margin: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	min-width: 160px; /* Минимальная ширина для меню аксессуаров */
+	min-width: 160px; /* Минимальная ширина для меню c одной колонкой */
 }

@@ -17,9 +17,9 @@
 }
 
 .headerContainer {
-	max-width: 1540px;
+	max-width: $container-desktop-width;
 	margin: 0 auto;
-	padding: 0 40px;
+	padding: 0 $container-padding-x;
 	height: 100px;
 	display: flex;
 	align-items: center;
@@ -33,122 +33,3 @@
 	// можно зафиксировать её здесь, например: flex-shrink: 0;
 	flex-shrink: 0;
 }
-
-// .navArea {
-// 	// flex: 1 1 auto;
-// 	display: flex;
-// 	// justify-content: center;
-// 	gap: 32px;
-// 	margin: 0 28px 0 40px;
-// }
-
-// .navArea {
-// 	display: flex;
-// 	gap: 32px;
-// 	margin: 0 28px 0 40px;
-// }
-
-// .navItem {
-// 	position: relative;
-// 	display: flex;
-// 	align-items: center;
-// 	color: #ffffff;
-// 	text-decoration: none;
-// 	font-size: 14px;
-// 	font-weight: 600;
-// 	letter-spacing: 0.5px;
-// 	cursor: pointer;
-// 	height: 100px;
-// 	transition: color 0.2s ease;
-
-// 	&:hover {
-// 		color: $color-blue;
-
-// 		.dropdown {
-// 			opacity: 1;
-// 			visibility: visible;
-// 			transform: translateX(-50%) translateY(0);
-// 		}
-// 	}
-// }
-
-// .dropdown {
-// 	position: absolute;
-// 	top: 100px;
-// 	left: 85px;
-// 	transform: translateX(-50%) translateY(10px);
-// 	background: $color-black;
-// 	border: 1px solid rgba(255, 255, 255, 0.1);
-// 	border-radius: 3px;
-// 	padding: 12px 12px 16px;
-// 	min-width: 220px;
-// 	opacity: 0;
-// 	visibility: hidden;
-// 	transition: all 0.2s ease;
-// 	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
-// }
-
-// .dropdownItem {
-// 	display: block;
-// 	color: #d4d4dd;
-// 	padding: 14px 12px;
-// 	text-decoration: none;
-// 	transition: color 0.2s;
-
-// 	&:hover {
-// 		color: #ffffff;
-// 	}
-// }
-
-// .actionsArea {
-// 	flex: 0 0 auto;
-// 	display: flex;
-// 	align-items: center;
-// 	gap: 6px;
-// }
-
-// .actionBtn {
-// 	background: none;
-// 	border: none;
-// 	color: #ffffff;
-// 	cursor: pointer;
-// 	display: flex;
-// 	align-items: center;
-// 	transition: color 0.2s ease;
-// 	padding: 16px 12px;
-
-// 	&:hover {
-// 		color: $color-blue;
-// 	}
-// }
-
-// .cartBtn {
-// 	display: flex;
-// 	align-items: center;
-// 	gap: 6px;
-// 	padding: 16px 0 16px 12px;
-// }
-
-// .cartInfo {
-// 	display: flex;
-// 	align-items: center;
-// 	gap: 5px;
-// 	font-family: 'Cera Pro', sans-serif;
-// 	font-size: 15px;
-// 	font-weight: 700;
-// 	line-height: normal;
-// 	color: $color-light_gray;
-// }
-
-// .cartBadge {
-// 	background-color: $color-blue;
-// 	color: #fff;
-// 	border-radius: 50%;
-// 	width: 18px;
-// 	height: 18px;
-// 	display: flex;
-// 	align-items: center;
-// 	justify-content: center;
-// 	font-size: 12px;
-// 	font-weight: 700;
-// }

@@ -44,7 +44,6 @@ const AppRoutes = () => {
 			<Route path={paths.shoes} element={<TargetPage title="Обувь" />} />
 			<Route path={paths.accessories} element={<TargetPage title="Аксессуары" />} />
 			<Route path={paths.brands} element={<TargetPage title="Бренды" />} />
-			<Route path={paths.calculator} element={<TargetPage title="Расчет стоимости" />} />
 			<Route path={paths.info} element={<TargetPage title="Информация" />} />
 		</Routes>
 	)

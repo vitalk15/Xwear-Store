@@ -81,14 +81,18 @@ const Navigation = () => {
 							{/* ВЫПАДАЮЩЕЕ МЕНЮ */}
 							{item.children?.length > 0 && (
 								<div
-									className={`${styles.dropdown} ${!hasDeepChildren ? styles.dropdownSimple : ''}`}
+									// className={`${styles.dropdown} ${!hasDeepChildren ? styles.dropdownSimple : ''}`}
+									className={styles.dropdown}
 								>
 									{hasDeepChildren ? (
 										// --- ВАРИАНТ 1: МНОГОКОЛОНОЧНОЕ МЕНЮ (Одежда, Обувь) ---
 										item.children.map((sub1) => (
 											<div key={sub1.id} className={styles.dropdownColumn}>
 												{sub1.is_clickable ? (
-													<Link to={`/${sub1.full_path}`} className={styles.columnTitle}>
+													<Link
+														to={`/${sub1.full_path}`}
+														className={`${styles.dropdownItem} ${styles.columnTitle}`}
+													>
 														{sub1.name}
 													</Link>
 												) : (
@@ -113,7 +117,7 @@ const Navigation = () => {
 										))
 									) : (
 										// --- ВАРИАНТ 2: ПРОСТОЙ СПИСОК (Аксессуары, Бренды) ---
-										<ul className={styles.simpleList}>
+										<ul className={`${styles.subList} ${styles.simpleList}`}>
 											{item.children.map((sub1) => (
 												<li key={sub1.id}>
 													{sub1.is_clickable ? (
