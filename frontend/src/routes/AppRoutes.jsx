@@ -23,7 +23,7 @@ const TargetPage = ({ title }) => (
 const AppRoutes = () => {
 	return (
 		<Routes>
-			<Route path={paths.home} element={<HomePage title="Главная" />} />
+			<Route path={paths.home} element={<HomePage />} />
 			<Route path={paths.clothes} element={<TargetPage title="Одежда" />} />
 			<Route path={paths.shoes} element={<TargetPage title="Обувь" />} />
 			<Route path={paths.accessories} element={<TargetPage title="Аксессуары" />} />

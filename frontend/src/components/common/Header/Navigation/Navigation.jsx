@@ -32,23 +32,25 @@ const STATIC_INFO_MENU = {
 }
 
 const Navigation = () => {
-	const { data: categories = [], isLoading, isError } = useCategories()
+	// const { data: categories = [], isLoading, isError } = useCategories()
 
-	if (isLoading) {
-		return (
-			<nav className={styles.navArea}>
-				<span className={styles.status}>Загрузка меню...</span>
-			</nav>
-		)
-	}
+	// if (isLoading) {
+	// 	return (
+	// 		<nav className={styles.navArea}>
+	// 			<span className={styles.status}>Загрузка меню...</span>
+	// 		</nav>
+	// 	)
+	// }
 
-	if (isError) {
-		return (
-			<nav className={styles.navArea}>
-				<span className={styles.status}>Ошибка загрузки</span>
-			</nav>
-		)
-	}
+	// if (isError) {
+	// 	return (
+	// 		<nav className={styles.navArea}>
+	// 			<span className={styles.status}>Ошибка загрузки</span>
+	// 		</nav>
+	// 	)
+	// }
+
+	const { data: categories = [] } = useCategories()
 
 	// Объединяем динамические данные от сервера и нашу статику в один массив
 	const navMenu = [...categories, STATIC_INFO_MENU]

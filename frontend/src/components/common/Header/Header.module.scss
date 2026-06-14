@@ -33,3 +33,31 @@
 	// можно зафиксировать её здесь, например: flex-shrink: 0;
 	flex-shrink: 0;
 }
+
+.navAreaError {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	height: 40px; // Та же высота, что и у меню!
+}
+
+.errorText {
+	font-size: 14px;
+	color: #ef4444; // Мягкий красный цвет ошибки
+}
+
+// .retryButton {
+// 	background-color: black;
+// 	color: #e5e7eb;
+// 	border: 1px solid #e5e7eb;
+// 	padding: 4px 12px;
+// 	border-radius: 6px;
+// 	font-size: 13px;
+// 	cursor: pointer;
+// 	transition: all 0.2s;
+
+// 	&:hover {
+// 		background-color: #f9fafb;
+// 		color: black;
+// 	}
+// }

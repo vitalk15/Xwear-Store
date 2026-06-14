@@ -1,19 +1,30 @@
 import { useLocation } from 'react-router-dom'
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 import { paths } from '@/routes/paths'
 import useScrollVisibility from '@/hooks/useScrollVisibility'
 import Logo from '@/components/ui/Logo'
 import Navigation from './Navigation'
+import NavigationSkeleton from './Navigation/NavigationSkeleton'
 import HeaderActions from './HeaderActions'
 import styles from './Header.module.scss'
 
-// --- MOCK ДАННЫЕ МЕНЮ (Имитация ответа от Django API) ---
-// const MOCK_MENU = [
-// 	{ id: 1, title: 'Одежда', url: paths.clothes, hasDropdown: true },
-// 	{ id: 2, title: 'Обувь', url: paths.shoes, hasDropdown: true },
-// 	{ id: 3, title: 'Аксессуары', url: paths.accessories, hasDropdown: true },
-// 	{ id: 4, title: 'Бренды', url: paths.brands, hasDropdown: true },
-// 	{ id: 5, title: 'Информация', url: paths.info, hasDropdown: true },
-// ]
+// Что показать, если категории не загрузились
+// const NavigationErrorFallback = ({ resetErrorBoundary }) => (
+// 	<nav className={styles.navAreaError}>
+// 		<span className={styles.errorText}>Каталог временно недоступен</span>
+// 		<button onClick={resetErrorBoundary} className={styles.retryButton}>
+// 			Обновить ↻
+// 		</button>
+// 	</nav>
+// )
+
+// Что показать, если категории не загрузились
+const NavigationErrorFallback = () => (
+	<nav className={styles.navAreaError}>
+		<span className={styles.errorText}>Каталог временно недоступен</span>
+	</nav>
+)
 
 const Header = () => {
 	const location = useLocation()
@@ -35,7 +46,13 @@ const Header = () => {
 				</div>
 
 				{/* НАВИГАЦИЯ */}
-				<Navigation />
+				{/* Если ошибка загрузки — показывается запасной вариант */}
+				<ErrorBoundary FallbackComponent={NavigationErrorFallback}>
+					{/* Пока идет загрузка — показывается скелетон */}
+					<Suspense fallback={<NavigationSkeleton />}>
+						<Navigation />
+					</Suspense>
+				</ErrorBoundary>
 
 				{/* ИКОНКИ ДЕЙСТВИЙ */}
 				<HeaderActions />

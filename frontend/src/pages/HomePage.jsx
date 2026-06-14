@@ -1,6 +1,6 @@
 import PageTitle from '@/components/common/PageTitle'
 
-const HomePage = ({ title }) => {
+const HomePage = () => {
 	return (
 		<div
 			style={{
@@ -10,7 +10,7 @@ const HomePage = ({ title }) => {
 				color: '#121214',
 			}}
 		>
-			<PageTitle title={title} />
+			<PageTitle title="Главная" />
 			<h1 style={{ fontSize: '32px', marginBottom: '16px' }}>Главная страница</h1>
 			<p style={{ color: '#8c8f96' }}>
 				Покрутите страницу вниз, чтобы проверить, как плавно скрывается хедер.
