@@ -1,22 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
+import HomePage from '@/pages/HomePage'
 import { paths } from './paths'
-
-// Временная заглушка для Главной страницы (с большой высотой для теста скролла хедера)
-const HomePage = () => (
-	<div
-		style={{
-			padding: '120px 40px',
-			minHeight: '200vh',
-			background: '#f9f9fb',
-			color: '#121214',
-		}}
-	>
-		<h1 style={{ fontSize: '32px', marginBottom: '16px' }}>Главная страница</h1>
-		<p style={{ color: '#8c8f96' }}>
-			Покрутите страницу вниз, чтобы проверить, как плавно скрывается хедер.
-		</p>
-	</div>
-)
 
 // Универсальная заглушка для внутренних страниц
 const TargetPage = ({ title }) => (
@@ -39,7 +23,7 @@ const TargetPage = ({ title }) => (
 const AppRoutes = () => {
 	return (
 		<Routes>
-			<Route path={paths.home} element={<HomePage />} />
+			<Route path={paths.home} element={<HomePage title="Главная" />} />
 			<Route path={paths.clothes} element={<TargetPage title="Одежда" />} />
 			<Route path={paths.shoes} element={<TargetPage title="Обувь" />} />
 			<Route path={paths.accessories} element={<TargetPage title="Аксессуары" />} />
