@@ -54,10 +54,16 @@
 		.navLink {
 			color: $color-blue;
 		}
-		.dropdown {
+
+		/* Показываем обертку */
+		.dropdownWrapper {
 			opacity: 1;
 			visibility: visible;
-			transform: translateX(-50%) translateY(0);
+		}
+
+		/* Анимируем выезд самого меню */
+		.dropdown {
+			transform: translateY(0);
 		}
 	}
 }
@@ -75,36 +81,45 @@
 }
 
 /* --- ВЫПАДАЮЩЕЕ МЕНЮ С КОЛОНКАМИ --- */
-.dropdown {
+.dropdownWrapper {
 	position: absolute;
 	top: 100px;
 	left: 50%;
-	transform: translateX(-50%) translateY(10px);
-	background: $color-black;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 3px;
-	padding: 22px 30px;
+
+	/* Магия здесь: нулевая ширина и Flex-центрирование */
+	width: 0;
+	display: flex;
+	justify-content: center;
+	z-index: 100;
+
+	/* Скрываем меню по умолчанию */
 	opacity: 0;
 	visibility: hidden;
-	z-index: 100;
-	transition:
-		opacity 0.2s ease,
-		transform 0.2s ease;
-	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+	transition: opacity 0.2s ease;
+}
 
+.dropdown {
 	display: flex;
-	gap: 30px; /* Расстояние между колонками */
+	gap: 46px;
+	transform: translateY(10px);
+	transition: transform 0.2s ease;
+	background-color: $color-black;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 3px;
+	padding: 20px 50px 30px;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
 }
 
 .dropdownColumn {
 	display: flex;
 	flex-direction: column;
-	min-width: 140px;
+	width: max-content;
+	min-width: 120px;
+	max-width: 140px;
 }
 
 .columnTitle {
 	font-weight: 700;
-	margin-bottom: 4px;
 }
 
 .subList {
@@ -116,29 +131,93 @@
 	// gap: 4px;
 }
 
+/* --- ОСВЕТЛЕНИЕ ФОНА ПРИ НАВЕДЕНИИ --- */
+
+// .dropdownItem {
+// 	position: relative; /* Обязательно для псевдоэлемента */
+// 	display: block;
+// 	color: #d4d4dd;
+// 	padding: 10px 12px;
+// 	border-radius: 3px;
+// 	font-size: 14px;
+// 	text-decoration: none;
+// 	transition: color 0.2s ease;
+// 	z-index: 1; /* Создаем контекст наложения */
+
+/* Создаем фон отдельным слоем, который всегда на месте, но невидим */
+// &::before {
+// 	content: '';
+// 	position: absolute;
+// 	inset: 0; /* Растягиваем на весь элемент (top/left/right/bottom: 0) */
+// 	background-color: rgba(255, 255, 255, 0.12);
+// 	border-radius: 3px;
+// 	opacity: 0;
+// 	transition: opacity 0.2s ease;
+// 	z-index: -1; /* Кладем под текст */
+// }
+
+// &:hover {
+// 	color: #ffffff;
+
+// 	&::before {
+// 		opacity: 1;
+// 	}
+// }
+// }
+
+/* --- ПОЯВЛЕНИЕ СИНЕЙ ПОЛОСКИ ПРИ НАВЕДЕНИИ --- */
+
 .dropdownItem {
 	display: block;
 	color: #d4d4dd;
-	background-color: transparent;
-	padding: 10px 12px;
-	border-radius: 3px;
+	// padding: 12px; // для вар.1
+	padding: 12px 0; // для вар.2
 	font-size: 14px;
 	text-decoration: none;
+
+	/* Создаем градиент-полоску, которая рисуется просто как фон */
+	background-image: linear-gradient($color-blue, $color-blue);
+
+	/* --- Вар.1 - Появление полоски слева из центра --- */
+
+	/* Изначально ширина 2px, а высота 0% */
+	// background-size: 2px 0%;
+
+	/* Прижимаем фон к левому краю и выравниваем по центру по вертикали */
+	// background-position: left center;
+	// background-repeat: no-repeat;
+
+	/* -------------------------------------------------- */
+
+	/* --- Вар.2 - Появление полоски снизу, слева направо --- */
+
+	/* Изначально: ширина 0%, высота 2px (толщина линии) */
+	background-size: 0% 2px;
+
+	// background-position: left bottom; // Выравниваем слева по горизонтали и прижимаем к низу
+	background-position: left calc(100% - 5px); // Выравниваем слева и поднимаем на 5px
+	background-repeat: no-repeat;
+
+	/* Анимируем цвет текста и высоту фона */
 	transition:
-		background-color 0.2s ease,
-		color 0.2s ease;
-	/* (Профилактика): Если внутри ссылки окажется иконка или тег span,
-     они не будут воровать фокус мыши и сбивать анимацию */
-	// элементы {
-	// 	pointer-events: none;
-	// }
+		color 0.2s ease,
+		background-size 0.2s ease;
+
+	/* ------------------------------------------------------- */
 
 	&:hover {
 		color: #ffffff;
-		background-color: rgba(255, 255, 255, 0.08); /* Плавное высветление фона */
+
+		/* Для вар.1 */
+		// background-size: 2px 60%; // полоска плавно вырастает из центра до 60% высоты
+
+		/* Для вар.2 */
+		background-size: 40% 2px; // линия плавно растягивается на 40% ширины пункта
 	}
 }
 
 .simpleList {
-	min-width: 160px; /* Минимальная ширина для меню c одной колонкой */
+	width: max-content;
+	min-width: 120px;
+	max-width: 164px;
 }

@@ -82,60 +82,62 @@ const Navigation = () => {
 
 							{/* ВЫПАДАЮЩЕЕ МЕНЮ */}
 							{item.children?.length > 0 && (
-								<div
-									// className={`${styles.dropdown} ${!hasDeepChildren ? styles.dropdownSimple : ''}`}
-									className={styles.dropdown}
-								>
-									{hasDeepChildren ? (
-										// --- ВАРИАНТ 1: МНОГОКОЛОНОЧНОЕ МЕНЮ (Одежда, Обувь) ---
-										item.children.map((sub1) => (
-											<div key={sub1.id} className={styles.dropdownColumn}>
-												{sub1.is_clickable ? (
-													<Link
-														to={`/${sub1.full_path}`}
-														className={`${styles.dropdownItem} ${styles.columnTitle}`}
-													>
-														{sub1.name}
-													</Link>
-												) : (
-													<span className={styles.columnTitle}>{sub1.name}</span>
-												)}
-
-												{sub1.children?.length > 0 && (
-													<ul className={styles.subList}>
-														{sub1.children.map((sub2) => (
-															<li key={sub2.id}>
-																<Link
-																	to={`/${sub2.full_path}`}
-																	className={styles.dropdownItem}
-																>
-																	{sub2.name}
-																</Link>
-															</li>
-														))}
-													</ul>
-												)}
-											</div>
-										))
-									) : (
-										// --- ВАРИАНТ 2: ПРОСТОЙ СПИСОК (Аксессуары, Бренды) ---
-										<ul className={`${styles.subList} ${styles.simpleList}`}>
-											{item.children.map((sub1) => (
-												<li key={sub1.id}>
+								<div className={styles.dropdownWrapper}>
+									<div
+										// className={`${styles.dropdown} ${!hasDeepChildren ? styles.dropdownSimple : ''}`}
+										className={styles.dropdown}
+									>
+										{hasDeepChildren ? (
+											// --- ВАРИАНТ 1: МНОГОКОЛОНОЧНОЕ МЕНЮ (Одежда, Обувь) ---
+											item.children.map((sub1) => (
+												<div key={sub1.id} className={styles.dropdownColumn}>
 													{sub1.is_clickable ? (
 														<Link
 															to={`/${sub1.full_path}`}
-															className={styles.dropdownItem}
+															className={`${styles.dropdownItem} ${styles.columnTitle}`}
 														>
 															{sub1.name}
 														</Link>
 													) : (
-														<span className={styles.dropdownItem}>{sub1.name}</span>
+														<span className={styles.columnTitle}>{sub1.name}</span>
 													)}
-												</li>
-											))}
-										</ul>
-									)}
+
+													{sub1.children?.length > 0 && (
+														<ul className={styles.subList}>
+															{sub1.children.map((sub2) => (
+																<li key={sub2.id}>
+																	<Link
+																		to={`/${sub2.full_path}`}
+																		className={styles.dropdownItem}
+																	>
+																		{sub2.name}
+																	</Link>
+																</li>
+															))}
+														</ul>
+													)}
+												</div>
+											))
+										) : (
+											// --- ВАРИАНТ 2: ПРОСТОЙ СПИСОК (Аксессуары, Бренды) ---
+											<ul className={`${styles.subList} ${styles.simpleList}`}>
+												{item.children.map((sub1) => (
+													<li key={sub1.id}>
+														{sub1.is_clickable ? (
+															<Link
+																to={`/${sub1.full_path}`}
+																className={styles.dropdownItem}
+															>
+																{sub1.name}
+															</Link>
+														) : (
+															<span className={styles.dropdownItem}>{sub1.name}</span>
+														)}
+													</li>
+												))}
+											</ul>
+										)}
+									</div>
 								</div>
 							)}
 						</li>
