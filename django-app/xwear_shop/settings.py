@@ -369,7 +369,7 @@ REST_FRAMEWORK = {
     ],
     # правила ограничения частоты запросов
     "DEFAULT_THROTTLE_RATES": {
-        "anon": config("THROTTLE_ANON", default="100/day"),
+        "anon": config("THROTTLE_ANON", default="10/min"),
         "user": config("THROTTLE_USER", default="1000/day"),
         "register_scope": config(
             "THROTTLE_REGISTER", default="3/hour"
