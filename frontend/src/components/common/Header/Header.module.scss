@@ -9,7 +9,7 @@
 	z-index: 100;
 	transition: transform 0.3s ease-in-out;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-	container-type: inline-size;
+	// container-type: inline-size;  // Понадобится для адаптива
 }
 
 .headerHidden {
@@ -20,18 +20,36 @@
 	max-width: $container-desktop-width;
 	margin: 0 auto;
 	padding: 0 $container-padding-x;
-	height: 100px;
+	height: $header-height;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	position: relative;
 }
+
+/* --- ОБЕРТКА НАВИГАЦИИ (Скрытие при активном поиске) --- */
+.navWrapper {
+	transition:
+		opacity 0.3s ease,
+		visibility 0.3s ease;
+	flex-grow: 1;
+	display: flex;
+	justify-content: center; // Центрируем меню между логотипом и иконками
+}
+
+.navHidden {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none; // Полностью отключаем срабатывание :hover у меню
+}
+/* -------------------------------------------------------- */
 
 .logoArea {
 	display: flex;
 	align-items: center;
 	// Если по макету дизайнером заложена определенная ширина под область логотипа,
 	// можно зафиксировать её здесь, например: flex-shrink: 0;
-	flex-shrink: 0;
+	// flex-shrink: 0;
 }
 
 .navAreaError {
@@ -45,19 +63,3 @@
 	font-size: 14px;
 	color: #ef4444; // Мягкий красный цвет ошибки
 }
-
-// .retryButton {
-// 	background-color: black;
-// 	color: #e5e7eb;
-// 	border: 1px solid #e5e7eb;
-// 	padding: 4px 12px;
-// 	border-radius: 6px;
-// 	font-size: 13px;
-// 	cursor: pointer;
-// 	transition: all 0.2s;
-
-// 	&:hover {
-// 		background-color: #f9fafb;
-// 		color: black;
-// 	}
-// }

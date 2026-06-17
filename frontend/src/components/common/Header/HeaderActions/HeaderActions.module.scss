@@ -7,6 +7,8 @@
 }
 
 .actionBtn {
+	position: relative; // Поднимаем кнопку над полем поиска
+	z-index: 2;
 	background: none;
 	border: none;
 	color: #ffffff;
@@ -33,13 +35,17 @@
 	align-items: center;
 	gap: 5px;
 	font-family: 'Cera Pro', sans-serif;
-	font-size: 15px;
 	font-weight: 700;
 	line-height: normal;
+}
+
+.cartPrice {
+	font-size: 15px;
 	color: $color-light_gray;
 }
 
 .cartBadge {
+	font-size: 13px;
 	background-color: $color-blue;
 	color: #fff;
 	border-radius: 50%;
@@ -48,6 +54,69 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 13px;
-	font-weight: 700;
+}
+
+/* --- АНИМАЦИЯ ПОИСКА --- */
+.searchWrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end; // Прижимаем всё к правому краю
+}
+
+.searchInput {
+	position: absolute;
+	right: 0; // Растет от кнопки влево
+	top: 50%;
+	transform: translateY(-50%);
+
+	/* Изначально скрыто */
+	width: 0;
+	padding: 0;
+	opacity: 0;
+	visibility: hidden;
+
+	/* Стилизация поля ввода */
+	height: 52px;
+	// background-color: #1a1a1e;
+	background-color: $color-black;
+	border: none;
+	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+	border-radius: 26px;
+	color: #ffffff;
+	font-size: 14px;
+	font-weight: 600;
+	outline: none;
+
+	/* Анимация */
+	transition:
+		width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+		opacity 0.4s ease,
+		box-shadow 0.4s ease,
+		visibility 0.4s;
+
+	&::placeholder {
+		color: #fff;
+		opacity: 0.4;
+		font-size: 14px;
+		font-weight: 600;
+		white-space: nowrap; // Текст не переносится при сворачивании поля
+	}
+
+	&:focus {
+		box-shadow: 0 0 1px 1px rgba(73, 208, 255, 1);
+		outline: none; // убираем стандартный синий аутлайн браузера
+	}
+}
+
+/* Модификаторы активного состояния */
+.searchInputOpen {
+	width: 850px;
+	padding: 0 60px 0 28px;
+	opacity: 1;
+	visibility: visible;
+}
+
+.actionBtnActive {
+	color: $color-blue;
 }
