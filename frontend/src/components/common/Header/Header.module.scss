@@ -3,7 +3,6 @@
 	top: 0;
 	left: 0;
 	width: 100%;
-	max-width: $max-screen;
 	background-color: $color-black;
 	color: #ffffff;
 	z-index: 100;
@@ -17,9 +16,6 @@
 }
 
 .headerContainer {
-	max-width: $container-desktop-width;
-	margin: 0 auto;
-	padding: 0 $container-padding-x;
 	height: $header-height;
 	display: flex;
 	align-items: center;

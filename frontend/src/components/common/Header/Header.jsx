@@ -26,7 +26,7 @@ const Header = () => {
 		<header
 			className={`${styles.headerWrapper} ${!isVisible ? styles.headerHidden : ''}`}
 		>
-			<div className={styles.headerContainer}>
+			<div className={`container ${styles.headerContainer}`}>
 				{/* ЛОГОТИП */}
 				<div className={styles.logoArea}>
 					<Logo isHomePage={isHomePage} />
