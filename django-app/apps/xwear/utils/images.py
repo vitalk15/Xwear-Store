@@ -162,7 +162,8 @@ def get_thumbnail_data(image_field, aliases, request=None):
                 continue
 
             # 3. Передаем словарь опций
-            thumb = image_field.get_thumbnail(options)
+            thumbnailer = get_thumbnailer(image_field)
+            thumb = thumbnailer.get_thumbnail(options)
 
             url = request.build_absolute_uri(thumb.url) if request else thumb.url
 
@@ -172,8 +173,8 @@ def get_thumbnail_data(image_field, aliases, request=None):
                 "height": thumb.height,
             }
         except Exception as e:
-            return f"Ошибка получения данных превью: {e}"
-            # continue
+            # return f"Ошибка получения данных превью: {e}"
+            continue
 
     return data
 
