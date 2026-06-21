@@ -1,20 +1,19 @@
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
+import SliderWidget from '@/features/slider/components/SliderWidget'
+import SliderSkeleton from '@/features/slider/components/SliderSkeleton'
 import PageTitle from '@/components/common/PageTitle'
 
 const HomePage = () => {
 	return (
-		<div
-			style={{
-				padding: '120px 40px',
-				minHeight: '200vh',
-				background: '#f9f9fb',
-				color: '#121214',
-			}}
-		>
+		<div>
 			<PageTitle title="Главная" />
-			<h1 style={{ fontSize: '32px', marginBottom: '16px' }}>Главная страница</h1>
-			<p style={{ color: '#8c8f96' }}>
-				Покрутите страницу вниз, чтобы проверить, как плавно скрывается хедер.
-			</p>
+			{/* Слайдер с безопасной загрузкой */}
+			<ErrorBoundary fallback={<div className="container">Ошибка загрузки баннеров</div>}>
+				<Suspense fallback={<SliderSkeleton />}>
+					<SliderWidget />
+				</Suspense>
+			</ErrorBoundary>
 		</div>
 	)
 }

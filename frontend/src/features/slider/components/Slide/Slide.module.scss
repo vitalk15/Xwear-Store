@@ -1,0 +1,113 @@
+.slideWrapper {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 1540 / 630; // Пропорции как у скелетона
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-color: #1a1a1e;
+	border-radius: $border-radius;
+	overflow: hidden;
+	container-type: inline-size; // Включаем контейнерные запросы
+}
+
+.gridContainer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	padding-block: 45px;
+	display: flex;
+}
+
+/* --- ВАРИАНТЫ РАСПОЛОЖЕНИЯ (Grid Layouts) --- */
+.center_left {
+	align-items: center;
+	justify-content: flex-start;
+}
+
+.center_right {
+	align-items: center;
+	justify-content: flex-end;
+}
+
+.bottom_center {
+	align-items: flex-end;
+	justify-content: center;
+	text-align: center; // Центрируем текст внутри блока, если он внизу
+	// padding-bottom: 8cqw;
+}
+/* ------------------------------------------- */
+
+.contentBlock {
+	width: var(--content-width); // Значение передается из React (style)
+	display: flex;
+	flex-direction: column;
+	gap: 2cqw; // Расстояние между заголовком и кнопками
+}
+
+.title {
+	margin: 0;
+	font-weight: 800;
+	line-height: 1.1;
+	text-transform: uppercase;
+}
+
+/* --- ЦВЕТА ТЕКСТА --- */
+.text_dark {
+	color: #121214;
+}
+.text_light {
+	color: #ffffff;
+}
+
+.linksGroup {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.5cqw;
+
+	/* Если контейнер по центру, кнопки тоже центрируем */
+	.bottom_center & {
+		justify-content: center;
+	}
+}
+
+/* --- СТИЛИ КНОПОК И ССЫЛОК --- */
+.linkItem {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-decoration: none;
+	font-weight: 700;
+	transition:
+		opacity 0.2s ease,
+		transform 0.2s ease;
+
+	&:hover {
+		opacity: 0.8;
+	}
+}
+
+// 1. Просто ссылка (как в вашем JSON)
+.btn_link {
+	color: inherit; // Наследует цвет от родителя (dark или light)
+	border-bottom: 2px solid currentColor;
+	padding-bottom: 2px;
+}
+
+// 2. Акцентная кнопка (primary)
+.btn_primary {
+	background-color: #121214;
+	color: #ffffff;
+	padding: 0.8em 1.5em; // Используем em, чтобы паддинг рос вместе с cqw шрифта
+	border-radius: 4px;
+}
+
+// 3. Вторичная кнопка (secondary)
+.btn_secondary {
+	background-color: #ffffff;
+	color: #121214;
+	padding: 0.8em 1.5em;
+	border-radius: 4px;
+}

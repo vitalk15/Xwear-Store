@@ -1,0 +1,102 @@
+.sectionWrapper {
+	display: block;
+	width: 100%;
+	max-width: #{$container-desktop-width + ($container-padding-x * 2)};
+	margin: 24px auto 40px;
+
+	// На случай, если у вас на бэкенде или в лэйауте есть особенности слияния маржинов:
+	// position: relative;
+	// z-index: 1;
+}
+
+.swiperWrapper {
+	position: relative; // Контейнер для кастомных стрелок
+	width: 100%;
+}
+
+.swiperContainer {
+	width: 100%;
+	border-radius: $border-radius;
+	overflow: hidden; // Чтобы картинки не вылезали за скругления при анимации fade
+	/* Swiper иногда багует с border-radius на Safari, этот фикс помогает: */
+	transform: translateZ(0);
+}
+
+/* --- КАСТОМНЫЕ СТРЕЛКИ НАВИГАЦИИ --- */
+.navBtn {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 10;
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	background-color: rgba(18, 18, 20, 0.5); // Полупрозрачный черный
+	backdrop-filter: blur(4px);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	color: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition:
+		background-color 0.2s ease,
+		border-color 0.2s ease;
+
+	/* Прячем стрелки на планшетах и мобилках (оставляем только свайп) */
+	@media (max-width: 768px) {
+		display: none;
+	}
+
+	svg {
+		width: 24px;
+		height: 24px;
+	}
+
+	&:hover {
+		background-color: $color-blue;
+		border-color: $color-blue;
+		color: #000;
+	}
+
+	/* Специфичный класс, который добавляет Swiper, когда скроллить больше некуда (если loop: false) */
+	&.swiper-button-disabled {
+		opacity: 0.35;
+		cursor: auto;
+		pointer-events: none;
+	}
+}
+
+.customPrev {
+	left: 24px;
+}
+
+.customNext {
+	right: 24px;
+}
+
+/* --- КАСТОМНАЯ ПАГИНАЦИЯ (ТОЧКИ) --- */
+/* Переопределяем контейнер пагинации Swiper, чтобы точки были внутри нашего слайда внизу */
+:global(.swiper-pagination) {
+	bottom: 24px !important;
+	display: flex;
+	justify-content: center;
+	gap: 8px;
+	z-index: 10;
+}
+
+.customBullet {
+	width: 8px;
+	height: 8px;
+	background-color: rgba(255, 255, 255, 0.4);
+	border-radius: 50%;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: block; // Swiper требует block для буллитов
+}
+
+.customBulletActive {
+	background-color: #ffffff;
+	width: 24px; // Активная точка превращается в «полосочку» (трендовый UX)
+	border-radius: 4px;
+}

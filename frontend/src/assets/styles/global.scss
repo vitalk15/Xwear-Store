@@ -27,7 +27,7 @@ body {
 
 .container {
 	width: 100%;
-	max-width: #{$container-desktop-width + ($container-padding-x * 2)}; // calc() не нужен???
+	max-width: #{$container-desktop-width + ($container-padding-x * 2)};
 	margin: 0 auto;
-	padding: 0 $container-padding-x;
+	padding-inline: $container-padding-x;
 }
