@@ -1,6 +1,6 @@
 // import { useQuery } from '@tanstack/react-query'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { apiClient } from '@/api/client'
+import { fetchCategoriesData } from '@/shared/api/categoriesApi'
 
 // Получение категорий
 // export const useCategories = () => {
@@ -22,10 +22,7 @@ export const useCategories = () => {
 	return useSuspenseQuery({
 		queryKey: ['categories'], // имя ячейки памяти (кэша)
 		// функция, которая объясняет React Query, как именно нужно получить данные, если их нет в кэше.
-		queryFn: async () => {
-			const { data } = await apiClient.get('/shop/categories/')
-			return data
-		},
+		queryFn: fetchCategoriesData,
 		// Кэшируем меню на 10 минут, так как категории меняются редко
 		staleTime: 10 * 60 * 1000,
 	})

@@ -6,7 +6,7 @@ import PageTitle from '@/components/common/PageTitle'
 
 const HomePage = () => {
 	return (
-		<div>
+		<>
 			<PageTitle title="Главная" />
 			{/* Слайдер с безопасной загрузкой */}
 			<ErrorBoundary fallback={<div className="container">Ошибка загрузки баннеров</div>}>
@@ -14,7 +14,7 @@ const HomePage = () => {
 					<SliderWidget />
 				</Suspense>
 			</ErrorBoundary>
-		</div>
+		</>
 	)
 }
 
