@@ -1,3 +1,4 @@
+import placeholderBanner from '@/assets/images/placeholder-banner.webp'
 import styles from './Slide.module.scss'
 
 const Slide = ({ slide }) => {
@@ -13,14 +14,23 @@ const Slide = ({ slide }) => {
 		thumbnails,
 	} = slide
 
+	const imgData = thumbnails?.large
+
 	// Если thumbnails.large.url существует — берем его.
-	// Если нет (ошибка бэкенда/пустой слайд) — можно подставить заглушку
-	const imageUrl = thumbnails?.large?.url || '/images/placeholder-banner.webp'
+	// Если нет (ошибка бэкенда/пустой слайд) — подставляем заглушку
+	const imageUrl = imgData?.url || placeholderBanner
+
+	// Если бэкенд прислал размеры, вычисляем пропорцию (например, 1540 / 630)
+	const aspectRatio = imgData ? `${imgData.width} / ${imgData.height}` : '1540 / 630'
 
 	return (
 		<div
 			className={styles.slideWrapper}
-			style={{ backgroundImage: `url(${imageUrl})`, color: text_color }}
+			style={{
+				backgroundImage: `url(${imageUrl})`,
+				color: text_color,
+				aspectRatio: aspectRatio,
+			}}
 		>
 			{/* Обертка, которая отвечает за позиционирование (center_left, bottom_center и т.д.) 
         Берем класс динамически из grid_layout

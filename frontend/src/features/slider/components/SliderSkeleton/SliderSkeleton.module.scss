@@ -8,7 +8,7 @@
 	width: 100%;
 	/* МАГИЯ АДАПТИВНОСТИ: Браузер сам высчитает высоту относительно текущей ширины */
 	aspect-ratio: 1540 / 630;
-	background-color: #1a1a1e;
+	background-color: rgb(130, 130, 140);
 	border-radius: $border-radius;
 	overflow: hidden;
 	position: relative;
