@@ -410,7 +410,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
     flex_css = f"""
         justify-content: {layout_settings['vertical']};
         align-items: {layout_settings['horizontal']};
-        padding: 2.9221cqw 5.8442cqw;
+        padding: 3.2468cqw 5.8442cqw;
     """
 
     # Динамические настройки из параметров модели
@@ -452,7 +452,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
         # Базовые стили кнопки (размеры через cqw)
         style_parts = [
             "display: block",
-            "margin: 0.4em",
+            "margin: 0.3em 0.8em",
             "padding: 1em 1.2em",
             "border-radius: 0.35em",
             "font-family: 'RF Dewi Expanded', 'Helvetica Neue', sans-serif !important",
@@ -487,7 +487,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
                     "background: transparent",
                     f"color: {text_color}",
                     f"text-shadow: {text_shadow}",
-                    "padding: 0.5em 0",
+                    "padding: 0.4em 0",
                 ]
             )
 
