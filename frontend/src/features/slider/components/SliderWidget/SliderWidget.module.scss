@@ -4,7 +4,7 @@
 	max-width: #{$container-desktop-width + ($container-padding-x * 2)};
 	margin: 24px auto 40px;
 
-	// На случай, если у вас на бэкенде или в лэйауте есть особенности слияния маржинов:
+	// На случай, если на бэкенде или в лэйауте есть особенности слияния маржинов:
 	// position: relative;
 	// z-index: 1;
 }
