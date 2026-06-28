@@ -367,7 +367,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
         "top_right": {
             "vertical": "flex-start",
             "horizontal": "flex-end",
-            "text_align": "right",
+            "text_align": "left",
         },
         "center_left": {
             "vertical": "center",
@@ -382,7 +382,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
         "center_right": {
             "vertical": "center",
             "horizontal": "flex-end",
-            "text_align": "right",
+            "text_align": "left",
         },
         "bottom_left": {
             "vertical": "flex-end",
@@ -397,7 +397,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
         "bottom_right": {
             "vertical": "flex-end",
             "horizontal": "flex-end",
-            "text_align": "right",
+            "text_align": "left",
         },
     }
 
@@ -410,7 +410,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
     flex_css = f"""
         justify-content: {layout_settings['vertical']};
         align-items: {layout_settings['horizontal']};
-        padding: 4cqw;
+        padding: 2.9221cqw 5.8442cqw;
     """
 
     # Динамические настройки из параметров модели
