@@ -6,11 +6,11 @@ const Slide = ({ slide }) => {
 	const {
 		title,
 		links = [],
-		grid_layout,
-		content_width,
-		text_color,
-		font_size_title,
-		font_size_link,
+		grid_layout = 'center_left',
+		content_width = 50,
+		text_color = 'dark',
+		font_size_title = '4.5cqw',
+		font_size_link = '1.5cqw',
 		thumbnails,
 	} = slide
 
@@ -28,26 +28,23 @@ const Slide = ({ slide }) => {
 			className={styles.slideWrapper}
 			style={{
 				backgroundImage: `url(${imageUrl})`,
-				color: text_color,
 				aspectRatio: aspectRatio,
 			}}
 		>
-			{/* Обертка, которая отвечает за позиционирование (center_left, bottom_center и т.д.) 
-        Берем класс динамически из grid_layout
+			{/* Слой сетки (9 зон).
+        Класс из grid_layout (например, styles.center_left) сам выставит 
+        justify-content, align-items и CSS-переменные для выравнивания кнопок
       */}
-			<div className={`container ${styles.gridContainer} ${styles[grid_layout] || ''}`}>
-				{/* Сам контент, ширину которого мы регулируем через CSS-переменную */}
+			<div className={`container ${styles.gridContainer} ${styles[grid_layout]}`}>
+				{/* Блок контента: задаем ширину из админки и цветовую тему
+				 */}
 				<div
-					className={styles.contentBlock}
+					className={`${styles.contentBlock} ${styles[`theme_${text_color}`]}`}
 					style={{ '--content-width': `${content_width}%` }}
 				>
 					{/* ЗАГОЛОВОК */}
-					{/* !!! Нужен ли здесь text_color? */}
 					{title && (
-						<h2
-							className={`${styles.title} ${styles[`text_${text_color}`]}`}
-							style={{ fontSize: font_size_title }}
-						>
+						<h2 className={styles.title} style={{ fontSize: font_size_title }}>
 							{title}
 						</h2>
 					)}
@@ -58,7 +55,7 @@ const Slide = ({ slide }) => {
 								<a
 									key={idx}
 									href={link.url}
-									className={`${styles.linkItem} ${styles[`btn_${link.style}`]}`}
+									className={`${styles.linkItem} ${styles[`btn_${link.style || 'primary'}`]}`}
 									style={{ fontSize: font_size_link }}
 								>
 									{link.title}
