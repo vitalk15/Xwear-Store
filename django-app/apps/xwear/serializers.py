@@ -229,7 +229,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             "id",
             "slug",
             "article",
-            "gender",
             "gender_display",
             "naming",
             "pricing",
