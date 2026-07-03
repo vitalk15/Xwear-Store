@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useCategories } from '@/hooks/useCategories'
+import { useCategories } from '@/entities/category/hooks/useCategories'
 import { ChevronDownIcon } from '../Icons'
 import styles from './Navigation.module.scss'
 

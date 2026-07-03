@@ -45,3 +45,9 @@
 	font-style: normal;
 	font-display: swap;
 }
+
+@font-face {
+	font-family: 'nbrb';
+	src: url('../fonts/nbrb.woff2') format('woff2');
+	unicode-range: U+E901, U+42, U+59, U+4E;
+}

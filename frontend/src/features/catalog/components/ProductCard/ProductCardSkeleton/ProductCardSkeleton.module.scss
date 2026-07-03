@@ -1,0 +1,27 @@
+.pulse {
+	background-color: #e5e7eb;
+	animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+.titleSkeleton {
+	height: 20px;
+	width: 80%;
+	border-radius: 4px;
+	margin-bottom: 8px;
+}
+
+.priceSkeleton {
+	height: 16px;
+	width: 40%;
+	border-radius: 4px;
+}

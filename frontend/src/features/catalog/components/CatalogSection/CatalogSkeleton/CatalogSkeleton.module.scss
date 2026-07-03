@@ -1,0 +1,18 @@
+.titleSkeleton {
+	width: 200px;
+	height: 32px;
+	background-color: #f3f4f6; /* Светло-серый цвет */
+	border-radius: 4px;
+	margin-bottom: 24px;
+	animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}

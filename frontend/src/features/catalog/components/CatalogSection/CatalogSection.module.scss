@@ -1,0 +1,23 @@
+.section {
+	margin-bottom: 80px; /* Отступ между секциями категорий */
+
+	&:last-child {
+		margin-bottom: 0;
+	}
+}
+
+.title {
+	font-size: 28px;
+	font-weight: 700;
+	color: #1a1a1a;
+	margin-bottom: 24px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.row {
+	display: flex;
+	justify-content: space-between;
+	align-items: stretch; /* Чтобы карточки были одной высоты, если контент разный */
+	container-type: inline-size;
+}

@@ -1,6 +1,6 @@
 // import { useQuery } from '@tanstack/react-query'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { fetchCategoriesData } from '@/shared/api/categoriesApi'
+import { fetchCategoriesData } from '../api/categoriesApi'
 
 // Получение категорий
 // export const useCategories = () => {

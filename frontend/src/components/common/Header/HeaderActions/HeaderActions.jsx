@@ -4,7 +4,7 @@ import styles from './HeaderActions.module.scss'
 
 // Принимаем пропсы из Header
 const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
-	// После подключим Zustand Store для авторизации и корзины
+	// Todo: После подключим Zustand Store для авторизации и корзины
 	// Имитация состояния авторизации (потом заменим на Zustand useAuthStore)
 	const isAuthenticated = true
 	// Имитация данных корзины (потом заменим на Zustand useCartStore)

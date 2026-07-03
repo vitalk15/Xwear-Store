@@ -31,3 +31,29 @@ body {
 	margin: 0 auto;
 	padding-inline: $container-padding-x;
 }
+
+// Для графического знака белорусского рубля с помощью иконочного шрифта
+.nbrb-icon {
+	font-family: 'nbrb' !important;
+	font-size: 18px;
+	speak: none;
+	font-style: normal;
+	font-weight: normal;
+	font-variant: normal;
+	text-transform: none;
+	// line-height: 1;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	letter-spacing: normal;
+	-webkit-font-feature-settings: 'liga';
+	-moz-font-feature-settings: 'liga=1';
+	-moz-font-feature-settings: 'liga';
+	-ms-font-feature-settings: 'liga' 1;
+	font-feature-settings: 'liga';
+	-webkit-font-variant-ligatures: discretionary-ligatures;
+	font-variant-ligatures: discretionary-ligatures;
+}
+
+.nbrb-icon-byn:before {
+	content: '\e901'; /* Юникод для знака */
+}
