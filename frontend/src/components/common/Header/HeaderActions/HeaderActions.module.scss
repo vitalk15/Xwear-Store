@@ -40,8 +40,14 @@
 }
 
 .cartPrice {
-	font-size: 15px;
+	font-size: 16px;
 	color: $color-light_gray;
+	line-height: 1;
+
+	:global(.nbrb-icon) {
+		font-size: 18px;
+		font-weight: bold;
+	}
 }
 
 .cartBadge {

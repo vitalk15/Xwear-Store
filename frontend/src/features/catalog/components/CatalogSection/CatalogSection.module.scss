@@ -1,18 +1,48 @@
 .section {
-	margin-bottom: 80px; /* Отступ между секциями категорий */
+	margin-bottom: 86px;
 
 	&:last-child {
 		margin-bottom: 0;
 	}
 }
 
-.title {
-	font-size: 28px;
-	font-weight: 700;
-	color: #1a1a1a;
-	margin-bottom: 24px;
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 40px;
 	text-transform: uppercase;
-	letter-spacing: 0.05em;
+}
+
+.title {
+	margin: 0;
+	font-size: 31px;
+	font-weight: 900;
+	line-height: 1;
+	color: $color-black;
+}
+
+.moreLink {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 14px;
+	font-weight: 800;
+	color: $color-black;
+	text-decoration: none;
+	line-height: 1;
+	padding-bottom: 6px;
+	border-bottom: 2px solid $color-black;
+
+	/* Стили для SVG иконки, если используете */
+	svg {
+		transition: transform 0.3s ease;
+	}
+
+	/* Приятная микроанимация: стрелочка сдвигается вправо при наведении */
+	&:hover svg {
+		transform: translateX(4px);
+	}
 }
 
 .row {

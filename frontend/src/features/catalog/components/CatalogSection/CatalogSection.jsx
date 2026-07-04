@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom'
 import ProductCard from '../ProductCard'
 import { useCategoryProductsQuery } from '@/features/catalog/hooks/useCategoryProductsQuery'
+import { ArrowIcon } from './Icons'
 import styles from './CatalogSection.module.scss'
 
 const CatalogSection = ({ title, categoryId }) => {
@@ -14,7 +16,16 @@ const CatalogSection = ({ title, categoryId }) => {
 	return (
 		<section className={styles.section}>
 			<div className="container">
-				<h2 className={styles.title}>{title}</h2>
+				{/* Обертка для заголовка и ссылки */}
+				<div className={styles.header}>
+					<h2 className={styles.title}>{title}</h2>
+					{/* Ссылка "Больше товаров". URL пока делаем шаблонным */}
+					<Link to={`/catalog/${categoryId}`} className={styles.moreLink}>
+						Больше товаров
+						<ArrowIcon />
+					</Link>
+				</div>
+				{/* Контейнер с карточками товаров */}
 				<div className={styles.row}>
 					{products.map((product) => (
 						<ProductCard key={product.id} product={product} />

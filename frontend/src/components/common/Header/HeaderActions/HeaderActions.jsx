@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { SearchIcon, StarIcon, UserIcon, BagIcon } from '../Icons'
+import { formatPriceBy } from '@/shared/utils/formatPriceBy'
 import styles from './HeaderActions.module.scss'
 
 // Принимаем пропсы из Header
@@ -9,7 +10,7 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 	const isAuthenticated = true
 	// Имитация данных корзины (потом заменим на Zustand useCartStore)
 	const cartTotalItems = 5
-	const cartTotalPrice = '11 899'
+	const cartTotalPrice = formatPriceBy(1250)
 
 	// Ссылки для управления фокусом поля поиска и кликом вне области
 	const searchWrapperRef = useRef(null)
@@ -93,7 +94,7 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 						>
 							<BagIcon />
 							<div className={styles.cartInfo}>
-								<span className={styles.cartPrice}>{cartTotalPrice} ₽</span>
+								<span className={styles.cartPrice}>{cartTotalPrice}</span>
 								<span className={styles.cartBadge}>{cartTotalItems}</span>
 							</div>
 						</button>
