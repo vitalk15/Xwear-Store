@@ -4,6 +4,7 @@ import SliderWidget from '@/features/slider/components/SliderWidget'
 import SliderSkeleton from '@/features/slider/components/SliderSkeleton'
 import CatalogSection from '@/features/catalog/components/CatalogSection'
 import CatalogSkeleton from '@/features/catalog/components/CatalogSection/CatalogSkeleton'
+import AboutUs from '@/pages/HomePage/components/AboutUs'
 import PageTitle from '@/components/common/PageTitle'
 import styles from './HomePage.module.scss'
 
@@ -11,6 +12,7 @@ const HomePage = () => {
 	return (
 		<>
 			<PageTitle title="Главная" />
+
 			{/* Слайдер */}
 			<ErrorBoundary fallback={<div className="container">Ошибка загрузки баннеров</div>}>
 				<Suspense fallback={<SliderSkeleton />}>
@@ -18,7 +20,7 @@ const HomePage = () => {
 				</Suspense>
 			</ErrorBoundary>
 
-			{/* Блок с секциями */}
+			{/* Блок с секциями категорий */}
 			<div className={styles.catalogWrapper}>
 				{/* Секция: Обувь */}
 				<ErrorBoundary
@@ -49,6 +51,9 @@ const HomePage = () => {
 					</Suspense>
 				</ErrorBoundary>
 			</div>
+
+			{/* Секция: О Нас */}
+			<AboutUs />
 		</>
 	)
 }
