@@ -135,23 +135,25 @@
 }
 
 // Стили кнопок строго по словарю из Django
+.btn {
+	padding: 1em 1.2em;
+	margin: 0.5em 0;
+}
+
 .btn_primary {
 	background-color: $color-black;
 	color: #ffffff;
-	padding: 1em 1.2em;
 }
 
 .btn_secondary {
 	background-color: #ffffff;
 	color: $color-black;
-	padding: 1em 1.2em;
 }
 
 .btn_outline {
 	background-color: transparent;
 	color: inherit;
 	border: 1px solid currentColor; // Контур берет цвет текста
-	padding: 1em 1.2em;
 }
 
 .btn_link {
@@ -159,5 +161,5 @@
 	color: inherit;
 	text-shadow: var(--text-shadow);
 	padding: 0.4em 0;
-	margin: 0.3em 0.8em;
+	margin: 0.2em 0.8em;
 }

@@ -55,7 +55,7 @@ const Slide = ({ slide }) => {
 								<a
 									key={idx}
 									href={link.url}
-									className={`${styles.linkItem} ${styles[`btn_${link.style || 'primary'}`]}`}
+									className={`${styles.linkItem} ${styles.btn} ${styles[`btn_${link.style || 'primary'}`]}`}
 									style={{ fontSize: font_size_link }}
 								>
 									{link.title}
