@@ -19,7 +19,7 @@ const NavigationErrorFallback = () => (
 const Header = () => {
 	const location = useLocation()
 	const isHomePage = location.pathname === paths.home // Проверяем, находимся ли мы на главной странице
-	const isVisible = useScrollVisibility(300) // Хук скрытия/появления хедера при скролле
+	const isVisible = useScrollVisibility(600) // Хук скрытия/появления хедера при скролле
 	const [isSearchOpen, setIsSearchOpen] = useState(false) // Стейт для управления состоянием поисковой строки
 
 	return (
