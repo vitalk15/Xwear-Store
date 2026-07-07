@@ -2,7 +2,7 @@
 	display: block;
 	width: 100%;
 	max-width: #{$container-desktop-width + ($container-padding-x * 2)};
-	margin: 24px auto 86px;
+	margin: 24px auto $section-m-bottom;
 
 	// На случай, если на бэкенде или в лэйауте есть особенности слияния маржинов:
 	// position: relative;

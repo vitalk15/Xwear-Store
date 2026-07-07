@@ -5,7 +5,7 @@ import { paths } from '@/routes/paths'
 import useScrollVisibility from './hooks/useScrollVisibility'
 import Logo from '@/components/ui/Logo'
 import Navigation from './Navigation'
-import NavigationSkeleton from './NavigationSkeleton'
+import NavigationSkeleton from './Navigation/NavigationSkeleton'
 import HeaderActions from './HeaderActions'
 import styles from './Header.module.scss'
 

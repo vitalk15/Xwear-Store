@@ -1,7 +1,7 @@
 .skeletonWrapper {
 	width: 100%;
-	margin-top: 24px;
-	margin-bottom: 40px;
+	max-width: #{$container-desktop-width + ($container-padding-x * 2)};
+	margin: 24px auto $section-m-bottom;
 }
 
 .skeletonSlide {
