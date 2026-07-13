@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom'
 import { paths } from '@/routes/paths'
 import styles from './Logo.module.scss'
 
-const Logo = ({ isHomePage }) => {
-	const logoImage = <img src="/logo.svg" alt="XWEAR Logo" className={styles.logoImg} />
+const Logo = ({ isHomePage, position = 'header' }) => {
+	const src = position === 'footer' ? '/logo-2.svg' : '/logo.svg'
+
+	const logoImage = <img src={src} alt="XWEAR Logo" className={styles.logoImg} />
 
 	if (isHomePage) {
 		return <div className={styles.logoStatic}>{logoImage}</div>
