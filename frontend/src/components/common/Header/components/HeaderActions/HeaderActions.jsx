@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { SearchIcon, StarIcon, UserIcon, BagIcon } from '../Icons'
+import { SearchIcon, StarIcon, UserIcon, BagIcon } from '@/components/common/Header/Icons'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
 import styles from './HeaderActions.module.scss'
 

@@ -4,9 +4,9 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { paths } from '@/routes/paths'
 import useScrollVisibility from './hooks/useScrollVisibility'
 import Logo from '@/components/ui/Logo'
-import Navigation from './Navigation'
-import NavigationSkeleton from './Navigation/NavigationSkeleton'
-import HeaderActions from './HeaderActions'
+import Navigation from './components/Navigation'
+import NavigationSkeleton from './components/Navigation/NavigationSkeleton'
+import HeaderActions from './components/HeaderActions'
 import styles from './Header.module.scss'
 
 // Что показать, если категории не загрузились
@@ -19,7 +19,7 @@ const NavigationErrorFallback = () => (
 const Header = () => {
 	const location = useLocation()
 	const isHomePage = location.pathname === paths.home // Проверяем, находимся ли мы на главной странице
-	const isVisible = useScrollVisibility(600) // Хук скрытия/появления хедера при скролле
+	const isVisible = useScrollVisibility(580) // Хук скрытия/появления хедера при скролле
 	const [isSearchOpen, setIsSearchOpen] = useState(false) // Стейт для управления состоянием поисковой строки
 
 	return (

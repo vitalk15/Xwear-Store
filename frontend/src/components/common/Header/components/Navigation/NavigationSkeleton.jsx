@@ -1,4 +1,4 @@
-import styles from './NavigationSkeleton.module.scss'
+import styles from './Navigation.module.scss'
 
 const NavigationSkeleton = () => {
 	// Рисуем 4 фейковых пунктов меню, пока настоящие грузятся

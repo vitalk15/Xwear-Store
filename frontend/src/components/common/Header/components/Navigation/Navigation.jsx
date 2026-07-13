@@ -1,35 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useCategories } from '@/entities/category/hooks/useCategories'
-import { ChevronDownIcon } from '../Icons'
+import { ChevronDownIcon } from '@/components/common/Header/Icons'
+import { STATIC_INFO_MENU } from '@/shared/constants/info-menu'
 import styles from './Navigation.module.scss'
-
-// Статический пункт меню "Информация", имитирует структуру данных от Django API
-const STATIC_INFO_MENU = {
-	id: 'static-info',
-	name: 'Информация',
-	is_clickable: false, // Главный пункт не кликабелен, только открывает dropdown
-	full_path: '',
-	children: [
-		{
-			id: 'info-contacts',
-			name: 'Контакты',
-			full_path: 'contacts',
-			is_clickable: true,
-		},
-		{
-			id: 'info-delivery',
-			name: 'Доставка и оплата',
-			full_path: 'delivery', // Укажите здесь актуальный путь (например, 'info/delivery' или импортируйте из paths)
-			is_clickable: true,
-		},
-		{
-			id: 'info-legal',
-			name: 'Юр. документы',
-			full_path: 'legal-documents',
-			is_clickable: true,
-		},
-	],
-}
 
 const Navigation = () => {
 	// const { data: categories = [], isLoading, isError } = useCategories()
