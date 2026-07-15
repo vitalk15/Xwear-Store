@@ -3,6 +3,7 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { useLocation } from 'react-router-dom'
 import { paths } from '@/routes/paths'
 import { SilentFallback } from '@/components/common/ErrorBoundary/SilentFallback'
+import { handleError } from '@/shared/utils/errorHandler'
 import Logo from '@/components/ui/Logo'
 import Navigation from './components/Navigation'
 import NavigationSkeleton from './components/Navigation/NavigationSkeleton'
@@ -13,13 +14,6 @@ import SubscribeSkeleton from './components/Subscribe/SubscribeSkeleton'
 import styles from './Footer.module.scss'
 
 const Footer = () => {
-	// Функция для скрытого логирования ошибок
-	const logErrorToService = (error, info) => {
-		// !!! Todo: позже будет отправка в Sentry или другой сервис
-		console.error('Поймана ошибка:', error)
-		console.error('Информация о компоненте:', info)
-	}
-
 	const location = useLocation()
 	const isHomePage = location.pathname === paths.home // Проверяем, находимся ли мы на главной странице
 
@@ -29,7 +23,7 @@ const Footer = () => {
 				<div className={styles.topRow}>
 					{/* Навигация */}
 					<div className={styles.contentsWrapper}>
-						<ErrorBoundary fallback={<SilentFallback />} onError={logErrorToService}>
+						<ErrorBoundary fallback={<SilentFallback />} onError={handleError}>
 							<Suspense fallback={<NavigationSkeleton />}>
 								<Navigation />
 							</Suspense>
@@ -38,7 +32,7 @@ const Footer = () => {
 
 					{/* Контакты */}
 					<div className={styles.contentsWrapper}>
-						<ErrorBoundary fallback={<SilentFallback />} onError={logErrorToService}>
+						<ErrorBoundary fallback={<SilentFallback />} onError={handleError}>
 							<Suspense fallback={<ContactsSkeleton />}>
 								<Contacts />
 							</Suspense>
@@ -47,7 +41,7 @@ const Footer = () => {
 
 					{/* Подписка */}
 					<div className={styles.contentsWrapper}>
-						<ErrorBoundary fallback={<SilentFallback />} onError={logErrorToService}>
+						<ErrorBoundary fallback={<SilentFallback />} onError={handleError}>
 							<Suspense fallback={<SubscribeSkeleton />}>
 								<Subscribe />
 							</Suspense>

@@ -2,19 +2,14 @@ import { useState, Suspense } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import { paths } from '@/routes/paths'
+import { SilentFallback } from '@/components/common/ErrorBoundary/SilentFallback'
+import { handleCriticalError } from '@/shared/utils/errorHandler'
 import useScrollVisibility from './hooks/useScrollVisibility'
 import Logo from '@/components/ui/Logo'
 import Navigation from './components/Navigation'
 import NavigationSkeleton from './components/Navigation/NavigationSkeleton'
 import HeaderActions from './components/HeaderActions'
 import styles from './Header.module.scss'
-
-// Что показать, если категории не загрузились
-const NavigationErrorFallback = () => (
-	<nav className={styles.navAreaError}>
-		<span className={styles.errorText}>Каталог временно недоступен</span>
-	</nav>
-)
 
 const Header = () => {
 	const location = useLocation()
@@ -34,8 +29,7 @@ const Header = () => {
 
 				{/* НАВИГАЦИЯ */}
 				<div className={`${styles.navWrapper} ${isSearchOpen ? styles.navHidden : ''}`}>
-					{/* Если ошибка загрузки — показывается запасной вариант */}
-					<ErrorBoundary FallbackComponent={NavigationErrorFallback}>
+					<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 						{/* Пока идет загрузка — показывается скелетон */}
 						<Suspense fallback={<NavigationSkeleton />}>
 							<Navigation />

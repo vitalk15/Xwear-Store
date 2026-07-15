@@ -1,5 +1,7 @@
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
+import { SilentFallback } from '@/components/common/ErrorBoundary/SilentFallback'
+import { handleCriticalError } from '@/shared/utils/errorHandler'
 import SliderWidget from '@/features/slider/components/SliderWidget'
 import SliderSkeleton from '@/features/slider/components/SliderSkeleton'
 import CatalogSection from '@/features/catalog/components/CatalogSection'
@@ -14,7 +16,7 @@ const HomePage = () => {
 			<PageTitle title="Главная" />
 
 			{/* Слайдер */}
-			<ErrorBoundary fallback={<div className="container">Ошибка загрузки баннеров</div>}>
+			<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 				<Suspense fallback={<SliderSkeleton />}>
 					<SliderWidget />
 				</Suspense>
@@ -23,29 +25,21 @@ const HomePage = () => {
 			{/* Блок с секциями категорий */}
 			<div className={styles.catalogWrapper}>
 				{/* Секция: Обувь */}
-				<ErrorBoundary
-					fallback={<div className="container">Ошибка загрузки категории "Обувь"</div>}
-				>
+				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 					<Suspense fallback={<CatalogSkeleton />}>
 						<CatalogSection title="Обувь" categoryId={2} />
 					</Suspense>
 				</ErrorBoundary>
 
 				{/* Секция: Одежда */}
-				<ErrorBoundary
-					fallback={<div className="container">Ошибка загрузки категории "Одежда"</div>}
-				>
+				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 					<Suspense fallback={<CatalogSkeleton />}>
 						<CatalogSection title="Одежда" categoryId={1} />
 					</Suspense>
 				</ErrorBoundary>
 
 				{/* Секция: Аксессуары */}
-				<ErrorBoundary
-					fallback={
-						<div className="container">Ошибка загрузки категории "Аксессуары"</div>
-					}
-				>
+				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 					<Suspense fallback={<CatalogSkeleton />}>
 						<CatalogSection title="Аксессуары" categoryId={3} />
 					</Suspense>
