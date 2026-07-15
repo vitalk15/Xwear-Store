@@ -4,7 +4,7 @@ import skeletonStyles from './ProductCardSkeleton.module.scss'
 const ProductCardSkeleton = () => {
 	return (
 		<div className={styles.card}>
-			<div className={`${styles.imageWrapper} ${skeletonStyles.pulse}`}></div>
+			<div className={`${skeletonStyles.imageSkeleton} ${skeletonStyles.pulse}`}></div>
 			<div className={styles.infoWrapper}>
 				<div className={`${skeletonStyles.titleSkeleton} ${skeletonStyles.pulse}`}></div>
 				<div className={`${skeletonStyles.priceSkeleton} ${skeletonStyles.pulse}`}></div>

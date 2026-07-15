@@ -1,16 +1,28 @@
+@use '@/assets/styles/mixins';
+
 .pulse {
-	background-color: #e5e7eb;
-	animation: pulse 1.5s infinite ease-in-out;
+	@include skeleton-pulse-light;
+	// background-color: #e5e7eb;
+	// animation: pulse 1.5s infinite ease-in-out;
 }
 
-@keyframes pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.5;
-	}
+// @keyframes pulse {
+// 	0%,
+// 	100% {
+// 		opacity: 1;
+// 	}
+// 	50% {
+// 		opacity: 0.5;
+// 	}
+// }
+
+.imageSkeleton {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 320 / 360; // Сохраняем пропорции фото из бэкенда
+	border-radius: $border-radius;
+	overflow: hidden;
+	margin-bottom: 16px;
 }
 
 .titleSkeleton {

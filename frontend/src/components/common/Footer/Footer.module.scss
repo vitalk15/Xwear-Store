@@ -1,3 +1,5 @@
+@use '@/assets/styles/mixins';
+
 .footer {
 	background-color: $color-black;
 	padding: 45px 0;
@@ -246,9 +248,8 @@
 
 /* Базовый класс для всех пульсирующих элементов */
 .skeleton {
-	background-color: #e5e5e5;
+	@include skeleton-pulse-dark;
 	border-radius: 4px;
-	animation: pulse 1.5s infinite ease-in-out;
 }
 
 .titleSkeleton {
@@ -280,30 +281,7 @@
 }
 
 .skeletonLine {
+	@include skeleton-shimmer-dark;
 	height: 14px;
 	border-radius: 4px;
-
-	/* Темный градиент для плавной анимации мерцания */
-	background: linear-gradient(90deg, #5e5e5e 25%, #717171 50%, #5e5e5e 75%);
-	background-size: 200% 100%;
-	animation: shimmer 1.6s infinite ease-in-out;
-}
-
-@keyframes shimmer {
-	0% {
-		background-position: 200% 0;
-	}
-	100% {
-		background-position: -200% 0;
-	}
-}
-
-@keyframes pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.6;
-	}
 }
