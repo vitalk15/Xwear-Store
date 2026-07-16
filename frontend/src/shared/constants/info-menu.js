@@ -14,7 +14,7 @@ export const STATIC_INFO_MENU = {
 		{
 			id: 'info-delivery',
 			name: 'Доставка и оплата',
-			full_path: 'delivery', // Укажите здесь актуальный путь (например, 'info/delivery' или импортируйте из paths)
+			full_path: 'delivery',
 			is_clickable: true,
 		},
 		{

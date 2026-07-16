@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useCategories } from '@/entities/category/hooks/useCategories'
 import { STATIC_INFO_MENU } from '@/shared/constants/info-menu'
+import { getLinkPath } from '@/shared/utils/getLinkPath'
 import styles from '@/components/common/Footer/Footer.module.scss'
 
 const Navigation = () => {
@@ -18,7 +19,7 @@ const Navigation = () => {
 					<ul className={styles.linkList}>
 						{rootCategory.children?.map((child) => (
 							<li key={child.id}>
-								<Link to={`/${child.full_path}`}>{child.name}</Link>
+								<Link to={getLinkPath(rootCategory, child)}>{child.name}</Link>
 							</li>
 						))}
 					</ul>

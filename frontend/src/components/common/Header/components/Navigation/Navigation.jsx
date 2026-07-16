@@ -2,27 +2,10 @@ import { Link } from 'react-router-dom'
 import { useCategories } from '@/entities/category/hooks/useCategories'
 import { ChevronDownIcon } from '@/components/common/Header/Icons'
 import { STATIC_INFO_MENU } from '@/shared/constants/info-menu'
+import { getLinkPath } from '@/shared/utils/getLinkPath'
 import styles from './Navigation.module.scss'
 
 const Navigation = () => {
-	// const { data: categories = [], isLoading, isError } = useCategories()
-
-	// if (isLoading) {
-	// 	return (
-	// 		<nav className={styles.navArea}>
-	// 			<span className={styles.status}>Загрузка меню...</span>
-	// 		</nav>
-	// 	)
-	// }
-
-	// if (isError) {
-	// 	return (
-	// 		<nav className={styles.navArea}>
-	// 			<span className={styles.status}>Ошибка загрузки</span>
-	// 		</nav>
-	// 	)
-	// }
-
 	const { data: categories = [] } = useCategories()
 
 	// Объединяем динамические данные от сервера и нашу статику в один массив
@@ -44,7 +27,7 @@ const Navigation = () => {
 						>
 							{/* КОРНЕВАЯ КАТЕГОРИЯ */}
 							{item.is_clickable ? (
-								<Link to={`/${item.full_path}`} className={styles.navLink}>
+								<Link to={getLinkPath(item, item)} className={styles.navLink}>
 									{item.name}
 								</Link>
 							) : (
@@ -66,7 +49,7 @@ const Navigation = () => {
 												<div key={sub1.id} className={styles.dropdownColumn}>
 													{sub1.is_clickable ? (
 														<Link
-															to={`/${sub1.full_path}`}
+															to={getLinkPath(item, sub1)}
 															className={`${styles.dropdownItem} ${styles.columnTitle}`}
 														>
 															{sub1.name}
@@ -80,7 +63,7 @@ const Navigation = () => {
 															{sub1.children.map((sub2) => (
 																<li key={sub2.id}>
 																	<Link
-																		to={`/${sub2.full_path}`}
+																		to={getLinkPath(item, sub2)}
 																		className={styles.dropdownItem}
 																	>
 																		{sub2.name}
@@ -98,7 +81,7 @@ const Navigation = () => {
 													<li key={sub1.id}>
 														{sub1.is_clickable ? (
 															<Link
-																to={`/${sub1.full_path}`}
+																to={getLinkPath(item, sub1)}
 																className={styles.dropdownItem}
 															>
 																{sub1.name}
