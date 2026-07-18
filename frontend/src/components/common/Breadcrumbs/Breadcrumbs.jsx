@@ -24,7 +24,7 @@ const Breadcrumbs = ({ backendBreadcrumbs = [] }) => {
 
 	return (
 		<nav className={styles.breadcrumbs} aria-label="Хлебные крошки">
-			<ol className={styles.list}>
+			<ul className={styles.list}>
 				<li className={styles.item}>
 					<Link to={paths.home} className={styles.link}>
 						Главная
@@ -50,7 +50,7 @@ const Breadcrumbs = ({ backendBreadcrumbs = [] }) => {
 						</li>
 					</div>
 				))}
-			</ol>
+			</ul>
 		</nav>
 	)
 }

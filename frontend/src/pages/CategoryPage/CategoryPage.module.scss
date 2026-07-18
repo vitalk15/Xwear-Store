@@ -1,42 +1,57 @@
 .pageWrapper {
-	padding: 40px 0 80px;
+	padding: 16px 0 80px;
 }
 
 .header {
-	margin-bottom: 40px;
+	margin-bottom: 24px;
 }
 
 .titleRow {
 	display: flex;
-	align-items: flex-end;
+	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 8px;
 }
 
 .title {
-	font-size: 32px;
-	font-weight: 800;
+	font-size: 31px;
+	font-weight: 900;
 	text-transform: uppercase;
+	line-height: 1.3;
+	color: $color-black;
 }
 
 .sortPlaceholder {
-	font-size: 14px;
-	color: #8c8f96;
+	font-size: 13px;
+	color: $color-light_gray;
+	font-weight: 600;
+	line-height: 2.9;
+
+	svg {
+		stroke: $color-light_gray;
+		vertical-align: middle;
+	}
 }
 
 .count {
-	font-size: 14px;
-	color: #8c8f96;
+	font-size: 13px;
+	color: $color-light_gray;
+	font-weight: 600;
+	line-height: 1.4;
 }
 
 .layout {
 	display: flex;
-	gap: 40px;
+	gap: 22px;
 	align-items: flex-start;
+	justify-content: space-between;
+	container-type: inline-size;
 }
 
 .sidebar {
-	flex: 0 0 280px; // Жесткая ширина сайдбара
+	flex: 0 0 23.5294cqw; // Жесткая ширина сайдбара
+	max-width: 320px;
+	min-width: 300px;
+	border-radius: $border-radius;
 }
 
 .sidebarPlaceholder {
@@ -51,12 +66,13 @@
 }
 
 .main {
-	flex: 1;
+	// flex: 1;
 }
 
 .grid {
 	display: grid;
-	grid-template-columns: repeat(3, 320px); // Строго 3 колонки по 320px
-	gap: 20px; // Отступы между карточками
+	grid-template-columns: repeat(3, 23.5294cqw); // Строго 3 колонки по 23.5294cqw
+	row-gap: 40px; // Отступы между карточками
+	column-gap: 22px;
 	justify-content: space-between; // Распределяем карточки
 }

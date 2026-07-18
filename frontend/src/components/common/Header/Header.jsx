@@ -14,7 +14,7 @@ import styles from './Header.module.scss'
 const Header = () => {
 	const location = useLocation()
 	const isHomePage = location.pathname === paths.home // Проверяем, находимся ли мы на главной странице
-	const isVisible = useScrollVisibility(580) // Хук скрытия/появления хедера при скролле
+	const isVisible = useScrollVisibility(160) // Хук скрытия/появления хедера при скролле
 	const [isSearchOpen, setIsSearchOpen] = useState(false) // Стейт для управления состоянием поисковой строки
 
 	return (

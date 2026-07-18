@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useCategoryProducts } from '@/features/catalog/hooks/useCategoryProducts'
 import { getDeclension } from '@/shared/utils/declensionWords'
+import { ChevronDownIcon } from './Icons'
 import ProductCard from '@/features/catalog/components/ProductCard'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import Pagination from '@/components/ui/Pagination'
@@ -25,18 +26,6 @@ const CategoryContent = ({ categoryId }) => {
 		<>
 			<Breadcrumbs backendBreadcrumbs={catData.breadcrumbs} />
 
-			<div className={styles.header}>
-				<div className={styles.titleRow}>
-					<h1 className={styles.title}>{catData.name}</h1>
-					<div className={styles.sortPlaceholder}>
-						Сортировать по: От дешевых к дорогим ˅
-					</div>
-				</div>
-				<span className={styles.count}>
-					{count} {productWord}
-				</span>
-			</div>
-
 			<div className={styles.layout}>
 				{/* ЛЕВЫЙ БЛОК: Сайдбар (пока заглушка) */}
 				<aside className={styles.sidebar}>
@@ -44,7 +33,20 @@ const CategoryContent = ({ categoryId }) => {
 				</aside>
 
 				{/* ПРАВЫЙ БЛОК: Сетка товаров и пагинация */}
-				<main className={styles.main}>
+				<section className={styles.main}>
+					<div className={styles.header}>
+						<div className={styles.titleRow}>
+							<h1 className={styles.title}>{catData.name}</h1>
+							<div className={styles.sortPlaceholder}>
+								Сортировать: От дешевых к дорогим
+								<ChevronDownIcon />
+							</div>
+						</div>
+						<span className={styles.count}>
+							{count} {productWord}
+						</span>
+					</div>
+
 					<div className={styles.grid}>
 						{products.map((product) => (
 							<ProductCard key={product.id} product={product} />
@@ -52,7 +54,7 @@ const CategoryContent = ({ categoryId }) => {
 					</div>
 
 					<Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-				</main>
+				</section>
 			</div>
 		</>
 	)
