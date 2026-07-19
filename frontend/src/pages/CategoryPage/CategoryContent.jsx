@@ -22,6 +22,23 @@ const CategoryContent = ({ categoryId }) => {
 	const productWord = getDeclension(count, ['товар', 'товара', 'товаров'])
 	const totalPages = Math.ceil(count / limit)
 
+	const getPageTitle = () => {
+		const name = catData.name
+		if (name === 'Мужчинам' || name === 'Женщинам') {
+			// Достаем имя самой первой (корневой) категории из хлебных крошек
+			const rootName = catData.breadcrumbs?.[0]?.name
+
+			if (rootName) {
+				// Возвращаем название корневой категории (например, "Обувь")
+				// Оставляем только корень
+				// return rootName
+				// Склеиваем названия
+				return `${rootName} ${name}` // Результат: "Обувь мужчинам"
+			}
+		}
+		return name
+	}
+
 	return (
 		<>
 			<Breadcrumbs backendBreadcrumbs={catData.breadcrumbs} />
@@ -36,7 +53,7 @@ const CategoryContent = ({ categoryId }) => {
 				<section className={styles.main}>
 					<div className={styles.header}>
 						<div className={styles.titleRow}>
-							<h1 className={styles.title}>{catData.name}</h1>
+							<h1 className={styles.title}>{getPageTitle()}</h1>
 							<div className={styles.sortPlaceholder}>
 								Сортировать: От дешевых к дорогим
 								<ChevronDownIcon />
