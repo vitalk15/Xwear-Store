@@ -38,12 +38,12 @@ class Category(MPTTModel):
     )
 
     def get_full_path(self):
-        """Возвращает полный путь к категории, если она не корневая"""
+        # """Возвращает полный путь к категории, если она не корневая"""
         # Если это корень, возвращаем пустую строку или None
-        if self.is_root_node():
-            return ""
+        # if self.is_root_node():
+        #     return ""
 
-        # Только для вложенных категорий лезем в дерево за предками
+        # Лезем в дерево за предками. Для корневой категории вернется список из неё самой.
         ancestors = self.get_ancestors(include_self=True)
         return "/".join([ancestor.slug for ancestor in ancestors])
 
