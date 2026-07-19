@@ -11,14 +11,15 @@ const Breadcrumbs = ({ backendBreadcrumbs = [] }) => {
 			.map((c) => c.slug)
 			.join('/')
 
-		const isRoot = index === 0 // Корневая категория (Обувь, Одежда)
+		// const isRoot = index === 0 // Корневая категория (Обувь, Одежда)
 		const isLast = index === backendBreadcrumbs.length - 1 // Текущая страница
 
 		return {
 			id: crumb.id,
 			name: crumb.name,
 			path: `${paths.catalog}/${fullPath}`,
-			isClickable: !isRoot && !isLast, // Кликабельны только промежуточные
+			// isClickable: !isRoot && !isLast,
+			isClickable: !isLast,
 		}
 	})
 
