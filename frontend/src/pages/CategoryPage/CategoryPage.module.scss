@@ -1,3 +1,5 @@
+@use '@/assets/styles/mixins';
+
 .pageWrapper {
 	padding: 16px 0 80px;
 }
@@ -76,4 +78,45 @@
 	row-gap: 40px; // Отступы между карточками
 	column-gap: 22px;
 	justify-content: space-between; // Распределяем карточки
+}
+
+/* --- СКЕЛЕТОНЫ --- */
+
+.breadcrumbsSkeleton {
+	@include skeleton-shimmer-light;
+	height: 18px;
+	width: 300px;
+	margin-bottom: 48px;
+}
+
+.titleSkeleton {
+	@include skeleton-shimmer-light;
+	height: 38px;
+	width: 250px;
+}
+
+.sortPlaceholderSkeleton {
+	@include skeleton-shimmer-light;
+	height: 20px;
+	width: 200px;
+}
+
+.countSkeleton {
+	@include skeleton-shimmer-light;
+	height: 16px;
+	width: 100px;
+	margin-top: 8px;
+}
+
+.sidebarSkeleton {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.filterBlockSkeleton {
+	@include skeleton-shimmer-light;
+	height: 150px; // Имитация одного блока фильтров (например, по брендам)
+	width: 100%;
+	border-radius: 8px;
 }

@@ -1,9 +1,12 @@
 import { useParams } from 'react-router-dom'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
+import { SilentFallback } from '@/components/common/ErrorBoundary/SilentFallback'
 import { useCategoryByPath } from '@/entities/category/hooks/useCategoryByPath'
-import CategoryContent from './CategoryContent'
+import { handleCriticalError } from '@/shared/utils/errorHandler'
 import PageTitle from '@/components/common/PageTitle'
+import CategoryContent from './CategoryContent'
+import CategorySkeleton from './CategorySkeleton'
 import styles from './CategoryPage.module.scss'
 
 const CategoryPage = () => {
@@ -27,8 +30,8 @@ const CategoryPage = () => {
 			<PageTitle title="Каталог" />
 
 			<div className={`container ${styles.pageWrapper}`}>
-				<ErrorBoundary fallback={<div>Ошибка загрузки товаров категории</div>}>
-					<Suspense fallback={<div>Загрузка товаров...</div>}>
+				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
+					<Suspense fallback={<CategorySkeleton />}>
 						{/* Передаем ID найденной категории во внутренний компонент */}
 						<CategoryContent categoryId={category.id} />
 					</Suspense>
