@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useCategoryProducts } from '@/features/catalog/hooks/useCategoryProducts'
 import { getDeclension } from '@/shared/utils/declensionWords'
 import { ChevronDownIcon } from './Icons'
@@ -8,18 +8,24 @@ import Pagination from '@/components/ui/Pagination'
 import styles from './CategoryPage.module.scss'
 
 const CategoryContent = ({ categoryId }) => {
-	// Состояние пагинации (позже перенесем в URL-параметры)
-	const [page, setPage] = useState(1)
-	const limit = 12 // Настройка из Django
-	const offset = (page - 1) * limit
+	const [searchParams] = useSearchParams()
 
-	// Запрашиваем товары. Suspense поставит этот компонент "на паузу", пока данные не придут
+	// Достаем страницу из URL для передачи в бэкенд-запрос
+	const currentPage = parseInt(searchParams.get('page') || '1', 10)
+
+	// 2. Рассчитываем limit и offset для Django (LimitOffsetPagination)
+	const limit = 12 // Количество товаров на страницу (PAGE_SIZE из settings.py)
+	const offset = (currentPage - 1) * limit
+
+	// Запрашиваем товары с передачей параметров в хук. Suspense поставит этот компонент "на паузу", пока данные не придут.
 	const { data } = useCategoryProducts(categoryId, { limit, offset })
 
 	// DRF возвращает нам count и results. А также мы "подмешали" category.
 	const { results: products, count, category: catData } = data
 
 	const productWord = getDeclension(count, ['товар', 'товара', 'товаров'])
+
+	// Вычисляем общее количество страниц для компонента Pagination
 	const totalPages = Math.ceil(count / limit)
 
 	const getPageTitle = () => {
@@ -70,7 +76,7 @@ const CategoryContent = ({ categoryId }) => {
 						))}
 					</div>
 
-					<Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+					<Pagination totalPages={totalPages} />
 				</section>
 			</div>
 		</>

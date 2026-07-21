@@ -51,7 +51,8 @@
 }
 
 .sidebar {
-	flex: 0 0 23.5294cqw; // Жесткая ширина сайдбара
+	// flex: 0 0 320px; // Жесткая ширина сайдбара (flex-grow: 0 - элемент не будет увеличиваться, flex-shrink: 0 - не будет сжиматься, flex-basis: 320px)
+	width: 23.5294cqw;
 	max-width: 320px;
 	min-width: 300px;
 	border-radius: $border-radius;
@@ -69,7 +70,7 @@
 }
 
 .main {
-	// flex: 1;
+	// flex: 1;  // занимает всё свободное пространство
 }
 
 .grid {
