@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useCategoryProducts } from '@/features/catalog/hooks/useCategoryProducts'
 import { getDeclension } from '@/shared/utils/declensionWords'
 import { ChevronDownIcon } from './Icons'
+import { CATALOG_ITEMS_PER_PAGE } from '@/shared/constants/pagination'
 import ProductCard from '@/features/catalog/components/ProductCard'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import Pagination from '@/components/ui/Pagination'
@@ -14,7 +15,7 @@ const CategoryContent = ({ categoryId }) => {
 	const currentPage = parseInt(searchParams.get('page') || '1', 10)
 
 	// 2. Рассчитываем limit и offset для Django (LimitOffsetPagination)
-	const limit = 12 // Количество товаров на страницу (PAGE_SIZE из settings.py)
+	const limit = CATALOG_ITEMS_PER_PAGE // Количество товаров на страницу
 	const offset = (currentPage - 1) * limit
 
 	// Запрашиваем товары с передачей параметров в хук. Suspense поставит этот компонент "на паузу", пока данные не придут.
@@ -38,6 +39,7 @@ const CategoryContent = ({ categoryId }) => {
 				// Возвращаем название корневой категории (например, "Обувь")
 				// Оставляем только корень
 				// return rootName
+
 				// Склеиваем названия
 				return `${rootName} ${name}` // Результат: "Обувь мужчинам"
 			}
