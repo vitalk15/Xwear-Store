@@ -7,6 +7,7 @@ import ProductCard from '@/features/catalog/components/ProductCard'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import Pagination from '@/components/ui/Pagination'
 import CatalogSidebar from '@/features/catalog/components/CatalogSidebar'
+import SortDropdown from '@/features/catalog/components/SortDropdown'
 import styles from './CategoryPage.module.scss'
 
 const CategoryContent = ({ categoryId }) => {
@@ -29,6 +30,7 @@ const CategoryContent = ({ categoryId }) => {
 		colors: searchParams.get('colors') || undefined,
 		min_price: searchParams.get('min_price') || undefined,
 		max_price: searchParams.get('max_price') || undefined,
+		sort: searchParams.get('sort') || undefined,
 	}
 
 	// 3. Отправляем запрос (пустые параметры axios/fetch автоматически проигнорируют, если хук настроен верно). Suspense поставит этот компонент "на паузу", пока данные не придут.
@@ -70,14 +72,15 @@ const CategoryContent = ({ categoryId }) => {
 				{/* ЛЕВЫЙ БЛОК: Сайдбар */}
 				<CatalogSidebar filters={filters} />
 
-				{/* ПРАВЫЙ БЛОК: Сетка товаров и пагинация */}
+				{/* ПРАВЫЙ БЛОК: Сетка товаров, сортировка и пагинация */}
 				<section className={styles.main}>
 					<div className={styles.header}>
 						<div className={styles.titleRow}>
 							<h1 className={styles.title}>{getPageTitle()}</h1>
 							<div className={styles.sortPlaceholder}>
-								Сортировать: От дешевых к дорогим
-								<ChevronDownIcon />
+								Сортировать:
+								<SortDropdown />
+								{/* <ChevronDownIcon /> */}
 							</div>
 						</div>
 						<span className={styles.count}>
