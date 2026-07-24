@@ -50,25 +50,6 @@
 	container-type: inline-size;
 }
 
-.sidebar {
-	// flex: 0 0 320px; // Жесткая ширина сайдбара (flex-grow: 0 - элемент не будет увеличиваться, flex-shrink: 0 - не будет сжиматься, flex-basis: 320px)
-	width: 23.5294cqw;
-	max-width: 320px;
-	min-width: 300px;
-	border-radius: $border-radius;
-}
-
-.sidebarPlaceholder {
-	height: 600px;
-	background-color: #f9f9fb;
-	border: 1px dashed #e5e7eb;
-	border-radius: 4px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: #8c8f96;
-}
-
 .main {
 	// flex: 1;  // занимает всё свободное пространство
 }
