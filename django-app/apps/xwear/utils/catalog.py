@@ -6,7 +6,8 @@ from django.db.models import Prefetch, Min, Max, Q
 
 # Собирает только доступные значения для сайдбара (бренды, размеры, диапазон цен, цвета)
 def get_category_sidebar_filters(categories, query_params):
-    from ..models import ProductVariant, ProductSize, Brand, Color
+    # from ..models import ProductVariant, ProductSize, Brand, Color
+    from ..models import ProductSize, Brand, Color
 
     # 1. Цены (Применяем все фильтры КРОМЕ цен)
     qs_for_prices = get_filtered_products(categories, query_params, exclude_group="prices")
@@ -112,10 +113,10 @@ def get_filtered_products(categories, query_params, exclude_group=None):
             ),
         )
         # .order_by("-product__created_at", "-id") # сортируем по дате создания родителя
-        .order_by("-created_at", "-id")  # сортируем по дате создания варианта
+        # .order_by("-created_at", "-id")  # сортируем по дате создания варианта
     )
 
-    # # Применяем фильтры, ЕСЛИ эта группа не исключена
+    # -------------- ПРИМЕНЯЕМ ФИЛЬТРЫ (если группа не исключена) --------------
     # 1. Современный подход через запятую (в URL: ?brands=nike,adidas)
     # Фильтр по брендам
     brands_param = query_params.get("brands")
@@ -161,6 +162,22 @@ def get_filtered_products(categories, query_params, exclude_group=None):
             queryset = queryset.filter(annotated_min_final_price__gte=min_p)
         if max_p:
             queryset = queryset.filter(annotated_min_final_price__lte=max_p)
+
+    # ------------------ СОРТИРОВКА (обработка параметра `sort`) ------------------
+    sort_param = query_params.get("sort", "default")
+
+    if sort_param == "price_asc":
+        # Сначала дешевые (по возрастанию аннотированной цены)
+        queryset = queryset.order_by("annotated_min_final_price", "-id")
+    elif sort_param == "price_desc":
+        # Сначала дорогие (по убыванию аннотированной цены)
+        queryset = queryset.order_by("-annotated_min_final_price", "-id")
+    elif sort_param == "newest":
+        # Сначала новинки
+        queryset = queryset.order_by("-created_at", "-id")
+    else:
+        # По умолчанию - Сначала новинки (по дате добавления)
+        queryset = queryset.order_by("-created_at", "-id")
 
     return queryset
 
