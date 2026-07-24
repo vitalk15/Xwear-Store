@@ -98,7 +98,7 @@ class Brand(models.Model):
 
 
 class Size(models.Model):
-    name = models.CharField(max_length=10, verbose_name="Размер")
+    name = models.CharField(max_length=10, db_index=True, verbose_name="Размер")
     order = models.PositiveSmallIntegerField(
         default=0, db_index=True, verbose_name="Порядок"
     )
@@ -140,10 +140,11 @@ class ProductSize(models.Model):
         verbose_name="Итоговая цена",
         null=True,
         blank=True,
+        db_index=True,
         editable=False,  # Скрываем из админки (пользователь не должен менять её вручную)
     )
 
-    is_active = models.BooleanField(default=True, verbose_name="В наличии")
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name="В наличии")
 
     def save(self, *args, **kwargs):
         # 1. Рассчитываем итоговую цену перед сохранением
@@ -328,7 +329,7 @@ class Product(TimeStampedModel):
         verbose_name="Слаг базовой модели",
         help_text="Генерируется автоматически на основе вида, бренда и модели",
     )
-    is_active = models.BooleanField(default=True, verbose_name="Активен")
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name="Активен")
 
     @property
     def type_name(self):
@@ -390,7 +391,7 @@ class ProductVariant(TimeStampedModel):
         verbose_name="Слаг варианта",
         help_text="Генерируется автоматически на основе вида, бренда, модели и цвета",
     )
-    is_active = models.BooleanField(default=False, verbose_name="Активен")
+    is_active = models.BooleanField(default=False, db_index=True, verbose_name="Активен")
     # through='ProductSize' говорит Django использовать существующую модель
     actual_sizes = models.ManyToManyField(
         "Size", through="ProductSize", related_name="variants", verbose_name="Размеры"
