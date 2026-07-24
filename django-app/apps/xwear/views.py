@@ -57,7 +57,7 @@ def category_detail_view(request, pk):
     categories = category.get_descendants(include_self=True)
 
     # 2. Получаем данные для сайдбара
-    filters_data = get_category_sidebar_filters(categories)
+    filters_data = get_category_sidebar_filters(categories, request.query_params)
 
     # 3. Получаем отфильтрованные товары
     products_queryset = get_filtered_products(categories, request.query_params)

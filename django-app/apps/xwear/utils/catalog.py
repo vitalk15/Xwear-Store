@@ -4,48 +4,76 @@ import random
 from django.db.models import Prefetch, Min, Max, Q
 
 
-# Собирает данные для сайдбара (бренды, размеры, диапазон цен),
-# слайдер цены и список брендов в фильтре должны показывать все возможности категории
-def get_category_sidebar_filters(categories):
+# Собирает только доступные значения для сайдбара (бренды, размеры, диапазон цен, цвета)
+def get_category_sidebar_filters(categories, query_params):
     from ..models import ProductVariant, ProductSize, Brand, Color
 
-    # Базовый кверисет — только активные варианты активных базовых товаров
-    sidebar_data_qs = ProductVariant.objects.filter(
-        product__category__in=categories, is_active=True, product__is_active=True
+    # 1. Цены (Применяем все фильтры КРОМЕ цен)
+    qs_for_prices = get_filtered_products(categories, query_params, exclude_group="prices")
+    price_stats = qs_for_prices.aggregate(
+        min_p=Min("annotated_min_final_price"),
+        max_p=Max("annotated_min_final_price"),
     )
 
-    # 1. Цены, доступные в этой категории
-    price_stats = sidebar_data_qs.aggregate(
-        min_p=Min("sizes__final_price", filter=Q(sizes__is_active=True)),
-        max_p=Max("sizes__final_price", filter=Q(sizes__is_active=True)),
-    )
+    # 2. Бренды (Применяем все фильтры КРОМЕ брендов)
+    qs_for_brands = get_filtered_products(categories, query_params, exclude_group="brands")
+    # Достаем ID доступных брендов и возвращаем QuerySet брендов
+    brand_ids = qs_for_brands.values_list("product__brand_id", flat=True).distinct()
+    brands = Brand.objects.filter(id__in=brand_ids)
 
-    # 2. Бренды, доступные в этой категории
-    brands = Brand.objects.filter(
-        products__variants__is_active=True,
-        products__category__in=categories,
-        products__is_active=True,
-    ).distinct()
+    # 3. Цвета (Применяем все фильтры КРОМЕ цветов)
+    qs_for_colors = get_filtered_products(categories, query_params, exclude_group="colors")
+    color_ids = qs_for_colors.values_list("color_id", flat=True).distinct()
+    colors = Color.objects.filter(id__in=color_ids)
 
-    # 3. Размеры, доступные в этой категории
+    # 4. Размеры (Применяем все фильтры КРОМЕ размеров)
+    qs_for_sizes = get_filtered_products(categories, query_params, exclude_group="sizes")
     sizes = (
         ProductSize.objects.filter(
-            variant__product__category__in=categories,
-            variant__is_active=True,
-            variant__product__is_active=True,
+            variant__in=qs_for_sizes,
             is_active=True,
         )
         .values_list("size__name", flat=True)
         .distinct()
-        # .order_by("size__name")
     )
 
-    # 4. Цвета, доступные в этой категории
-    colors = Color.objects.filter(
-        variants__product__category__in=categories,
-        variants__is_active=True,
-        variants__product__is_active=True,
-    ).distinct()
+    # # Базовый кверисет — только активные варианты активных базовых товаров
+    # sidebar_data_qs = ProductVariant.objects.filter(
+    #     product__category__in=categories, is_active=True, product__is_active=True
+    # )
+
+    # # 1. Цены, доступные в этой категории
+    # price_stats = sidebar_data_qs.aggregate(
+    #     min_p=Min("sizes__final_price", filter=Q(sizes__is_active=True)),
+    #     max_p=Max("sizes__final_price", filter=Q(sizes__is_active=True)),
+    # )
+
+    # # 2. Бренды, доступные в этой категории
+    # brands = Brand.objects.filter(
+    #     products__variants__is_active=True,
+    #     products__category__in=categories,
+    #     products__is_active=True,
+    # ).distinct()
+
+    # # 3. Размеры, доступные в этой категории
+    # sizes = (
+    #     ProductSize.objects.filter(
+    #         variant__product__category__in=categories,
+    #         variant__is_active=True,
+    #         variant__product__is_active=True,
+    #         is_active=True,
+    #     )
+    #     .values_list("size__name", flat=True)
+    #     .distinct()
+    #     # .order_by("size__name")
+    # )
+
+    # # 4. Цвета, доступные в этой категории
+    # colors = Color.objects.filter(
+    #     variants__product__category__in=categories,
+    #     variants__is_active=True,
+    #     variants__product__is_active=True,
+    # ).distinct()
 
     return {
         "brands": brands,
@@ -59,7 +87,7 @@ def get_category_sidebar_filters(categories):
 
 
 # Возвращает отфильтрованный QuerySet товаров для фильтров сайдбара
-def get_filtered_products(categories, query_params):
+def get_filtered_products(categories, query_params, exclude_group=None):
     from ..models import ProductVariant, ProductSize
 
     queryset = (
@@ -87,11 +115,11 @@ def get_filtered_products(categories, query_params):
         .order_by("-created_at", "-id")  # сортируем по дате создания варианта
     )
 
-    # Применяем фильтры
+    # # Применяем фильтры, ЕСЛИ эта группа не исключена
     # 1. Современный подход через запятую (в URL: ?brands=nike,adidas)
     # Фильтр по брендам
     brands_param = query_params.get("brands")
-    if brands_param:
+    if brands_param and exclude_group != "brands":
         # brand_slugs = brands_param.split(",")
         # Убираем лишние пробелы и пустые элементы на всякий случай
         brand_slugs = [s.strip() for s in brands_param.split(",") if s.strip()]
@@ -99,13 +127,13 @@ def get_filtered_products(categories, query_params):
 
     # Фильтр по цветам
     colors_param = query_params.get("colors")
-    if colors_param:
+    if colors_param and exclude_group != "colors":
         color_slugs = [s.strip() for s in colors_param.split(",") if s.strip()]
         queryset = queryset.filter(color__slug__in=color_slugs)
 
     # Фильтр по размерам
     sizes_param = query_params.get("sizes")
-    if sizes_param:
+    if sizes_param and exclude_group != "sizes":
         # size_names = sizes_param.split(",")
         size_names = [s.strip() for s in sizes_param.split(",") if s.strip()]
         # Если фильтруем по размерам, нужен distinct, так как у товара много размеров
@@ -126,12 +154,13 @@ def get_filtered_products(categories, query_params):
     #     ).distinct()
 
     # Фильтр по цене
-    min_p = query_params.get("min_price")
-    max_p = query_params.get("max_price")
-    if min_p:
-        queryset = queryset.filter(annotated_min_final_price__gte=min_p)
-    if max_p:
-        queryset = queryset.filter(annotated_min_final_price__lte=max_p)
+    if exclude_group != "prices":
+        min_p = query_params.get("min_price")
+        max_p = query_params.get("max_price")
+        if min_p:
+            queryset = queryset.filter(annotated_min_final_price__gte=min_p)
+        if max_p:
+            queryset = queryset.filter(annotated_min_final_price__lte=max_p)
 
     return queryset
 
