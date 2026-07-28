@@ -164,7 +164,7 @@ def get_filtered_products(categories, query_params, exclude_group=None):
             queryset = queryset.filter(annotated_min_final_price__lte=max_p)
 
     # ------------------ СОРТИРОВКА (обработка параметра `sort`) ------------------
-    sort_param = query_params.get("sort", "default")
+    sort_param = query_params.get("sort", "newest")
 
     if sort_param == "price_asc":
         # Сначала дешевые (по возрастанию аннотированной цены)
@@ -172,9 +172,6 @@ def get_filtered_products(categories, query_params, exclude_group=None):
     elif sort_param == "price_desc":
         # Сначала дорогие (по убыванию аннотированной цены)
         queryset = queryset.order_by("-annotated_min_final_price", "-id")
-    elif sort_param == "newest":
-        # Сначала новинки
-        queryset = queryset.order_by("-created_at", "-id")
     else:
         # По умолчанию - Сначала новинки (по дате добавления)
         queryset = queryset.order_by("-created_at", "-id")
