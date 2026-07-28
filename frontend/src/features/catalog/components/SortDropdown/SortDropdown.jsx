@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import styles from './SortDropdown.module.scss'
 
 const SORT_OPTIONS = [
-	{ value: 'default', label: 'По умолчанию' },
 	{ value: 'price_asc', label: 'Сначала дешевые' },
 	{ value: 'price_desc', label: 'Сначала дорогие' },
 	{ value: 'newest', label: 'Сначала новинки' },
@@ -15,7 +14,7 @@ const SortDropdown = () => {
 	const dropdownRef = useRef(null)
 
 	// Текущее значение сортировки из URL (или 'default')
-	const currentSort = searchParams.get('sort') || 'default'
+	const currentSort = searchParams.get('sort') || 'newest'
 	const selectedOption =
 		SORT_OPTIONS.find((opt) => opt.value === currentSort) || SORT_OPTIONS[0]
 
@@ -33,7 +32,7 @@ const SortDropdown = () => {
 	const handleSelect = (value) => {
 		const newParams = new URLSearchParams(searchParams)
 
-		if (value === 'default') {
+		if (value === 'newest') {
 			newParams.delete('sort')
 		} else {
 			newParams.set('sort', value)
