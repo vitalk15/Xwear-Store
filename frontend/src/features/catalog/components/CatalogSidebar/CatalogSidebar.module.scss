@@ -72,7 +72,7 @@
 
 /* Блок со скроллом для брендов */
 .scrollable {
-	max-height: (5 * 41px) - 18px; // 41px = 23px (высота чекбокса) + 18px (gap)
+	max-height: (5 * 42px) - 18px; // 42px = 24px (высота чекбокса) + 18px (gap)
 	overflow-y: auto;
 	padding-right: 20px;
 	margin-right: 2px;
@@ -149,8 +149,8 @@
 // Кастомный квадрат чекбокса
 .customCheckbox {
 	flex-shrink: 0;
-	width: 23px;
-	height: 23px;
+	width: 24px;
+	height: 24px;
 	border-radius: 3px;
 	background-color: #f8fafb;
 	display: flex;
