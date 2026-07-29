@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import FilterSection from './FilterSection'
 import PriceFilter from './PriceFilter'
+import { CrossIcon } from './Icons'
 import styles from './CatalogSidebar.module.scss'
 
 const CatalogSidebar = ({ filters }) => {
@@ -148,15 +149,16 @@ const CatalogSidebar = ({ filters }) => {
 			{/* 3. ФИЛЬТР: РАЗМЕРЫ (бэкенд отдает список строк) */}
 			{filters.sizes && filters.sizes.length > 0 && (
 				<FilterSection title="Размеры (EU)">
-					<div className={styles.checkboxList}>
+					<div className={styles.sizeGrid}>
 						{filters.sizes.map((size) => (
-							<label key={size} className={styles.checkboxLabel}>
+							<label key={size} className={styles.sizeTile}>
 								<input
 									type="checkbox"
+									className={styles.hiddenCheckbox}
 									checked={getActiveList('sizes').includes(size)}
 									onChange={() => toggleFilter('sizes', size)}
 								/>
-								<span>{size}</span>
+								<span className={styles.sizeButton}>{size}</span>
 							</label>
 						))}
 					</div>
@@ -183,10 +185,10 @@ const CatalogSidebar = ({ filters }) => {
 									type="button"
 									className={`${styles.colorItem} ${isActive ? styles.active : ''}`}
 									onClick={() => toggleFilter('colors', color.slug)}
-									// title={color.name} // Нативный тултип браузера при наведении
+									title={color.name} // Нативный тултип браузера при наведении
 								>
 									<span className={styles.colorCircle} style={{ background: bgStyle }} />
-									<span className={styles.colorName}>{color.name}</span>
+									{/* <span className={styles.colorName}>{color.name}</span> */}
 								</button>
 							)
 						})}
@@ -194,9 +196,12 @@ const CatalogSidebar = ({ filters }) => {
 				</FilterSection>
 			)}
 
+			{hasActiveFilters && <hr className={styles.divider} />}
+
 			{/* КНОПКА СБРОСА */}
 			{hasActiveFilters && (
 				<button className={styles.resetButton} onClick={handleReset}>
+					<CrossIcon />
 					Сбросить все фильтры
 				</button>
 			)}

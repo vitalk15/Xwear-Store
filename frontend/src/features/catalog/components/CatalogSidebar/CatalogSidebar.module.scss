@@ -13,7 +13,7 @@
 .divider {
 	border: none;
 	border-top: 1px solid #eaeaea;
-	margin: 25px 0;
+	margin: 30px 0;
 }
 
 /* --- Accordion (Filter Section) --- */
@@ -63,115 +63,7 @@
 	margin-top: 20px;
 }
 
-/* --- Списки чекбоксов --- */
-.checkboxList {
-	display: flex;
-	flex-direction: column;
-	gap: 18px;
-}
-
-/* Блок со скроллом для брендов */
-.scrollable {
-	max-height: (5 * 42px) - 18px; // 42px = 24px (высота чекбокса) + 18px (gap)
-	overflow-y: auto;
-	padding-right: 20px;
-	margin-right: 2px;
-
-	/* Кастомный скроллбар */
-	&::-webkit-scrollbar {
-		width: 4px;
-	}
-	&::-webkit-scrollbar-track {
-		background: #e1e1e1;
-		border-radius: 4px;
-	}
-	&::-webkit-scrollbar-thumb {
-		background: $color-black;
-		border-radius: 4px;
-	}
-}
-
-.checkboxLabel {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	cursor: pointer;
-	font-size: 13px;
-	font-weight: 400;
-	color: #20282f;
-	user-select: none;
-	line-height: 1.5;
-	transition: color 0.18s ease;
-
-	&:hover {
-		.customCheckbox {
-			background-color: #f5f5f7;
-		}
-
-		.brandName {
-			color: #000000;
-		}
-	}
-}
-
-// Скрываем нативный инпут, сохраняя его в DOM для доступности
-.hiddenCheckbox {
-	position: absolute;
-	opacity: 0;
-	width: 0;
-	height: 0;
-	margin: 0;
-	pointer-events: none;
-
-	// Стиль при фокусировке с клавиатуры
-	// &:focus-visible + .customCheckbox {
-	// 	outline: 2px solid #111111;
-	// 	outline-offset: 2px;
-	// }
-
-	// Состояние: Включено (Checked)
-	&:checked {
-		& + .customCheckbox {
-			background-color: $color-blue;
-
-			.checkmark {
-				opacity: 1;
-				transform: scale(1);
-			}
-		}
-
-		~ .brandName {
-			font-weight: 700;
-		}
-	}
-}
-
-// Кастомный квадрат чекбокса
-.customCheckbox {
-	flex-shrink: 0;
-	width: 24px;
-	height: 24px;
-	border-radius: 3px;
-	background-color: #f8fafb;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: background-color 0.18s ease;
-}
-
-// Галочка внутри чекбокса
-.checkmark {
-	width: 10px;
-	height: 8px;
-	color: #ffffff; // Цвет галочки на темном фоне
-	opacity: 0;
-	transform: scale(0.6);
-	transition:
-		opacity 0.18s ease,
-		transform 0.18s ease;
-}
-
-/* --- Фильтр цены --- */
+/* --- ФИЛЬТР ЦЕНЫ --- */
 
 .priceFilterWrapper {
 	display: flex;
@@ -285,29 +177,166 @@
 	}
 }
 
-/* --- Кнопка сброса --- */
-.resetButton {
-	margin-top: 30px;
-	padding: 12px;
-	background-color: #f5f5f5;
-	color: #1a1a1a;
-	border: 1px solid #eaeaea;
-	border-radius: 6px;
-	font-size: 14px;
-	font-weight: 500;
+/* --- ФИЛЬТР ЦЕНЫ --- */
+/* --- Списки чекбоксов --- */
+.checkboxList {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+/* Блок со скроллом для брендов */
+.scrollable {
+	max-height: (5 * 42px) - 18px; // 42px = 24px (высота чекбокса) + 18px (gap)
+	overflow-y: auto;
+	padding-right: 20px;
+	margin-right: 2px;
+
+	/* Кастомный скроллбар */
+	&::-webkit-scrollbar {
+		width: 4px;
+	}
+	&::-webkit-scrollbar-track {
+		background: #e1e1e1;
+		border-radius: 4px;
+	}
+	&::-webkit-scrollbar-thumb {
+		background: $color-black;
+		border-radius: 4px;
+	}
+}
+
+.checkboxLabel {
+	display: flex;
+	align-items: center;
+	gap: 10px;
 	cursor: pointer;
-	transition: all 0.2s ease;
+	font-size: 13px;
+	font-weight: 400;
+	color: #20282f;
+	user-select: none;
+	line-height: 1.5;
+	transition: color 0.18s ease;
 
 	&:hover {
-		background-color: #e5e5e5;
+		.customCheckbox {
+			background-color: #eaeaec;
+		}
+
+		.brandName {
+			color: #000000;
+		}
+	}
+}
+
+// Скрываем нативный инпут, сохраняя его в DOM для доступности
+.hiddenCheckbox {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+	margin: 0;
+	pointer-events: none;
+
+	// Стиль при фокусировке с клавиатуры
+	// &:focus-visible + .customCheckbox {
+	// 	outline: 2px solid #111111;
+	// 	outline-offset: 2px;
+	// }
+
+	// Состояние: Включено (Checked)
+	&:checked {
+		& + .customCheckbox {
+			background-color: $color-blue;
+
+			.checkmark {
+				opacity: 1;
+				transform: scale(1);
+			}
+		}
+
+		~ .brandName {
+			font-weight: 700;
+		}
+
+		& + .sizeButton {
+			background-color: $color-blue;
+			color: #ffffff;
+			border: 1px solid transparent;
+		}
+	}
+}
+
+// Кастомный квадрат чекбокса
+.customCheckbox {
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	border-radius: 3px;
+	background-color: #f8fafb;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background-color 0.18s ease;
+}
+
+// Галочка внутри чекбокса
+.checkmark {
+	width: 10px;
+	height: 8px;
+	color: #ffffff; // Цвет галочки на темном фоне
+	opacity: 0;
+	transform: scale(0.6);
+	transition:
+		opacity 0.18s ease,
+		transform 0.18s ease;
+}
+
+/* --- ФИЛЬТР РАЗМЕРОВ --- */
+// Сетка из плашек размеров
+.sizeGrid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr); // 3 одинаковых колонки
+	gap: 10px;
+}
+
+.sizeTile {
+	display: block;
+	cursor: pointer;
+	user-select: none;
+}
+
+// Визуальная плашка размера
+.sizeButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 36px;
+	// padding: 0 6px;
+	padding: 8px 10px;
+	background-color: #ffffff;
+	// border: 1px solid transparent;
+	border: 1px solid #efefef;
+	border-radius: 4px;
+	font-size: 13px;
+	font-weight: 600;
+	color: $color-black;
+
+	transition:
+		background-color 0.18s ease,
+		color 0.18s ease,
+		border-color 0.18s ease;
+
+	&:hover {
+		background-color: #f2f2f3;
 	}
 }
 
 /* --- ФИЛЬТР ЦВЕТОВ --- */
 .colorGrid {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr); // 3 колонки, как на макете
-	gap: 20px 12px; // 20px между строками, 12px между колонками
+	grid-template-columns: repeat(5, 1fr);
+	gap: 20px 10px; // 20px между строками, 10px между колонками
 }
 
 .colorItem {
@@ -328,15 +357,15 @@
 
 	/* Активное (выбранное) состояние */
 	&.active .colorCircle {
-		outline: 2px solid #1a1a1a;
-		outline-offset: 2px; // Отступ обводки от самого кружка
+		outline: 1px solid #5c5c68;
+		outline-offset: 3px; // Отступ обводки от самого кружка
 		transform: scale(1.05);
 	}
 }
 
 .colorCircle {
-	width: 27px;
-	height: 27px;
+	width: 26px;
+	height: 26px;
 	border-radius: 50%;
 	display: block;
 	transition: all 0.2s ease;
@@ -345,14 +374,36 @@
 }
 
 .colorName {
-	font-size: 13px;
+	font-size: 12px;
 	color: #20282f;
 	text-align: center;
 	font-weight: 400;
-	line-height: 1.5;
+	line-height: 1;
 	/* Если название цвета очень длинное, обрезаем его троеточием */
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* --- Кнопка сброса --- */
+.resetButton {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 10px;
+	padding: 12px;
+	background-color: #ffffff;
+	color: $color-black;
+	border: 1px solid #e6e7eb;
+	border-radius: 5px;
+	font-size: 11px;
+	font-weight: 800;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: all 0.2s ease;
+
+	&:hover {
+		background-color: #efeff0;
+	}
 }
