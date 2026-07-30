@@ -29,7 +29,7 @@
 		background: transparent;
 		font-size: 14px;
 		font-weight: 600;
-		color: #121214;
+		color: $color-black;
 		cursor: pointer;
 		border-radius: 4px;
 		transition: all 0.2s ease;
@@ -48,7 +48,7 @@
 		background: transparent;
 		border: none;
 		font-size: 20px;
-		color: #121214;
+		color: $color-black;
 		padding-inline: 12px;
 		cursor: pointer;
 		transition: opacity 0.2s ease;

@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
+import { ArrowLeftIcon, ArrowRightIcon } from './Icons'
 import styles from './Pagination.module.scss'
 
 const Pagination = ({ totalPages }) => {
@@ -49,7 +50,7 @@ const Pagination = ({ totalPages }) => {
 				disabled={currentPage === 1}
 				onClick={() => handlePageChange(currentPage - 1)}
 			>
-				&larr;
+				<ArrowLeftIcon />
 			</button>
 
 			{/* Список страниц */}
@@ -81,7 +82,7 @@ const Pagination = ({ totalPages }) => {
 				disabled={currentPage === totalPages}
 				onClick={() => handlePageChange(currentPage + 1)}
 			>
-				&rarr;
+				<ArrowRightIcon />
 			</button>
 		</div>
 	)
