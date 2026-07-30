@@ -62,6 +62,16 @@
 	justify-content: space-between; // Распределяем карточки
 }
 
+.sidebar {
+	// flex: 0 0 320px; // Жесткая ширина сайдбара (flex-grow: 0 - элемент не будет увеличиваться, flex-shrink: 0 - не будет сжиматься, flex-basis: 320px)
+	width: 23.5294cqw;
+	max-width: 320px;
+	min-width: 300px;
+	border-radius: $border-radius;
+	border: 1px solid #e6e7eb;
+	padding: 25px;
+}
+
 /* --- СКЕЛЕТОНЫ --- */
 
 .breadcrumbsSkeleton {
@@ -93,12 +103,12 @@
 .sidebarSkeleton {
 	display: flex;
 	flex-direction: column;
-	gap: 20px;
+	gap: 60px;
 }
 
 .filterBlockSkeleton {
 	@include skeleton-shimmer-light;
 	height: 150px; // Имитация одного блока фильтров (например, по брендам)
 	width: 100%;
-	border-radius: 8px;
+	border-radius: 3px;
 }

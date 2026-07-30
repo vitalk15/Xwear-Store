@@ -43,12 +43,15 @@ const CatalogSidebar = ({ filters }) => {
 
 	// Сброс всех фильтров
 	const handleReset = () => {
+		// Получаем get-параметры из url
 		const newParams = new URLSearchParams(searchParams)
 		// Удаляем все параметры, связанные с фильтрами
 		const filterKeys = ['brands', 'colors', 'sizes', 'min_price', 'max_price']
 		filterKeys.forEach((key) => newParams.delete(key))
 
+		// Сбрасываем страницу на первую
 		newParams.delete('page')
+		// Устанавливаем новые get-параметры в url
 		setSearchParams(newParams)
 	}
 

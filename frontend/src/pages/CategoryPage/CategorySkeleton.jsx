@@ -17,6 +17,7 @@ const CategorySkeleton = () => {
 						<div className={styles.filterBlockSkeleton} />
 						<div className={styles.filterBlockSkeleton} />
 						<div className={styles.filterBlockSkeleton} />
+						<div className={styles.filterBlockSkeleton} />
 					</div>
 				</aside>
 
