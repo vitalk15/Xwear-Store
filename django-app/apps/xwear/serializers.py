@@ -35,14 +35,15 @@ class CategorySerializer(serializers.ModelSerializer):
 
     # рекурсивная сериализация активных дочерних элементов (до 300-500 категорий)
     def get_children(self, obj):
-        # get_children() в MPTT при использовании get_cached_trees
-        # берет данные из кэша объекта, а не из БД
-        if obj.is_leaf_node():
-            return []
+        # if obj.is_leaf_node():
+        #     return []
 
-        # Если дерево было кэшировано через get_cached_trees,
-        # этот цикл не будет делать запросов к БД
+        # get_children() в MPTT при использовании get_cached_trees
+        # берет данные из кэша объекта (_cached_children), не делая запросов в БД
         children = [child for child in obj.get_children() if child.is_active]
+        if not children:
+            return []
+        
         serializer = CategorySerializer(children, many=True, context=self.context)
         return serializer.data
 

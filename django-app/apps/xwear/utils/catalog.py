@@ -4,6 +4,34 @@ import random
 from django.db.models import Prefetch, Min, Max, Q
 
 
+def prune_empty_categories(nodes):
+    """
+    Рекурсивно очищает дерево категорий в памяти.
+    Оставляет категорию, если:
+    1. У нее есть хотя бы 1 активный товар.
+    2. ИЛИ у нее есть хотя бы одна непустая подкатегория.
+    """
+    valid_nodes = []
+
+    for node in nodes:
+        # Рекурсивно фильтруем дочерние категории
+        cached_children = getattr(node, '_cached_children', [])
+        valid_children = prune_empty_categories(cached_children)
+
+        # Перезаписываем кэш дочерних элементов отфильтрованным списком
+        node._cached_children = valid_children
+
+        # Проверяем, есть ли прямые активные товары у текущей категории
+        has_direct_products = getattr(node, 'products_count', 0) > 0
+        has_valid_children = len(valid_children) > 0
+
+        # Если категория не пустая сам по себе или имеет непустые подкатегории — оставляем
+        if has_direct_products or has_valid_children:
+            valid_nodes.append(node)
+
+    return valid_nodes
+
+
 # Собирает только доступные значения для сайдбара (бренды, размеры, диапазон цен, цвета)
 def get_category_sidebar_filters(categories, query_params):
     # from ..models import ProductVariant, ProductSize, Brand, Color
