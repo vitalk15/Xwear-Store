@@ -38,6 +38,9 @@ const CategoryContent = ({ categoryId }) => {
 	// 4. Вытаскиваем данные от Django
 	const { results: products, count, category: catData, filters } = data
 
+	// Флаг: категория абсолютно пустая сама по себе
+	const isCategoryEmpty = count === 0
+
 	// Вычисляем общее количество страниц для компонента Pagination
 	const totalPages = Math.ceil(count / limit)
 
@@ -69,30 +72,45 @@ const CategoryContent = ({ categoryId }) => {
 
 			<div className={styles.layout}>
 				{/* ЛЕВЫЙ БЛОК: Сайдбар */}
-				<CatalogSidebar filters={filters} categoryId={categoryId} />
+				{/* Показываем сайдбар ТОЛЬКО если категория не пустая */}
+				{!isCategoryEmpty && <CatalogSidebar filters={filters} categoryId={categoryId} />}
 
 				{/* ПРАВЫЙ БЛОК: Сетка товаров, сортировка и пагинация */}
 				<section className={styles.main}>
 					<div className={styles.header}>
 						<div className={styles.titleRow}>
 							<h1 className={styles.title}>{getPageTitle()}</h1>
-							<div className={styles.sortPlaceholder}>
-								Сортировать:
-								<SortDropdown />
-							</div>
+							{/* Сортировку тоже скрываем, если товаров вообще нет */}
+							{!isCategoryEmpty && (
+								<div className={styles.sortPlaceholder}>
+									Сортировать:
+									<SortDropdown />
+								</div>
+							)}
 						</div>
 						<span className={styles.count}>
 							{count} {productWord}
 						</span>
 					</div>
 
-					<div className={styles.grid}>
-						{products.map((product) => (
-							<ProductCard key={product.id} product={product} />
-						))}
-					</div>
-
-					<Pagination totalPages={totalPages} />
+					{/* КОНТЕНТНАЯ ЧАСТЬ */}
+					{count > 0 ? (
+						// 1. Если товары есть — рендерим сетку
+						<>
+							<div className={styles.grid}>
+								{products.map((product) => (
+									<ProductCard key={product.id} product={product} />
+								))}
+							</div>
+							<Pagination totalPages={totalPages} />
+						</>
+					) : (
+						// 2. Если категория пустая
+						<div className={styles.emptyState}>
+							<h2>В этой категории пока нет товаров</h2>
+							<p>Мы уже работаем над пополнением ассортимента!</p>
+						</div>
+					)}
 				</section>
 			</div>
 		</>
