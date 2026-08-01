@@ -70,14 +70,14 @@
 	/* Скрываем меню по умолчанию */
 	opacity: 0;
 	visibility: hidden;
-	transition: opacity 0.2s ease;
+	transition: opacity 0.3s ease;
 }
 
 .dropdown {
 	display: flex;
 	gap: 46px;
 	transform: translateY(10px);
-	transition: transform 0.2s ease;
+	transition: transform 0.3s ease;
 	background-color: $color-black;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 3px;
