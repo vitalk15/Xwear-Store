@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import styles from './CatalogSidebar.module.scss'
+import styles from '../CatalogSidebar.module.scss'
 
 const PriceFilter = ({ minBound = 0, maxBound = 100000, urlMin, urlMax, onChange }) => {
 	// 1. Если в URL нет значений, инициализируем пустой строкой '',

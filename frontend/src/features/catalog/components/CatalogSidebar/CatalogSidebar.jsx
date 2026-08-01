@@ -1,13 +1,40 @@
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import FilterSection from './FilterSection'
-import PriceFilter from './PriceFilter'
+import FilterSection from './FiltersSidebar/FilterSection'
+import PriceFilter from './FiltersSidebar/PriceFilter'
+import BrandFilter from './FiltersSidebar/BrandFilter'
+import SizeFilter from './FiltersSidebar/SizeFilter'
+import ColorFilter from './FiltersSidebar/ColorFilter'
 import { CrossIcon } from './Icons'
 import styles from './CatalogSidebar.module.scss'
 
-const CatalogSidebar = ({ filters }) => {
+const CatalogSidebar = ({ filters, categoryId }) => {
 	const [searchParams, setSearchParams] = useSearchParams()
 
-	// --- Хелперы для работы с URL ---
+	// Проверяем, есть ли хотя бы один активный фильтр
+	const hasActiveFilters = ['brands', 'colors', 'sizes', 'min_price', 'max_price'].some(
+		(key) => searchParams.has(key),
+	)
+
+	// --- ЛОГИКА КЭШИРОВАНИЯ БАЗОВЫХ ФИЛЬТРОВ ---
+	const [baseFilters, setBaseFilters] = useState(filters)
+
+	// Создаем трекер, чтобы понимать, когда изменилась категория или сбросились фильтры
+	const [prevTracker, setPrevTracker] = useState({ categoryId, hasActiveFilters })
+
+	// Обновляем стейт прямо во время рендера
+	if (
+		prevTracker.categoryId !== categoryId || // Если сменили категорию
+		(prevTracker.hasActiveFilters && !hasActiveFilters) // Если нажали "Сбросить все фильтры"
+	) {
+		setPrevTracker({ categoryId, hasActiveFilters })
+		setBaseFilters(filters)
+	} else if (prevTracker.hasActiveFilters !== hasActiveFilters) {
+		// Просто синхронизируем трекер, когда пользователь начал выбирать фильтры
+		setPrevTracker({ categoryId, hasActiveFilters })
+	}
+
+	// --- ХЕЛПЕРЫ ДЛЯ РАБОТЫ С URL ---
 
 	// Получить текущие выбранные значения в виде массива
 	const getActiveList = (paramName) => {
@@ -55,9 +82,43 @@ const CatalogSidebar = ({ filters }) => {
 		setSearchParams(newParams)
 	}
 
+	// --- ПОДГОТОВКА ДАННЫХ С ФЛАГОМ DISABLED ---
+	// Функция проверяет, есть ли элемент в текущем (урезанном) ответе бэкенда
+	const checkIsDisabled = (filterKey, slugOrValue) => {
+		if (!filters || !filters[filterKey]) return true // Если бэкенд вообще не прислал этот блок
+		if (filterKey === 'sizes') {
+			return !filters.sizes.includes(slugOrValue)
+		}
+		return !filters[filterKey].some((item) => item.slug === slugOrValue)
+	}
+
+	// Мапим базовые фильтры, добавляя каждому флаг disabled
+	const brandsWithDisabled =
+		baseFilters?.brands?.map((brand) => ({
+			...brand,
+			disabled: checkIsDisabled('brands', brand.slug),
+		})) || []
+
+	const sizesWithDisabled =
+		baseFilters?.sizes?.map((size) => ({
+			value: size,
+			label: size,
+			disabled: checkIsDisabled('sizes', size),
+		})) || []
+
+	const colorsWithDisabled =
+		baseFilters?.colors?.map((color) => ({
+			...color,
+			disabled: checkIsDisabled('colors', color.slug),
+		})) || []
+
 	// Читаем текущие значения цен из URL
+
 	const minBound = filters.price_range?.min ?? 0
 	const maxBound = filters.price_range?.max ?? 100000
+
+	// const minBound = baseFilters?.price_range?.min ?? 0
+	// const maxBound = baseFilters?.price_range?.max ?? 100000
 
 	const urlMinParam = searchParams.get('min_price')
 	const urlMaxParam = searchParams.get('max_price')
@@ -87,13 +148,10 @@ const CatalogSidebar = ({ filters }) => {
 		setSearchParams(newParams, { replace: true })
 	}
 
-	// Проверяем, есть ли хотя бы один активный фильтр, чтобы показать кнопку сброса
-	const hasActiveFilters = ['brands', 'colors', 'sizes', 'min_price', 'max_price'].some(
-		(key) => searchParams.has(key),
-	)
-
+	// !!! Todo: заменить на скелетон?
 	// Защита: если данные фильтров еще не загрузились
-	if (!filters) return <aside className={styles.sidebar}>Загрузка фильтров...</aside>
+	// if (!filters) return <aside className={styles.sidebar}>Загрузка фильтров...</aside>
+	if (!baseFilters) return <aside className={styles.sidebar}>Загрузка фильтров...</aside>
 
 	return (
 		<aside className={styles.sidebar}>
@@ -111,91 +169,47 @@ const CatalogSidebar = ({ filters }) => {
 			<hr className={styles.divider} />
 
 			{/* 2. ФИЛЬТР: БРЕНДЫ (со скроллом) */}
-			{filters.brands && filters.brands.length > 0 && (
+			{brandsWithDisabled.length > 0 && (
+				// {filters.brands && filters.brands.length > 0 && (
 				<FilterSection title="Бренды">
-					<div className={`${styles.checkboxList} ${styles.scrollable}`}>
-						{filters.brands.map((brand) => (
-							<label key={brand.slug} className={styles.checkboxLabel}>
-								{/* Нативный чекбокс скрыт, но сохраняет доступность для клавиатуры/скринридеров */}
-								<input
-									type="checkbox"
-									className={styles.hiddenCheckbox}
-									checked={getActiveList('brands').includes(brand.slug)}
-									onChange={() => toggleFilter('brands', brand.slug)}
-								/>
-								{/* Кастомный квадрат чекбокса с иконкой галочки */}
-								<span className={styles.customCheckbox}>
-									<svg
-										className={styles.checkmark}
-										viewBox="0 0 12 10"
-										fill="none"
-										xmlns="http://www.w3.org/2000/svg"
-									>
-										<path
-											d="M1.5 5L4.5 8L10.5 1.5"
-											stroke="currentColor"
-											strokeWidth="2"
-											strokeLinecap="round"
-											strokeLinejoin="round"
-										/>
-									</svg>
-								</span>
-								<span className={styles.brandName}>{brand.name}</span>
-							</label>
-						))}
-					</div>
+					<BrandFilter
+						// brands={filters.brands}
+						brands={brandsWithDisabled}
+						selectedBrands={getActiveList('brands')}
+						onToggle={(value) => toggleFilter('brands', value)}
+					/>
 				</FilterSection>
 			)}
 
-			{filters.brands && filters.brands.length > 0 && <hr className={styles.divider} />}
+			{/* {filters.brands && filters.brands.length > 0 && <hr className={styles.divider} />} */}
+			{brandsWithDisabled.length > 0 && <hr className={styles.divider} />}
 
 			{/* 3. ФИЛЬТР: РАЗМЕРЫ (бэкенд отдает список строк) */}
-			{filters.sizes && filters.sizes.length > 0 && (
+			{sizesWithDisabled.length > 0 && (
+				// {filters.sizes && filters.sizes.length > 0 && (
 				<FilterSection title="Размеры (EU)">
-					<div className={styles.sizeGrid}>
-						{filters.sizes.map((size) => (
-							<label key={size} className={styles.sizeTile}>
-								<input
-									type="checkbox"
-									className={styles.hiddenCheckbox}
-									checked={getActiveList('sizes').includes(size)}
-									onChange={() => toggleFilter('sizes', size)}
-								/>
-								<span className={styles.sizeButton}>{size}</span>
-							</label>
-						))}
-					</div>
+					<SizeFilter
+						// sizes={filters.sizes}
+						sizes={sizesWithDisabled}
+						selectedSizes={getActiveList('sizes')}
+						onToggle={(value) => toggleFilter('sizes', value)}
+					/>
 				</FilterSection>
 			)}
 
-			{filters.sizes && filters.sizes.length > 0 && <hr className={styles.divider} />}
+			{/* {filters.sizes && filters.sizes.length > 0 && <hr className={styles.divider} />} */}
+			{sizesWithDisabled.length > 0 && <hr className={styles.divider} />}
 
 			{/* 4. ФИЛЬТР: ЦВЕТА */}
-			{filters.colors && filters.colors.length > 0 && (
+			{colorsWithDisabled.length > 0 && (
+				// {filters.colors && filters.colors.length > 0 && (
 				<FilterSection title="Цвет">
-					<div className={styles.colorGrid}>
-						{filters.colors.map((color) => {
-							const isActive = getActiveList('colors').includes(color.slug)
-
-							// Логика формирования фона (один цвет или градиент из двух)
-							const bgStyle = color.hex_code_2
-								? `linear-gradient(135deg, ${color.hex_code} 50%, ${color.hex_code_2} 50%)`
-								: color.hex_code || '#ffffff'
-
-							return (
-								<button
-									key={color.slug}
-									type="button"
-									className={`${styles.colorItem} ${isActive ? styles.active : ''}`}
-									onClick={() => toggleFilter('colors', color.slug)}
-									title={color.name} // Нативный тултип браузера при наведении
-								>
-									<span className={styles.colorCircle} style={{ background: bgStyle }} />
-									{/* <span className={styles.colorName}>{color.name}</span> */}
-								</button>
-							)
-						})}
-					</div>
+					<ColorFilter
+						// colors={filters.colors}
+						colors={colorsWithDisabled}
+						selectedColors={getActiveList('colors')}
+						onToggle={(value) => toggleFilter('colors', value)}
+					/>
 				</FilterSection>
 			)}
 

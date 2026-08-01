@@ -1,7 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { useCategoryProducts } from '@/features/catalog/hooks/useCategoryProducts'
 import { getDeclension } from '@/shared/utils/declensionWords'
-import { ChevronDownIcon } from './Icons'
 import { CATALOG_ITEMS_PER_PAGE } from '@/shared/constants/pagination'
 import ProductCard from '@/features/catalog/components/ProductCard'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
@@ -70,7 +69,7 @@ const CategoryContent = ({ categoryId }) => {
 
 			<div className={styles.layout}>
 				{/* ЛЕВЫЙ БЛОК: Сайдбар */}
-				<CatalogSidebar filters={filters} />
+				<CatalogSidebar filters={filters} categoryId={categoryId} />
 
 				{/* ПРАВЫЙ БЛОК: Сетка товаров, сортировка и пагинация */}
 				<section className={styles.main}>
@@ -80,7 +79,6 @@ const CategoryContent = ({ categoryId }) => {
 							<div className={styles.sortPlaceholder}>
 								Сортировать:
 								<SortDropdown />
-								{/* <ChevronDownIcon /> */}
 							</div>
 						</div>
 						<span className={styles.count}>

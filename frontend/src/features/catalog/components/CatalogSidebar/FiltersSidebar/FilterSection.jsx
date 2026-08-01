@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import styles from './CatalogSidebar.module.scss'
+import styles from '../CatalogSidebar.module.scss'
 
 const FilterSection = ({ title, children, defaultOpen = true }) => {
 	const [isOpen, setIsOpen] = useState(defaultOpen)

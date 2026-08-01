@@ -206,6 +206,8 @@
 	}
 }
 
+/* --- ФИЛЬТР БРЕНДОВ --- */
+
 .checkboxLabel {
 	display: flex;
 	align-items: center;
@@ -292,6 +294,21 @@
 		transform 0.18s ease;
 }
 
+.checkboxLabel.disabled {
+	opacity: 0.38;
+	cursor: not-allowed;
+	pointer-events: none; // Предотвращает клики и ховер-эффекты
+
+	.brandName {
+		color: #888888;
+		font-weight: 400 !important;
+	}
+
+	.customCheckbox {
+		background-color: #f0f0f0;
+	}
+}
+
 /* --- ФИЛЬТР РАЗМЕРОВ --- */
 // Сетка из плашек размеров
 .sizeGrid {
@@ -332,11 +349,24 @@
 	}
 }
 
+.sizeTile.disabled {
+	cursor: not-allowed;
+	pointer-events: none;
+
+	.sizeButton {
+		background-color: #f2f2f2;
+		color: #b0b0b0;
+		border-color: transparent;
+		text-decoration: line-through; // Перечеркнутый текст придаёт наглядности отсутствию размера
+		opacity: 0.6;
+	}
+}
+
 /* --- ФИЛЬТР ЦВЕТОВ --- */
 .colorGrid {
 	display: grid;
-	grid-template-columns: repeat(5, 1fr);
-	gap: 20px 10px; // 20px между строками, 10px между колонками
+	grid-template-columns: repeat(3, 1fr);
+	gap: 20px 12px; // 20px между строками, 12px между колонками
 }
 
 .colorItem {
@@ -344,6 +374,7 @@
 	flex-direction: column;
 	align-items: center;
 	gap: 8px;
+	min-width: 0;
 	background: none;
 	border: none;
 	padding: 0;
@@ -356,10 +387,16 @@
 	}
 
 	/* Активное (выбранное) состояние */
-	&.active .colorCircle {
-		outline: 1px solid #5c5c68;
-		outline-offset: 3px; // Отступ обводки от самого кружка
-		transform: scale(1.05);
+	&.active {
+		.colorCircle {
+			outline: 1px solid #5c5c68;
+			outline-offset: 3px; // Отступ обводки от самого кружка
+			transform: scale(1.05);
+		}
+
+		.colorName {
+			font-weight: 700;
+		}
 	}
 }
 
@@ -378,7 +415,7 @@
 	color: #20282f;
 	text-align: center;
 	font-weight: 400;
-	line-height: 1;
+	line-height: 1.5;
 	/* Если название цвета очень длинное, обрезаем его троеточием */
 	max-width: 100%;
 	overflow: hidden;
@@ -386,7 +423,14 @@
 	white-space: nowrap;
 }
 
-/* --- Кнопка сброса --- */
+.colorItem.disabled {
+	opacity: 0.25;
+	cursor: not-allowed;
+	pointer-events: none; // Полностью отключаем hover эффекты
+	// filter: grayscale(80%); // Визуально обесцвечиваем недоступный цвет
+}
+
+/* --- КНОПКА СБРОСА --- */
 .resetButton {
 	display: flex;
 	justify-content: center;
