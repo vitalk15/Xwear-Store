@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import { useState } from 'react'
 import { useCategories } from '@/entities/category/hooks/useCategories'
 import { ChevronDownIcon } from '@/components/common/Header/Icons'
 import { STATIC_INFO_MENU } from '@/shared/constants/info-menu'
@@ -7,6 +8,26 @@ import styles from './Navigation.module.scss'
 
 const Navigation = () => {
 	const { data: categories = [] } = useCategories()
+	const location = useLocation()
+
+	// --- ЗАКРЫТИЕ ВЫПАДАЮЩЕГО МЕНЮ ПРИ ПЕРЕХОДЕ ---
+
+	// 1. Храним ID текущей наведенной категории
+	const [activeItemId, setActiveItemId] = useState(null)
+
+	// 2. Трекер для принудительного закрытия меню при смене URL
+	const currentUrl = location.pathname + location.search
+	const [prevUrl, setPrevUrl] = useState(currentUrl)
+
+	if (currentUrl !== prevUrl) {
+		setPrevUrl(currentUrl)
+		setActiveItemId(null) // Сбрасываем меню
+	}
+
+	// 3. Хэндлер для принудительного закрытия при клике на любую ссылку
+	const handleLinkClick = () => {
+		setActiveItemId(null)
+	}
 
 	// Объединяем динамические данные от сервера и нашу статику в один массив
 	const navMenu = [...categories, STATIC_INFO_MENU]
@@ -20,14 +41,22 @@ const Navigation = () => {
 						(child) => child.children?.length > 0,
 					)
 
+					const isOpen = activeItemId === item.id
+
 					return (
 						<li
 							key={item.id}
 							className={`${styles.navItem} ${item.is_clickable ? styles.clickable : ''}`}
+							onMouseEnter={() => setActiveItemId(item.id)}
+							onMouseLeave={() => setActiveItemId(null)}
 						>
 							{/* КОРНЕВАЯ КАТЕГОРИЯ */}
 							{item.is_clickable ? (
-								<Link to={getLinkPath(item, item)} className={styles.navLink}>
+								<Link
+									to={getLinkPath(item, item)}
+									className={styles.navLink}
+									onClick={handleLinkClick}
+								>
 									{item.name}
 								</Link>
 							) : (
@@ -37,7 +66,7 @@ const Navigation = () => {
 							{item.children?.length > 0 && <ChevronDownIcon />}
 
 							{/* ВЫПАДАЮЩЕЕ МЕНЮ */}
-							{item.children?.length > 0 && (
+							{item.children?.length > 0 && isOpen && (
 								<div className={styles.dropdownWrapper}>
 									<div
 										// className={`${styles.dropdown} ${!hasDeepChildren ? styles.dropdownSimple : ''}`}
@@ -51,6 +80,7 @@ const Navigation = () => {
 														<Link
 															to={getLinkPath(item, sub1)}
 															className={`${styles.dropdownItem} ${styles.columnTitle}`}
+															onClick={handleLinkClick}
 														>
 															{sub1.name}
 														</Link>
@@ -65,6 +95,7 @@ const Navigation = () => {
 																	<Link
 																		to={getLinkPath(item, sub2)}
 																		className={styles.dropdownItem}
+																		onClick={handleLinkClick}
 																	>
 																		{sub2.name}
 																	</Link>
@@ -83,6 +114,7 @@ const Navigation = () => {
 															<Link
 																to={getLinkPath(item, sub1)}
 																className={styles.dropdownItem}
+																onClick={handleLinkClick}
 															>
 																{sub1.name}
 															</Link>
