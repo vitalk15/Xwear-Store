@@ -5,7 +5,12 @@ const GlobalErrorModal = () => {
 	const { hasError, errorMessage, clearError } = useErrorStore()
 
 	// Если ошибки нет — ничего не рендерим
-	if (!hasError) return null
+	if (!hasError) {
+		document.body.classList.remove('modal-open')
+		return null
+	} else {
+		document.body.classList.add('modal-open')
+	}
 
 	const handleRetry = () => {
 		clearError() // Сбрасываем ошибку в Zustand

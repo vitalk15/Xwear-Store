@@ -1,15 +1,6 @@
 @use 'normalize';
 @use 'fonts';
 
-// body {
-// 	display: flex;
-// 	justify-content: center;
-// 	align-items: start;
-// 	min-height: 100vh;
-// 	font-family: 'RF Dewi Expanded', sans-serif;
-// 	background-color: #fff;
-// }
-
 #root {
 	display: flex;
 	flex-direction: column;
@@ -23,6 +14,10 @@ body {
 	font-family: 'RF Dewi Expanded', sans-serif;
 	background-color: #fff;
 	min-height: 100vh;
+}
+
+body.modal-open {
+	overflow: hidden;
 }
 
 .container {
