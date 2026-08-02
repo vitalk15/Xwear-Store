@@ -93,7 +93,7 @@ const CategoryContent = ({ categoryId }) => {
 						</span>
 					</div>
 
-					{/* КОНТЕНТНАЯ ЧАСТЬ */}
+					{/* Сетка товаров */}
 					{count > 0 ? (
 						// 1. Если товары есть — рендерим сетку
 						<>
@@ -102,6 +102,8 @@ const CategoryContent = ({ categoryId }) => {
 									<ProductCard key={product.id} product={product} />
 								))}
 							</div>
+
+							{/* Пагинация */}
 							<Pagination totalPages={totalPages} />
 						</>
 					) : (

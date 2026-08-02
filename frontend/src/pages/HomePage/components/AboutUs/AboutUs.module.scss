@@ -86,6 +86,7 @@
 		display: flex;
 		align-items: flex-start;
 		gap: 30px;
+		color: $color-black;
 
 		svg {
 			width: 50px;
@@ -94,7 +95,6 @@
 		}
 
 		.title {
-			color: $color-black;
 			font-size: 13px;
 			font-weight: 900;
 			line-height: 22px;

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowIcon } from './Icons'
+import ArrowIcon from '@/shared/icons/arrow.svg'
 import { useDocuments } from '@/entities/documents/hooks/useDocuments'
 import { apiClient } from '@/shared/api/apiClient'
 import styles from '@/components/common/Footer/Footer.module.scss'

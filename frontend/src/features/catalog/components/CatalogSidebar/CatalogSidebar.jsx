@@ -5,7 +5,7 @@ import PriceFilter from './FiltersSidebar/PriceFilter'
 import BrandFilter from './FiltersSidebar/BrandFilter'
 import SizeFilter from './FiltersSidebar/SizeFilter'
 import ColorFilter from './FiltersSidebar/ColorFilter'
-import { CrossIcon } from './Icons'
+import CrossIcon from '@/shared/icons/cross.svg'
 import styles from './CatalogSidebar.module.scss'
 
 const CatalogSidebar = ({ filters, categoryId }) => {

@@ -1,5 +1,7 @@
 import bgXwear from '@/assets/images/background-xwear.webp'
-import { BoxIcon, UserIcon, CheckIcon } from './Icons'
+import BoxIcon from '@/shared/icons/box.svg'
+import UsersIcon from '@/shared/icons/users.svg'
+import CheckIcon from '@/shared/icons/check.svg'
 import styles from './AboutUs.module.scss'
 
 const AboutUs = () => {
@@ -40,7 +42,7 @@ const AboutUs = () => {
 							</div>
 						</div>
 						<div className={styles.advantageItem}>
-							<UserIcon />
+							<UsersIcon />
 							<div>
 								<div className={styles.title}>Мы работаем без посредников</div>
 								<div className={styles.text}>

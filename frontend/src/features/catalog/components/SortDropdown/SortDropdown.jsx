@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import ArrowDownIcon from '@/shared/icons/arrow-down.svg'
 import styles from './SortDropdown.module.scss'
 
 const SORT_OPTIONS = [
@@ -53,21 +54,7 @@ const SortDropdown = () => {
 				onClick={() => setIsOpen(!isOpen)}
 			>
 				<span>{selectedOption.label}</span>
-				<svg
-					className={`${styles.arrowIcon} ${isOpen ? styles.open : ''}`}
-					width="12"
-					height="8"
-					viewBox="0 0 12 8"
-					fill="none"
-				>
-					<path
-						d="M1 1.5L6 6.5L11 1.5"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-				</svg>
+				<ArrowDownIcon className={`${styles.arrowIcon} ${isOpen ? styles.open : ''}`} />
 			</button>
 
 			{isOpen && (

@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useCategories } from '@/entities/category/hooks/useCategories'
-import { ChevronDownIcon } from '@/components/common/Header/Icons'
+// import { ChevronDownIcon } from '@/components/common/Header/Icons'
+import ChevronDownIcon from '@/shared/icons/arrow-down.svg'
 import { STATIC_INFO_MENU } from '@/shared/constants/info-menu'
 import { getLinkPath } from '@/shared/utils/getLinkPath'
 import styles from './Navigation.module.scss'
@@ -63,7 +64,9 @@ const Navigation = () => {
 								<span className={styles.navLink}>{item.name}</span>
 							)}
 
-							{item.children?.length > 0 && <ChevronDownIcon />}
+							{item.children?.length > 0 && (
+								<ChevronDownIcon className={styles.chevronDownIcon} />
+							)}
 
 							{/* ВЫПАДАЮЩЕЕ МЕНЮ */}
 							{item.children?.length > 0 && isOpen && (

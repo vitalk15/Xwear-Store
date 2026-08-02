@@ -48,8 +48,8 @@
 }
 
 .arrow {
-	width: 8px;
-	height: 5px;
+	// width: 8px;
+	// height: auto;
 	flex-shrink: 0;
 	color: #232323;
 	transition: transform 0.3s ease;
@@ -435,8 +435,9 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	line-height: 1;
 	gap: 10px;
-	padding: 12px;
+	padding: 16px 12px;
 	background-color: #ffffff;
 	color: $color-black;
 	border: 1px solid #e6e7eb;
@@ -446,6 +447,10 @@
 	text-transform: uppercase;
 	cursor: pointer;
 	transition: all 0.2s ease;
+
+	svg {
+		color: #2c2c2c;
+	}
 
 	&:hover {
 		background-color: #efeff0;

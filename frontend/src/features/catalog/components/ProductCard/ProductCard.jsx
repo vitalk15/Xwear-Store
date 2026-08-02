@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { StarIcon } from './Icons'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
+import StarIcon from '@/shared/icons/star.svg'
 import placeholderProduct from '@/assets/images/placeholder-product.webp'
 import styles from './ProductCard.module.scss'
 

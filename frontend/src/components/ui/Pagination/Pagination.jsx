@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
-import { ArrowLeftIcon, ArrowRightIcon } from './Icons'
+import ArrowLeftIcon from '@/shared/icons/arrow-left.svg'
+import ArrowRightIcon from '@/shared/icons/arrow-right.svg'
 import styles from './Pagination.module.scss'
 
 const Pagination = ({ totalPages }) => {

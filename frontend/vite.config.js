@@ -1,10 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import svgr from 'vite-plugin-svgr'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [react()], // подключает официальный плагин @vitejs/plugin-react (отвечает за JSX Transformation и Fast Refresh (HMR))
+	plugins: [
+		react(),
+		svgr({
+			svgrOptions: {
+				exportType: 'default', // позволяет писать import CrossIcon ... вместо import { ReactComponent as CrossIcon } ...
+				ref: true, // если нужно будет анимировать иконку через сложные библиотеки (например, Framer Motion или GSAP) - даёт доступ к DOM-элементу <svg>
+				svgo: false, // SVGO — это встроенный минификатор (оптимизатор) SVG-кода. Он удаляет из SVG лишние пробелы, комментарии и неиспользуемые теги. Часто бывает слишком агрессивным и может удалить или изменить то, что не следовало бы.
+				titleProp: true, // Добавляет иконке поддержку пропса title (если нужно для SEO и скринридеров)
+			},
+			include: '**/*.svg', // избавляет от необходимости писать суфикс ?react в импортах: import Icon from './icon.svg?react'
+		}),
+	], // подключает плагины: официальный плагин @vitejs/plugin-react (отвечает за JSX Transformation и Fast Refresh (HMR)), плагин для использования svg-иконок как компоненты
 	css: {
 		preprocessorOptions: {
 			scss: {

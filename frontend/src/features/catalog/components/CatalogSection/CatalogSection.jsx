@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import ProductCard from '../ProductCard'
 import { useCategoryProductsQuery } from '@/features/catalog/hooks/useCategoryProductsQuery'
-import { ArrowIcon } from './Icons'
+import ArrowIcon from '@/shared/icons/arrow.svg'
 import styles from './CatalogSection.module.scss'
 
 const CatalogSection = ({ title, categoryId }) => {

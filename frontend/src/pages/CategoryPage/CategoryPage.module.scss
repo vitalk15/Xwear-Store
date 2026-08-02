@@ -24,15 +24,12 @@
 }
 
 .sortPlaceholder {
+	display: flex;
+	align-items: center;
 	font-size: 13px;
 	color: $color-light_gray;
 	font-weight: 600;
 	line-height: 2.9;
-
-	svg {
-		stroke: $color-light_gray;
-		vertical-align: middle;
-	}
 }
 
 .count {
