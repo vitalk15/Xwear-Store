@@ -82,7 +82,7 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 				<>
 					<li>
 						<button className={styles.actionBtn} aria-label="Избранное">
-							<StarIcon />
+							<StarIcon className={styles.starIcon} />
 						</button>
 					</li>
 					<li>
@@ -98,7 +98,9 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 							<BagIcon />
 							<div className={styles.cartInfo}>
 								<span className={styles.cartPrice}>{cartTotalPrice}</span>
-								<span className={styles.cartBadge}>{cartTotalItems}</span>
+								<span className={styles.cartBadge}>
+									<span>{cartTotalItems}</span>
+								</span>
 							</div>
 						</button>
 					</li>

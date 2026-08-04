@@ -41,7 +41,7 @@ const ProductCard = ({ product }) => {
 					onClick={handleFavoriteClick}
 					aria-label="Добавить в избранное"
 				>
-					<StarIcon />
+					<StarIcon className={styles.starIcon} />
 				</button>
 
 				<Link to={frontend_url} className={styles.imageLink}>
