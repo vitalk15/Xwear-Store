@@ -5,7 +5,6 @@ import placeholderProduct from '@/assets/images/placeholder-product.webp'
 import styles from './ProductCard.module.scss'
 
 const ProductCard = ({ product }) => {
-	// const { id, naming, pricing, main_image, frontend_url, available_colors = [] } = product
 	const { id, naming, pricing, main_image, frontend_url } = product
 
 	// Безопасно извлекаем объект с миниатюрой

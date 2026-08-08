@@ -18,6 +18,11 @@
 	transition: color 0.2s ease;
 	padding: 16px 12px;
 
+	svg {
+		height: 18px;
+		width: auto;
+	}
+
 	.starIcon path {
 		stroke-width: 1.8;
 	}

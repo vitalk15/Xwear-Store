@@ -162,8 +162,6 @@ class ProductListSerializer(serializers.ModelSerializer):
                 "name": product.category.name,
                 "slug": product.category.slug,
             },
-            # для заголовка вкладки в браузере
-            "full_title": obj.full_name,
         }
 
     def get_pricing(self, obj):
