@@ -13,13 +13,15 @@ const CatalogSection = ({ title, categoryId }) => {
 
 	if (products.length === 0) return null
 
+	// !!! Todo: Ссылка "Больше товаров" - переписать на динамический адрес (д.б. `/catalog/${categorySlug}`)
+
 	return (
 		<section className={styles.section}>
 			<div className="container">
 				{/* Обертка для заголовка и ссылки */}
 				<div className={styles.header}>
 					<h2 className={styles.title}>{title}</h2>
-					{/* Ссылка "Больше товаров". URL пока делаем шаблонным */}
+					{/* Ссылка "Больше товаров". URL пока делаем шаблонным  */}
 					<Link to={`/catalog/${categoryId}`} className={styles.moreLink}>
 						Больше товаров
 						<ArrowIcon />
