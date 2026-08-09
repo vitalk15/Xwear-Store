@@ -333,6 +333,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "sizes",
             "images",
             "composition",
+            "frontend_url",
         ]
 
 
