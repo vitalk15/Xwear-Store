@@ -5,7 +5,7 @@ const Slide = ({ slide }) => {
 	// Распаковываем данные из JSON
 	const {
 		title,
-		links = [],
+		links = [], // !!! Todo: от бэкенда в links.url приходят прямые абсолютные ссылки, переход по ним присходит с перезагрузкой приложения. Нужно это исправить
 		grid_layout = 'center_left',
 		content_width = 50,
 		text_color = 'dark',
