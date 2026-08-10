@@ -1,16 +1,26 @@
+import { useEffect } from 'react'
 import useErrorStore from '@/store/useErrorStore'
 import styles from './GlobalErrorModal.module.scss'
 
 const GlobalErrorModal = () => {
 	const { hasError, errorMessage, clearError } = useErrorStore()
 
+	// Блокировка прокрутки (гибридный подход с добавлением класса)
+	useEffect(() => {
+		if (hasError) {
+			document.body.style.overflow = 'hidden'
+		} else {
+			document.body.style.overflow = ''
+		}
+
+		// Очистка при размонтировании (на всякий случай)
+		return () => {
+			document.body.style.overflow = ''
+		}
+	}, [hasError])
+
 	// Если ошибки нет — ничего не рендерим
-	if (!hasError) {
-		document.body.classList.remove('modal-open')
-		return null
-	} else {
-		document.body.classList.add('modal-open')
-	}
+	if (!hasError) return null
 
 	const handleRetry = () => {
 		clearError() // Сбрасываем ошибку в Zustand
