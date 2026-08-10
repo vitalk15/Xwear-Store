@@ -1,0 +1,11 @@
+@use '@/assets/styles/mixins';
+
+.pageWrapper {
+	padding: 16px 0 80px;
+}
+
+.topSection {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 40px;
+}

@@ -22,7 +22,7 @@ const ProductCard = ({ product }) => {
 
 	const handleFavoriteClick = (e) => {
 		e.preventDefault() // Чтобы клик по звездочке не перекидывал на страницу товара
-		// TODO: Интегрировать Zustand store для проверки авторизации и добавления в избранное
+		// !!! TODO: Интегрировать Zustand store для проверки авторизации и добавления в избранное
 		console.log(`Клик по избранному для товара ${id}`)
 	}
 
