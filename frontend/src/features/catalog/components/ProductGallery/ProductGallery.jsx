@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Thumbs, FreeMode, Navigation } from 'swiper/modules'
 import StarIcon from '@/shared/icons/star.svg'
-// import placeholderProduct from '@/assets/images/placeholder-product.webp'
+import placeholderProduct from '@/assets/images/placeholder-product.webp'
 
 // Импорт базовых стилей Swiper
 import 'swiper/css'
@@ -47,9 +47,30 @@ const ProductGallery = ({ images = [] }) => {
 		console.log('Избранное переключено')
 	}
 
-	// !!! Todo: Заменить на заглушку
+	// Если изображения товара будут отсутствовать
 	if (!images || images.length === 0) {
-		return <div className={styles.noImage}>Изображения отсутствуют</div>
+		return (
+			<div className={styles.galleryContainer}>
+				<div className={styles.mainWrapper}>
+					<div className={styles.mainImageWrapper}>
+						<img
+							src={placeholderProduct}
+							alt="Изображение временно отсутствует"
+							className={styles.mainImage}
+						/>
+					</div>
+					{/* Оставляем иконку избранного даже без фото */}
+					<button
+						type="button"
+						className={styles.favoriteBtn}
+						onClick={handleFavoriteClick}
+						aria-label="Добавить в избранное"
+					>
+						<StarIcon className={styles.starIcon} />
+					</button>
+				</div>
+			</div>
+		)
 	}
 
 	return (
