@@ -1,0 +1,428 @@
+.infoWrapper {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+}
+
+/* 1. Заголовок */
+.title {
+	font-size: 31px;
+	font-weight: 900;
+	text-transform: uppercase;
+	margin-bottom: 30px;
+	line-height: 1.3;
+}
+
+/* 2. Сетка размеров */
+.titleSizeSection {
+	color: $color-dark_gray;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.4;
+	text-transform: uppercase;
+	margin-bottom: 14px;
+}
+
+.sizesSection {
+	margin-bottom: 34px;
+}
+
+.sizesGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+	gap: 12px;
+}
+
+// .sizeBtn {
+// 	display: flex;
+// 	flex-direction: column;
+// 	align-items: center;
+// 	justify-content: center;
+// 	padding: 10px;
+// 	box-shadow: inset 0 0 0 1px #e0e0e0;
+// 	border-radius: 4px;
+// 	background-color: #fff;
+// 	cursor: pointer;
+// 	// gap: 2px;
+// 	min-height: 60px;
+// 	transition:
+// 		background-color 0.2s ease,
+// 		box-shadow 0.2s ease;
+
+// 	// Защита от системных морганий и выделения текста при кликах
+// 	user-select: none;
+// 	-webkit-tap-highlight-color: transparent;
+
+// 	// Фиксируем режим сглаживания текста
+// 	-webkit-font-smoothing: antialiased;
+// 	-moz-osx-font-smoothing: grayscale;
+
+// 	// Убираем дефолтное поведение браузера
+// 	&:focus,
+// 	&:active {
+// 		outline: none;
+// 	}
+
+// 	// логическая изоляция элемента
+// 	contain: layout style;
+
+// 	// запрещает фону залезать под рамку
+// 	background-clip: padding-box;
+
+// 	&:hover:not(.unavailable):not(.active) {
+// 		box-shadow: inset 0 0 0 1px $color-blue;
+// 	}
+// }
+
+.sizeBtn {
+	position: relative; /* Необходимо для псевдоэлемента */
+	z-index: 1;
+	overflow: hidden; /* Чтобы фон не вылезал за скругленные углы */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 12px 10px;
+	gap: 3px;
+	box-shadow: inset 0 0 0 1px #e0e0e0;
+	border-radius: 4px;
+	background-color: #fff;
+	cursor: pointer;
+	// min-height: 60px;
+	transition: box-shadow 0.2s ease;
+
+	// Защита от системных морганий и выделения текста при кликах
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+
+	// Фиксируем режим сглаживания текста
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+
+	/* Создаем фон через псевдоэлемент */
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 0; /* Растягиваем на всю кнопку (top:0, left:0, right:0, bottom:0) */
+		background-color: $color-blue;
+		opacity: 0; /* По умолчанию скрыт */
+		z-index: -1; /* Помещаем ПОД текст */
+		transition: opacity 0.2s ease;
+	}
+
+	&:hover:not(.unavailable):not(.active) {
+		box-shadow: inset 0 0 0 1px $color-blue;
+	}
+}
+
+.sizeName,
+.regularPrice,
+.newPrice,
+.oldPrice {
+	transition: color 0.15s ease;
+}
+
+.sizeName {
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1;
+	color: $color-black;
+	pointer-events: none;
+}
+
+.priceBlock {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	pointer-events: none;
+	width: 100%;
+	min-height: 16px;
+}
+
+.regularPrice {
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1;
+	color: #7b7b7b;
+	pointer-events: none;
+	white-space: nowrap; /* Гарантирует, что цена не сожмется и не перенесется */
+
+	:global(.nbrb-icon) {
+		font-size: 16px;
+	}
+}
+
+.newPrice {
+	position: absolute;
+	top: -5px;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1;
+	color: #ff3333; /* Красная цена со скидкой */
+	white-space: nowrap; /* Гарантирует, что цена не сожмется и не перенесется */
+	pointer-events: none;
+
+	:global(.nbrb-icon) {
+		font-size: 16px;
+		font-weight: bold;
+	}
+}
+
+.oldPrice {
+	position: absolute;
+	top: 7px;
+	font-size: 13px;
+	color: #7b7b7b;
+	line-height: 1;
+	// text-decoration: line-through; /* Зачёркнутая цена */
+	white-space: nowrap; /* Гарантирует, что цена не сожмется и не перенесется */
+	pointer-events: none;
+
+	:global(.nbrb-icon) {
+		font-size: 16px;
+	}
+
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0; /* Растягиваем псевдоэлемент строго по ширине и высоте .oldPrice */
+
+		background-image: linear-gradient(
+			to top left,
+			transparent calc(50% - 1px),
+			#ff4d4f calc(50%),
+			transparent calc(50% + 1px)
+		);
+	}
+}
+
+/* Активное состояние кнопки размера */
+.active {
+	box-shadow: inset 0 0 0 1px $color-blue;
+
+	/* Плавно проявляем голубой фон */
+	&::before {
+		opacity: 1;
+	}
+
+	.sizeName,
+	.regularPrice,
+	.newPrice {
+		color: #fff;
+	}
+
+	.oldPrice {
+		color: rgba(255, 255, 255, 0.7);
+
+		&::after {
+			background-image: linear-gradient(
+				to top left,
+				transparent calc(50% - 1px),
+				rgba(255, 255, 255, 0.7) calc(50%),
+				transparent calc(50% + 1px)
+			);
+		}
+	}
+}
+
+/* Недоступный размер (крест-накрест) */
+.unavailable {
+	// opacity: 0.7;
+	cursor: not-allowed;
+	pointer-events: none; /* Запрещаем клики */
+	background-color: #f9f9f9;
+
+	/* Зачеркивание крест-накрест с помощью градиентов */
+	background-image:
+		linear-gradient(
+			to top left,
+			transparent calc(50% - 1px),
+			#d0d0d0 calc(50%),
+			transparent calc(50% + 1px)
+		),
+		linear-gradient(
+			to top right,
+			transparent calc(50% - 1px),
+			#d0d0d0 calc(50%),
+			transparent calc(50% + 1px)
+		);
+
+	.sizeName,
+	.regularPrice,
+	.newPrice,
+	.oldPrice {
+		color: #999;
+		opacity: 0.6;
+	}
+}
+
+/* 3. Блок цены и добавления в корзину */
+.actionBlock {
+	display: flex;
+	align-items: center;
+	margin-bottom: 64px;
+	gap: 60px;
+
+	@media (max-width: 576px) {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}
+
+.selectedPriceInfo {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	width: 22%;
+}
+
+.discountWrapper {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.actionFinalPrice {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 26px;
+	font-weight: 600;
+	color: #ff3333;
+	line-height: 1;
+
+	:global(.nbrb-icon) {
+		font-size: 30px;
+		font-weight: 600;
+		line-height: 1;
+	}
+}
+
+.actionRegularPrice {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 26px;
+	font-weight: 600;
+	color: #626262;
+	// color: #333;
+	line-height: 1;
+
+	:global(.nbrb-icon) {
+		font-size: 30px;
+		font-weight: 600;
+		line-height: 1;
+	}
+}
+
+.actionDiscountBadge {
+	background-color: #ff3333;
+	color: #fff;
+	font-size: 16px;
+	font-weight: 700;
+	padding: 3px 8px;
+	border-radius: 4px;
+}
+
+.actionSizeName {
+	font-size: 16px;
+	font-weight: 600;
+	// color: #666;
+	color: $color-dark_gray;
+	text-transform: uppercase;
+}
+
+.addToCartBtn {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+	background-color: $color-black;
+	color: #fff;
+	font-size: 13px;
+	font-weight: 800;
+	text-transform: uppercase;
+	line-height: 1;
+	padding: 24px 27px;
+	border: none;
+	border-radius: $border-radius;
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+
+	&:hover:not(:disabled) {
+		background-color: $color-blue;
+
+		.cartIcon {
+			transform: translateX(4px);
+		}
+	}
+
+	&:disabled {
+		background-color: #ccc;
+		cursor: not-allowed;
+	}
+}
+
+.cartIcon {
+	width: 6px;
+	height: auto;
+	transition: transform 0.2s ease;
+}
+
+/* 4. Другие цвета */
+.colorsSection {
+	display: flex;
+	align-items: center;
+	gap: 30px;
+}
+
+.colorsTitle {
+	font-size: 15px;
+	font-weight: 600;
+	text-transform: uppercase;
+	margin: 0 0 25px 0;
+	color: $color-dark_gray;
+}
+
+.colorsGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+	gap: 20px 10px;
+	flex-grow: 1;
+}
+
+.colorLink {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	text-decoration: none;
+
+	&:hover {
+		.colorCircle {
+			transform: scale(1.1);
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+		}
+	}
+}
+
+.colorCircle {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	border: 1px solid rgba(0, 0, 0, 0.15);
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+}
+
+.colorName {
+	font-size: 12px;
+	color: #666;
+	/* Если название цвета очень длинное, обрезаем его троеточием */
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

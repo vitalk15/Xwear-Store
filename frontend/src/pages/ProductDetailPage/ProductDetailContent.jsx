@@ -1,5 +1,6 @@
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import ProductGallery from '@/features/catalog/components/ProductGallery'
+import ProductInfo from '@/features/catalog/components/ProductInfo'
 import styles from './ProductDetailPage.module.scss'
 
 const ProductDetailContent = ({ product }) => {
@@ -15,11 +16,11 @@ const ProductDetailContent = ({ product }) => {
 
 			{/* 2. Верхняя часть страницы */}
 			<div className={styles.topSection}>
-				{/* Слайдер галереи */}
+				{/* Левая колонка: Слайдер галереи */}
 				<ProductGallery images={images} />
 
-				{/* Правая колонка: Название, Размеры, Выбор цвета, Кнопка Корзины */}
-				<div className={styles.infoWrapper}>{/* Это мы сделаем на следующем шаге */}</div>
+				{/* Правая колонка: Информация о товаре */}
+				<ProductInfo product={product} />
 			</div>
 		</>
 	)
