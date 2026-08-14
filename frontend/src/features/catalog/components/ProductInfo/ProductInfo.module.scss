@@ -9,8 +9,15 @@
 	font-size: 31px;
 	font-weight: 900;
 	text-transform: uppercase;
-	margin-bottom: 30px;
+	margin-bottom: 10px;
 	line-height: 1.3;
+}
+
+.article {
+	font-size: 16px;
+	font-weight: 400;
+	color: $color-light_gray;
+	margin-bottom: 30px;
 }
 
 /* 2. Сетка размеров */

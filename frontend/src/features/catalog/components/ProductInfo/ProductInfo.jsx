@@ -5,7 +5,7 @@ import ArrowIcon from '@/shared/icons/arrow.svg'
 import styles from './ProductInfo.module.scss'
 
 const ProductInfo = ({ product }) => {
-	const { naming, sizes, available_colors } = product
+	const { naming, sizes, available_colors, article } = product
 	const [selectedSize, setSelectedSize] = useState(null)
 
 	// Состояние для отслеживания предыдущего ID товара
@@ -26,6 +26,7 @@ const ProductInfo = ({ product }) => {
 		<div className={styles.infoWrapper}>
 			{/* 1. Заголовок товара */}
 			<h1 className={styles.title}>{naming.full_title}</h1>
+			<span className={styles.article}>AРТ. {article}</span>
 
 			{/* 2. Сетка размеров */}
 			<div className={styles.sizesSection}>
