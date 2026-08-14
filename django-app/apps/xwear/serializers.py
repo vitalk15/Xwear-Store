@@ -102,8 +102,13 @@ class ProductSizeSerializer(serializers.ModelSerializer):
     #     return obj.stock > 0 and obj.product.is_active
 
     def get_is_available(self, obj):
-        # Размер доступен, если активен сам вариант и активен базовый товар
-        return obj.variant.is_active and obj.variant.product.is_active
+        """
+        Размер доступен только тогда, когда:
+        1. Активен сам размер (obj.is_active)
+        2. Активен вариант/цвет товара (obj.variant.is_active)
+        3. Активен базовый родительский товар (obj.variant.product.is_active)
+        """
+        return obj.is_active and obj.variant.is_active and obj.variant.product.is_active
 
     class Meta:
         model = ProductSize
