@@ -3,7 +3,7 @@
 	flex-direction: column;
 	gap: 16px;
 	width: 100%;
-	max-width: 420px;
+	max-width: 400px;
 }
 
 // 1. Блок основного слайдера
@@ -86,7 +86,7 @@
 		.thumbImageWrapper::after {
 			content: '';
 			position: absolute;
-			bottom: -6px;
+			bottom: -5px;
 			left: 0;
 			width: 100%;
 			height: 3px;
