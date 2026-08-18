@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
-import { Thumbs, FreeMode, Navigation } from 'swiper/modules'
+import { Thumbs, FreeMode, Navigation, EffectFade } from 'swiper/modules'
 import StarIcon from '@/shared/icons/star.svg'
 import placeholderProduct from '@/assets/images/placeholder-product.webp'
 
@@ -82,7 +82,10 @@ const ProductGallery = ({ images = [] }) => {
 					thumbs={{
 						swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null,
 					}}
-					modules={[FreeMode, Thumbs]}
+					modules={[FreeMode, Thumbs, EffectFade]}
+					effect="fade" // Плавное растворение вместо свайпа
+					fadeEffect={{ crossFade: true }}
+					speed={300}
 					className={styles.mainSwiper}
 				>
 					{images.map((img) => (
