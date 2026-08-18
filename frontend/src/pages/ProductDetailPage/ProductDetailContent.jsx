@@ -2,6 +2,7 @@ import Breadcrumbs from '@/components/common/Breadcrumbs'
 import ProductGallery from '@/features/catalog/components/ProductGallery'
 import ProductInfo from '@/features/catalog/components/ProductInfo'
 import ProductDescription from '@/features/catalog/components/ProductDescription'
+import ProductCharacteristics from '@/features/catalog/components/ProductCharacteristics'
 import styles from './ProductDetailPage.module.scss'
 
 const ProductDetailContent = ({ product }) => {
@@ -23,6 +24,7 @@ const ProductDetailContent = ({ product }) => {
 
 			{/* 3. Средний блок (Описание и Характеристики) */}
 			<ProductDescription description={product.description} />
+			<ProductCharacteristics product={product} />
 		</>
 	)
 }
