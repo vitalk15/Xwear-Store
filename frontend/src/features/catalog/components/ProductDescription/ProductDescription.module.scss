@@ -1,0 +1,77 @@
+.wrapper {
+	margin-top: 64px;
+	margin-bottom: 64px;
+	width: 100%;
+}
+
+.mainTitle {
+	font-size: 28px;
+	font-weight: 700;
+	text-transform: uppercase;
+	margin-bottom: 40px;
+	// text-align: center;
+	color: #000;
+}
+
+.checkerboard {
+	display: flex;
+	flex-direction: column;
+	gap: 32px; /* Расстояние между шахматными блоками */
+	width: 80%;
+}
+
+.introBlock {
+	width: 100%;
+}
+
+/* контейнер-обёртка */
+.sectionCard {
+	width: 80%;
+	// padding: 24px 32px;
+	// background-color: #f8f8f8; /* Легкий фон для выделения блоков */
+	// border-radius: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+
+	/* Плавное появление (по желанию, можно добавить анимацию при скролле) */
+	// transition:
+	// 	transform 0.3s ease,
+	// 	box-shadow 0.3s ease;
+
+	// &:hover {
+	// 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+	// }
+
+	/* Адаптив для мобилок - блоки становятся на 100% ширины */
+	@media (max-width: 768px) {
+		width: 100%;
+		margin-left: 0 !important;
+		margin-right: 0 !important;
+		padding: 20px;
+	}
+}
+
+/* Классы для шахматного выравнивания самого контейнера (НЕ текста) */
+.alignLeft {
+	margin-right: auto;
+	margin-left: 0;
+}
+
+.alignRight {
+	margin-left: auto;
+	margin-right: 0;
+}
+
+.sectionTitle {
+	font-size: 20px;
+	font-weight: 700;
+	margin: 0;
+	line-height: 1.3;
+}
+
+.sectionParagraph {
+	font-size: 16px;
+	line-height: 1.6;
+	margin: 0;
+}
