@@ -27,21 +27,21 @@ const HomePage = () => {
 				{/* Секция: Обувь */}
 				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 					<Suspense fallback={<CatalogSkeleton />}>
-						<CatalogSection title="Обувь" categoryId={2} />
+						<CatalogSection title="Обувь" categoryId={2} categorySlug="obuv" />
 					</Suspense>
 				</ErrorBoundary>
 
 				{/* Секция: Одежда */}
 				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 					<Suspense fallback={<CatalogSkeleton />}>
-						<CatalogSection title="Одежда" categoryId={1} />
+						<CatalogSection title="Одежда" categoryId={1} categorySlug="odezhda" />
 					</Suspense>
 				</ErrorBoundary>
 
 				{/* Секция: Аксессуары */}
 				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 					<Suspense fallback={<CatalogSkeleton />}>
-						<CatalogSection title="Аксессуары" categoryId={3} />
+						<CatalogSection title="Аксессуары" categoryId={3} categorySlug="aksessuary" />
 					</Suspense>
 				</ErrorBoundary>
 			</div>
