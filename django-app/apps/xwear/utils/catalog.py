@@ -257,7 +257,7 @@ def get_similar_products(variant, limit=8):
             unique_variant_ids.append(v["id"])
 
     # 5. Если товаров мало, добираем без учета цены (но тоже уникальные модели)
-    if len(unique_variant_ids) < 4:
+    if len(unique_variant_ids) < 8:
         extra_candidates = (
             ProductVariant.objects.filter(
                 is_active=True,
