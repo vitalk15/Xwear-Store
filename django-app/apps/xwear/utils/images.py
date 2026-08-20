@@ -162,7 +162,8 @@ def get_thumbnail_data(image_field, aliases, request=None):
                 continue
 
             # 3. Передаем словарь опций
-            thumb = image_field.get_thumbnail(options)
+            thumbnailer = get_thumbnailer(image_field)
+            thumb = thumbnailer.get_thumbnail(options)
 
             url = request.build_absolute_uri(thumb.url) if request else thumb.url
 
@@ -172,8 +173,8 @@ def get_thumbnail_data(image_field, aliases, request=None):
                 "height": thumb.height,
             }
         except Exception as e:
-            return f"Ошибка получения данных превью: {e}"
-            # continue
+            # return f"Ошибка получения данных превью: {e}"
+            continue
 
     return data
 
@@ -366,7 +367,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
         "top_right": {
             "vertical": "flex-start",
             "horizontal": "flex-end",
-            "text_align": "right",
+            "text_align": "left",
         },
         "center_left": {
             "vertical": "center",
@@ -381,7 +382,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
         "center_right": {
             "vertical": "center",
             "horizontal": "flex-end",
-            "text_align": "right",
+            "text_align": "left",
         },
         "bottom_left": {
             "vertical": "flex-end",
@@ -396,7 +397,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
         "bottom_right": {
             "vertical": "flex-end",
             "horizontal": "flex-end",
-            "text_align": "right",
+            "text_align": "left",
         },
     }
 
@@ -409,7 +410,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
     flex_css = f"""
         justify-content: {layout_settings['vertical']};
         align-items: {layout_settings['horizontal']};
-        padding: 4cqw;
+        padding: 3.2468cqw 5.8442cqw;
     """
 
     # Динамические настройки из параметров модели
@@ -451,7 +452,7 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
         # Базовые стили кнопки (размеры через cqw)
         style_parts = [
             "display: block",
-            "margin: 0.4em",
+            "margin: 0.5em 0",
             "padding: 1em 1.2em",
             "border-radius: 0.35em",
             "font-family: 'RF Dewi Expanded', 'Helvetica Neue', sans-serif !important",
@@ -486,7 +487,8 @@ def generate_banner_html(obj, image_url, max_width, is_list=False):
                     "background: transparent",
                     f"color: {text_color}",
                     f"text-shadow: {text_shadow}",
-                    "padding: 0.5em 0",
+                    "padding: 0.4em 0",
+                    "margin: 0.2em 0.8em",
                 ]
             )
 

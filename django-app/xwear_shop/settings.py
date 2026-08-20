@@ -369,7 +369,7 @@ REST_FRAMEWORK = {
     ],
     # правила ограничения частоты запросов
     "DEFAULT_THROTTLE_RATES": {
-        "anon": config("THROTTLE_ANON", default="100/day"),
+        "anon": config("THROTTLE_ANON", default="10/min"),
         "user": config("THROTTLE_USER", default="1000/day"),
         "register_scope": config(
             "THROTTLE_REGISTER", default="3/hour"
@@ -382,7 +382,8 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # Пагинация
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
-    "PAGE_SIZE": 10,
+    "PAGE_SIZE": 12,  # Дефолтное значение (если фронтенд ничего не прислал)
+    "MAX_LIMIT": 50,  # Максимально разрешенный лимит (Защита от перегрузки БД)
 }
 
 

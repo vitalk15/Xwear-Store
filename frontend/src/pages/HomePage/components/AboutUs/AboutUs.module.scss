@@ -1,0 +1,112 @@
+.sectionWrapper {
+	margin-bottom: $section-m-bottom;
+}
+
+.section {
+	position: relative;
+	display: flex;
+	align-items: center;
+	min-height: 600px;
+	background:
+		radial-gradient(
+			115.19% 118.79% at 16.91% 0%,
+			rgba(255, 255, 255, 0.49) 0%,
+			rgba(255, 255, 255, 0.3) 100%
+		),
+		linear-gradient(
+			274deg,
+			rgba(188, 191, 199, 0.3) -4.34%,
+			rgba(213, 215, 220, 0.3) 46.57%
+		),
+		rgba(217, 217, 217, 0.3);
+}
+
+.bgImage {
+	position: absolute; /* 2. Делаем абсолютной, чтобы она ушла на задний план под текст */
+	top: 50%; /* 3. Центрируем по вертикали */
+	left: 50%; /* 4. Центрируем по горизонтали */
+	transform: translate(-50%, -50%); /* Сдвиг для идеального центра */
+	width: 98%;
+	height: 86%;
+	// object-fit: contain; /* Сохраняет пропорции картинки внутри заданных 80% высоты */
+	z-index: 1; /* Картинка будет выше градиентов, но ниже текста */
+	pointer-events: none; /* Чтобы сквозь картинку можно было выделять текст и кликать */
+}
+
+.content {
+	position: relative;
+	z-index: 2;
+	width: 100%;
+	padding-block: 70px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 80px;
+}
+
+.description {
+	width: 68%;
+
+	h2 {
+		color: $color-black;
+		font-size: 36px;
+		font-weight: 900;
+		line-height: 48px;
+		text-transform: uppercase;
+		margin-block: 18px;
+	}
+
+	p {
+		color: $color-dark_gray;
+		font-size: 16px;
+		font-weight: 400;
+		line-height: 30px;
+		margin-block: 18px;
+	}
+}
+
+.advantage {
+	width: 32%;
+	min-height: 400px;
+	padding: 40px;
+	display: flex;
+	flex-direction: column; /* Размещаем иконки преимуществ друг под другом */
+	gap: 40px; /* Отступы между карточками преимуществ */
+	background-color: #fff;
+	border-radius: $border-radius;
+	box-shadow:
+		0 312px 87px 0 rgba(0, 0, 0, 0),
+		0 199px 80px 0 rgba(0, 0, 0, 0.01),
+		0 112px 67px 0 rgba(0, 0, 0, 0.02),
+		0 50px 50px 0 rgba(0, 0, 0, 0.03),
+		0 12px 27px 0 rgba(0, 0, 0, 0.04),
+		0 0 0 0 rgba(0, 0, 0, 0.04);
+
+	.advantageItem {
+		display: flex;
+		align-items: flex-start;
+		gap: 30px;
+		color: $color-black;
+
+		svg {
+			width: 50px;
+			height: 50px;
+			flex-shrink: 0; // ЗАПРЕЩАЕМ СЖАТИЕ Flexbox-ом
+		}
+
+		.title {
+			font-size: 13px;
+			font-weight: 900;
+			line-height: 22px;
+			text-transform: uppercase;
+			margin-bottom: 4px;
+		}
+
+		.text {
+			color: $color-dark_gray;
+			font-size: 14px;
+			font-weight: 400;
+			line-height: 20px;
+		}
+	}
+}

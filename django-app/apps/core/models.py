@@ -57,7 +57,6 @@ class ContactSettings(models.Model):
     tg_url = models.URLField(verbose_name="Telegram (ссылка)", blank=True)
     vb_url = models.URLField(verbose_name="Viber (ссылка)", blank=True)
     vk_url = models.URLField(verbose_name="VK (ссылка)", blank=True)
-    ok_url = models.URLField(verbose_name="Odnoklassniki (ссылка)", blank=True)
     ig_url = models.URLField(verbose_name="Instagram (ссылка)", blank=True)
 
     # График работы

@@ -1,0 +1,83 @@
+.overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background-color: rgba(0, 0, 0, 0.8); // Темная подложка
+	backdrop-filter: blur(8px); // Эффект размытия заднего плана
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 99999; // Поверх абсолютно всего на сайте
+	padding: 20px;
+}
+
+.modal {
+	background-color: #1a1a1a;
+	border: 1px solid #2d2d2d;
+	padding: 48px 40px;
+	border-radius: 8px;
+	max-width: 480px;
+	width: 100%;
+	text-align: center;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+	animation: scaleIn 0.3s ease-out;
+}
+
+.icon {
+	font-size: 48px;
+	margin-bottom: 20px;
+}
+
+.title {
+	font-size: 22px;
+	font-weight: 600;
+	color: #ffffff;
+	margin-bottom: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.text {
+	font-size: 15px;
+	color: #8c8c8c;
+	line-height: 1.6;
+	margin-bottom: 32px;
+}
+
+.retryBtn {
+	background-color: #ffffff;
+	color: #000000;
+	border: none;
+	padding: 14px 28px;
+	font-size: 14px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	border-radius: 3px;
+	cursor: pointer;
+	transition:
+		background-color 0.2s ease,
+		transform 0.1s ease;
+	width: 100%;
+
+	&:hover {
+		background-color: #e0e0e0;
+	}
+
+	&:active {
+		transform: scale(0.98);
+	}
+}
+
+@keyframes scaleIn {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}

@@ -1,0 +1,458 @@
+.sidebar {
+	// flex: 0 0 320px; // Жесткая ширина сайдбара (flex-grow: 0 - элемент не будет увеличиваться, flex-shrink: 0 - не будет сжиматься, flex-basis: 320px)
+	width: 23.5294cqw;
+	max-width: 320px;
+	min-width: 300px;
+	border-radius: $border-radius;
+	display: flex;
+	flex-direction: column;
+	border: 1px solid #e6e7eb;
+	padding: 25px;
+}
+
+.divider {
+	border: none;
+	border-top: 1px solid #eaeaea;
+	margin: 30px 0;
+}
+
+/* --- Accordion (Filter Section) --- */
+.filterSection {
+	display: flex;
+	flex-direction: column;
+}
+
+.sectionHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	width: 100%;
+	text-align: left;
+}
+
+.sectionTitle {
+	font-size: 13px;
+	font-weight: 900;
+	color: $color-black;
+	text-transform: uppercase;
+	line-height: 1.5;
+
+	:global(.nbrb-icon) {
+		font-size: 18px;
+		font-weight: 900;
+	}
+}
+
+.arrow {
+	// width: 8px;
+	// height: auto;
+	flex-shrink: 0;
+	color: #232323;
+	transition: transform 0.3s ease;
+
+	&.open {
+		transform: rotate(180deg);
+	}
+}
+
+.sectionContent {
+	margin-top: 20px;
+}
+
+/* --- ФИЛЬТР ЦЕНЫ --- */
+
+.priceFilterWrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 20px; /* Отступ между инпутами и ползунком */
+}
+
+.priceInputs {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+
+	.input {
+		width: 100%;
+		padding: 6px 14px;
+		border: 1px solid transparent;
+		background: #f8fafb;
+		border-radius: 4px;
+		font-size: 14px;
+		outline: none;
+		font-size: 13px;
+		font-weight: 400;
+		line-height: 2.3;
+
+		&:focus {
+			border: 1px solid #e6eaea;
+		}
+
+		/* Убираем стрелочки у number input */
+		&::-webkit-outer-spin-button,
+		&::-webkit-inner-spin-button {
+			-webkit-appearance: none;
+			margin: 0;
+		}
+	}
+}
+
+.priceDivider {
+	color: #888;
+}
+
+/* --- Двойной ползунок (трюк с наложением) --- */
+.sliderContainer {
+	position: relative;
+	width: 100%;
+	height: 20px;
+}
+
+/* Серая дорожка (неактивная часть) */
+.sliderTrack {
+	position: absolute;
+	width: 100%;
+	height: 4px;
+	background-color: #e5e5e5; /* Светло-серый, как на макете */
+	border-radius: 2px;
+	top: 50%;
+	// transform: translateY(-50%);
+	z-index: 1;
+}
+
+/* Голубая дорожка (активный диапазон) */
+.sliderRange {
+	position: absolute;
+	height: 4px;
+	background-color: $color-blue;
+	border-radius: 2px;
+	top: 50%;
+	// transform: translateY(-50%);
+	z-index: 2;
+}
+
+/* Скрываем стандартные инпуты, оставляем только кружочки */
+.thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	position: absolute;
+	pointer-events: none; /* Пропускаем клики сквозь сам инпут... */
+	width: 100%;
+	height: 0;
+	top: 50%;
+	// transform: translateY(-50%);
+	z-index: 3;
+	outline: none;
+	background: transparent;
+
+	/* ...но ловим клики на самих кружочках (Webkit/Chrome/Safari) */
+	&::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		pointer-events: all;
+		width: 17px;
+		height: 17px;
+		background-color: $color-blue;
+		border: 2px solid #fff;
+		border-radius: 50%;
+		cursor: pointer;
+		filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.11));
+		box-shadow: 0 0 0 1px rgba(73, 208, 255, 1);
+	}
+
+	/* Для Firefox */
+	&::-moz-range-thumb {
+		pointer-events: all;
+		width: 17px;
+		height: 17px;
+		background-color: $color-blue;
+		border: 2px solid #fff;
+		border-radius: 50%;
+		cursor: pointer;
+		filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.11));
+		box-shadow: 0 0 0 1px rgba(73, 208, 255, 1);
+	}
+}
+
+/* --- ФИЛЬТР ЦЕНЫ --- */
+/* --- Списки чекбоксов --- */
+.checkboxList {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+/* Блок со скроллом для брендов */
+.scrollable {
+	max-height: (5 * 42px) - 18px; // 42px = 24px (высота чекбокса) + 18px (gap)
+	overflow-y: auto;
+	padding-right: 20px;
+	margin-right: 2px;
+
+	/* Кастомный скроллбар */
+	&::-webkit-scrollbar {
+		width: 4px;
+	}
+	&::-webkit-scrollbar-track {
+		background: #e1e1e1;
+		border-radius: 4px;
+	}
+	&::-webkit-scrollbar-thumb {
+		background: $color-black;
+		border-radius: 4px;
+	}
+}
+
+/* --- ФИЛЬТР БРЕНДОВ --- */
+
+.checkboxLabel {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 400;
+	color: #20282f;
+	user-select: none;
+	line-height: 1.5;
+	transition: color 0.18s ease;
+
+	&:hover {
+		.customCheckbox {
+			background-color: #eaeaec;
+		}
+
+		.brandName {
+			color: #000000;
+		}
+	}
+}
+
+// Скрываем нативный инпут, сохраняя его в DOM для доступности
+.hiddenCheckbox {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+	margin: 0;
+	pointer-events: none;
+
+	// Стиль при фокусировке с клавиатуры
+	// &:focus-visible + .customCheckbox {
+	// 	outline: 2px solid #111111;
+	// 	outline-offset: 2px;
+	// }
+
+	// Состояние: Включено (Checked)
+	&:checked {
+		& + .customCheckbox {
+			background-color: $color-blue;
+
+			.checkmark {
+				opacity: 1;
+				transform: scale(1);
+			}
+		}
+
+		~ .brandName {
+			font-weight: 700;
+		}
+
+		& + .sizeButton {
+			background-color: $color-blue;
+			color: #ffffff;
+			border: 1px solid transparent;
+		}
+	}
+}
+
+// Кастомный квадрат чекбокса
+.customCheckbox {
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	border-radius: 3px;
+	background-color: #f8fafb;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background-color 0.18s ease;
+}
+
+// Галочка внутри чекбокса
+.checkmark {
+	width: 10px;
+	height: 8px;
+	color: #ffffff; // Цвет галочки на темном фоне
+	opacity: 0;
+	transform: scale(0.6);
+	transition:
+		opacity 0.18s ease,
+		transform 0.18s ease;
+}
+
+.checkboxLabel.disabled {
+	opacity: 0.38;
+	cursor: not-allowed;
+	pointer-events: none; // Предотвращает клики и ховер-эффекты
+
+	.brandName {
+		color: #888888;
+		font-weight: 400 !important;
+	}
+
+	.customCheckbox {
+		background-color: #f0f0f0;
+	}
+}
+
+/* --- ФИЛЬТР РАЗМЕРОВ --- */
+// Сетка из плашек размеров
+.sizeGrid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr); // 3 одинаковых колонки
+	gap: 10px;
+}
+
+.sizeTile {
+	display: block;
+	cursor: pointer;
+	user-select: none;
+}
+
+// Визуальная плашка размера
+.sizeButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 36px;
+	// padding: 0 6px;
+	padding: 8px 10px;
+	background-color: #ffffff;
+	// border: 1px solid transparent;
+	border: 1px solid #efefef;
+	border-radius: 4px;
+	font-size: 13px;
+	font-weight: 600;
+	color: $color-black;
+
+	transition:
+		background-color 0.18s ease,
+		color 0.18s ease,
+		border-color 0.18s ease;
+
+	&:hover {
+		background-color: #f2f2f3;
+	}
+}
+
+.sizeTile.disabled {
+	cursor: not-allowed;
+	pointer-events: none;
+
+	.sizeButton {
+		background-color: #f2f2f2;
+		color: #b0b0b0;
+		border-color: transparent;
+		text-decoration: line-through; // Перечеркнутый текст придаёт наглядности отсутствию размера
+		opacity: 0.6;
+	}
+}
+
+/* --- ФИЛЬТР ЦВЕТОВ --- */
+.colorGrid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 20px 12px; // 20px между строками, 12px между колонками
+}
+
+.colorItem {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+
+	/* Эффект при наведении */
+	&:hover .colorCircle {
+		transform: scale(1.1);
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+	}
+
+	/* Активное (выбранное) состояние */
+	&.active {
+		.colorCircle {
+			outline: 1px solid #5c5c68;
+			outline-offset: 3px; // Отступ обводки от самого кружка
+			transform: scale(1.05);
+		}
+
+		.colorName {
+			font-weight: 700;
+		}
+	}
+}
+
+.colorCircle {
+	width: 26px;
+	height: 26px;
+	border-radius: 50%;
+	display: block;
+	transition: all 0.2s ease;
+	/* Легкая рамка обязательна для белых (#ffffff) и светлых цветов, чтобы они не исчезли на фоне сайдбара */
+	border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.colorName {
+	font-size: 12px;
+	color: #20282f;
+	text-align: center;
+	font-weight: 400;
+	line-height: 1.5;
+	/* Если название цвета очень длинное, обрезаем его троеточием */
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.colorItem.disabled {
+	opacity: 0.25;
+	cursor: not-allowed;
+	pointer-events: none; // Полностью отключаем hover эффекты
+	filter: grayscale(80%); // Визуально обесцвечиваем недоступный цвет
+}
+
+/* --- КНОПКА СБРОСА --- */
+.resetButton {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	line-height: 1;
+	gap: 10px;
+	padding: 16px 12px;
+	background-color: #ffffff;
+	color: $color-black;
+	border: 1px solid #e6e7eb;
+	border-radius: 5px;
+	font-size: 11px;
+	font-weight: 800;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: all 0.2s ease;
+
+	svg {
+		color: #2c2c2c;
+	}
+
+	&:hover {
+		background-color: #efeff0;
+	}
+}

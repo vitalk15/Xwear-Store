@@ -1,0 +1,287 @@
+@use '@/assets/styles/mixins';
+
+.footer {
+	background-color: $color-black;
+	padding: 45px 0;
+	margin-top: auto; // Выталкивает футер вниз, если контента на странице мало
+	border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Этот класс заставляет браузер игнорировать саму обертку 
+  и встраивать её дочерние элементы напрямую в родителя.
+  Это нужно (для Grid обязательно), так как мы оборачиваем компоненты в <Suspense> и <ErrorBoundary> и в DOM-дереве могут появиться лишние обёртки.
+*/
+.contentsWrapper {
+	display: contents;
+}
+
+.topRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 40px;
+	justify-content: space-between;
+}
+
+.bottomRow {
+	margin-top: 20px; // Отступ от верхних колонок
+	display: flex;
+	justify-content: flex-start; // Прижимаем к левому краю
+	align-items: center;
+}
+
+.brandCol {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.copyright {
+	font-size: 12px;
+	color: #8c8c8c;
+	margin: 0;
+}
+
+/* Базовая колонка (Категории, Информация, Контакты) */
+.navCol {
+	display: flex;
+	flex: 0 1 max-content; /* 0 - не растягивается, 1 - может сужаться, max-content - ширина строго по тексту */
+	flex-direction: column;
+	gap: 10px;
+}
+
+.colTitle {
+	font-size: 15px;
+	font-weight: 900;
+	line-height: 1.8;
+	text-transform: uppercase;
+	margin: 0;
+	color: #fff;
+}
+
+.linkList,
+.contactList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+
+	li a,
+	.emailLink {
+		display: inline-block;
+		font-size: 15px;
+		color: #dcdce0;
+		font-weight: 400;
+		line-height: 1.8;
+		text-decoration: none;
+		transition: color 0.2s ease;
+		padding-block: 3px;
+
+		&:hover {
+			color: $color-blue;
+		}
+	}
+
+	.emailLink {
+		text-decoration: underline;
+		text-decoration-style: solid;
+		text-decoration-skip-ink: none;
+		text-decoration-thickness: auto;
+		text-underline-offset: 1px;
+		text-underline-position: from-font;
+	}
+}
+
+.phoneLink {
+	font-size: 16px !important;
+	font-weight: 600 !important;
+	color: #ffffff !important;
+	text-decoration: none;
+}
+
+.socialBlock {
+	margin-top: 9px;
+}
+
+.subTitle {
+	font-size: 12px;
+	font-weight: 800;
+	line-height: 2.3;
+	color: #ffffff;
+	margin-bottom: 3px;
+	text-transform: uppercase;
+}
+
+.iconGroup {
+	display: flex;
+	gap: 9px;
+
+	a {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition: opacity 0.2s ease;
+
+		&:hover {
+			opacity: 0.8;
+		}
+
+		img {
+			width: 30px;
+			height: 30px;
+		}
+	}
+}
+
+.subscribeCol {
+	flex: 0 1 300px; /* 0 - не растягивается на весь экран, 1 - сужается на мобилках, ширина 300px */
+	display: flex;
+	flex-direction: column;
+
+	.subscribeDesc {
+		font-size: 14px;
+		color: #dcdce0;
+		font-weight: 400;
+		line-height: 2.1;
+		margin: 13px 0 24px;
+	}
+}
+
+.subscribeForm {
+	display: flex;
+	align-items: center;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+	padding-bottom: 7px;
+	margin-bottom: 15px;
+	transition: border-color 0.3s ease;
+
+	&:focus-within {
+		border-color: #ffffff; // Линия ярче при вводе
+	}
+}
+
+.input {
+	flex: 1;
+	background: transparent;
+	border: none;
+	color: #ffffff;
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 2.1;
+	padding: 0 10px 0 0; // ???
+	outline: none;
+
+	&::placeholder {
+		color: #8c8f96;
+	}
+}
+
+.submitBtn {
+	width: 29px;
+	height: 29px;
+	border-radius: 50%;
+	background-color: #ffffff;
+	color: $color-black;
+	border: none;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease;
+
+	svg {
+		width: 6px;
+		height: 10px;
+	}
+
+	&:hover {
+		color: #ffffff;
+		background-color: $color-blue;
+	}
+}
+
+.disclaimerBlock {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.disclaimerText {
+	color: #ffffff;
+	font-size: 12px;
+	line-height: 1.5;
+	font-weight: 400;
+	line-height: 18px;
+	opacity: 0.4;
+	margin: 0;
+}
+
+.legalLinks {
+	display: flex;
+	flex-direction: column;
+	// gap: 8px;
+
+	a {
+		font-size: 11px;
+		font-weight: 600;
+		line-height: 1.6;
+		color: #707076;
+		text-transform: uppercase;
+		text-decoration: underline;
+		text-decoration-style: solid;
+		text-decoration-skip-ink: none;
+		text-decoration-thickness: auto;
+		text-underline-offset: 2px;
+		text-underline-position: from-font;
+		transition: color 0.2s ease;
+
+		&:hover {
+			color: #ffffff;
+		}
+	}
+}
+
+/* --- СКЕЛЕТОН --- */
+
+/* Базовый класс для всех пульсирующих элементов */
+.skeleton {
+	@include skeleton-pulse-dark;
+	border-radius: 4px;
+}
+
+.titleSkeleton {
+	width: 140px;
+	height: 20px;
+	margin-bottom: 8px;
+}
+
+.linkSkeleton {
+	width: 80%;
+	height: 16px;
+}
+
+.linkSkeletonShort {
+	width: 60%;
+	height: 16px;
+}
+
+.skeletonLinks {
+	display: flex;
+	flex-direction: column; // или row, в зависимости от дизайна вашего футера
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.inputSkeleton {
+	height: 36px;
+	width: 100%;
+}
+
+.skeletonLine {
+	@include skeleton-shimmer-dark;
+	height: 14px;
+	border-radius: 4px;
+}

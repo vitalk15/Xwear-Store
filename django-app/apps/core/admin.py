@@ -79,7 +79,7 @@ class ContactSettingsAdmin(SingletonAdminMixin, admin.ModelAdmin):
         ),
         (
             "Мессенджеры и соцсети",
-            {"fields": ("tg_url", "vb_url", "vk_url", "ok_url", "ig_url")},
+            {"fields": ("tg_url", "vb_url", "vk_url", "ig_url")},
         ),
         (
             "График работы",

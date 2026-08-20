@@ -1,0 +1,27 @@
+@use '@/assets/styles/mixins';
+
+.pulse {
+	@include skeleton-pulse-light;
+}
+
+.imageSkeleton {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 320 / 360; // Сохраняем пропорции фото из бэкенда
+	border-radius: $border-radius;
+	overflow: hidden;
+	margin-bottom: 16px;
+}
+
+.titleSkeleton {
+	height: 20px;
+	width: 80%;
+	border-radius: 4px;
+	margin-bottom: 8px;
+}
+
+.priceSkeleton {
+	height: 16px;
+	width: 40%;
+	border-radius: 4px;
+}

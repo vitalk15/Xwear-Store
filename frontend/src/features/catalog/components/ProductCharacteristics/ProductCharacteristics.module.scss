@@ -1,0 +1,72 @@
+.characterWrapper {
+	margin-bottom: 80px;
+	width: 100%;
+}
+
+.mainTitle {
+	font-size: 28px;
+	font-weight: 900;
+	text-transform: uppercase;
+	margin-bottom: 30px;
+	color: $color-black;
+}
+
+/* Контейнер для блоков характеристик. 
+   На больших экранах можно выстроить их в два столбца, на мобильных - друг под другом */
+.blocksContainer {
+	display: flex;
+	flex-direction: column;
+	gap: 35px;
+}
+
+.specBlock {
+	display: flex;
+	flex-direction: column;
+}
+
+.blockTitle {
+	font-size: 18px;
+	font-weight: 700;
+	margin-bottom: 18px;
+	color: $color-black;
+}
+
+.specList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 16px; /* Расстояние между строками характеристик */
+}
+
+.specRow {
+	display: flex;
+	align-items: flex-end; /* Выравниваем по базовой линии текста */
+	width: 100%;
+}
+
+.specLabel {
+	font-size: 14px;
+	font-weight: 600;
+	color: $color-black; /* Как на макете - название чуть более тусклое */
+	white-space: nowrap; /* Запрещаем перенос названия */
+}
+
+/* Главный фокус: пунктирная линия */
+.dots {
+	flex-grow: 1; /* Заставляет элемент занять всё свободное место между текстами */
+	border-bottom: 1px dashed #dbdada; /* Сама пунктирная линия */
+	margin: 0 12px 5px 12px; /* 5px снизу выравнивает пунктир ровно по базовой линии шрифта */
+	min-width: 20px; /* Минимальная ширина пунктира, чтобы тексты не слипались */
+}
+
+.specValue {
+	font-size: 14px;
+	font-weight: 600;
+	color: $color-black;
+	// white-space: nowrap; /* Запрещаем перенос значения */
+	text-align: left;
+	width: 70%; /* Отводим под значения ровно 70% ширины строки */
+	flex-shrink: 0; /* Запрещаем колонке сужаться, чтобы линия была идеально ровной */
+}

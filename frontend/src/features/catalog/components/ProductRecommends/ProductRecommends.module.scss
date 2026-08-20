@@ -1,0 +1,80 @@
+.section {
+	// margin-bottom: 20px;
+	width: 100%;
+}
+
+.title {
+	font-size: 28px;
+	font-weight: 900;
+	line-height: 1.3;
+	text-transform: uppercase;
+	margin-bottom: 50px;
+	color: $color-black;
+}
+
+.carouselContainer {
+	overflow: hidden; /* Прячем все карточки, которые не влезли в экран */
+	width: 100%;
+	// margin: 0 -10px; /* Компенсируем padding крайних слайдов */
+	container-type: inline-size;
+}
+
+.track {
+	display: flex;
+	transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); /* Плавная физика скольжения */
+}
+
+.slide {
+	flex: 0 0 25%; /* Карточка всегда занимает ровно 1/4 экрана */
+	// padding: 0 10px; /* Отступы между карточками (создают gap 20px) */
+	box-sizing: border-box;
+}
+
+/* Элементы управления (стрелки и точки) */
+.controls {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 24px;
+	margin-top: 40px;
+}
+
+.arrowBtn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #000;
+	padding: 8px;
+	transition: opacity 0.2s ease;
+
+	&:disabled {
+		opacity: 0.2;
+		cursor: default;
+	}
+}
+
+.dots {
+	display: flex;
+	gap: 12px;
+}
+
+.dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background-color: #ccc;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	transition:
+		background-color 0.2s ease,
+		transform 0.2s ease;
+
+	&.activeDot {
+		background-color: #000;
+		transform: scale(1.3);
+	}
+}

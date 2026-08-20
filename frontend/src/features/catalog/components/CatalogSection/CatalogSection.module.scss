@@ -1,0 +1,52 @@
+.section {
+	margin-bottom: $section-m-bottom;
+
+	&:last-child {
+		margin-bottom: 0;
+	}
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 40px;
+	text-transform: uppercase;
+}
+
+.title {
+	margin: 0;
+	font-size: 31px;
+	font-weight: 900;
+	line-height: 1;
+	color: $color-black;
+}
+
+.moreLink {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 14px;
+	font-weight: 800;
+	color: $color-black;
+	text-decoration: none;
+	line-height: 1;
+	padding-bottom: 6px;
+	border-bottom: 2px solid $color-black;
+
+	svg {
+		transition: transform 0.3s ease;
+	}
+
+	/* Приятная микроанимация: стрелочка сдвигается вправо при наведении */
+	&:hover svg {
+		transform: translateX(4px);
+	}
+}
+
+.row {
+	display: flex;
+	justify-content: space-between;
+	align-items: stretch; /* Чтобы карточки были одной высоты, если контент разный */
+	container-type: inline-size;
+}

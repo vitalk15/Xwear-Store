@@ -1,0 +1,192 @@
+@use '@/assets/styles/mixins';
+
+.pageWrapper {
+	padding: 16px 0 80px;
+}
+
+.topSection {
+	display: grid;
+	grid-template-columns: 1fr 1.5fr;
+	gap: 40px;
+	margin-bottom: 80px;
+}
+
+// Скелетоны
+.breadcrumbsSkeleton {
+	@include skeleton-shimmer-light;
+	height: 18px;
+	width: 300px;
+	margin-bottom: 48px;
+}
+
+// ----------------------------------------------------
+// Верхний Grid (Галерея + Инфо)
+// ----------------------------------------------------
+
+.galleryBlock {
+	display: flex;
+	gap: 16px;
+	flex-direction: column;
+}
+
+.thumbnails {
+	display: flex;
+	gap: 12px;
+
+	.thumbnailSkeleton {
+		@include skeleton-shimmer-light;
+		width: 90px;
+		height: 100px;
+		border-radius: 3px;
+		flex-shrink: 0;
+	}
+}
+
+.mainImageSkeleton {
+	@include skeleton-shimmer-light;
+	width: 400px;
+	height: 480px;
+	aspect-ratio: 5 / 6;
+	border-radius: $border-radius;
+}
+
+// Правая колонка с информацией
+.infoBlock {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.titleSkeletonLine1 {
+	@include skeleton-shimmer-light;
+	width: 90%;
+	height: 28px;
+}
+
+.titleSkeletonLine2 {
+	@include skeleton-shimmer-light;
+	width: 60%;
+	height: 28px;
+	margin-bottom: 30px;
+}
+
+// Сетка размеров
+.sizeSection {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin-bottom: 34px;
+
+	.labelSkeleton {
+		@include skeleton-shimmer-light;
+		width: 100px;
+		height: 14px;
+		// margin-bottom: 14px;
+	}
+
+	.sizeGrid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+		gap: 12px;
+
+		.sizeBoxSkeleton {
+			@include skeleton-shimmer-light;
+			height: 58px; // Соответствует высоте кнопки размера
+			border-radius: 4px;
+		}
+	}
+}
+
+.actionBlock {
+	display: flex;
+	align-items: center;
+	margin-bottom: 64px;
+	gap: 72px;
+}
+
+.priceSkeleton {
+	@include skeleton-shimmer-light;
+	width: 22%;
+	height: 63px;
+}
+
+.buttonSkeleton {
+	@include skeleton-shimmer-light;
+	width: 278px;
+	height: 63px;
+	border-radius: $border-radius;
+}
+
+// ----------------------------------------------------
+// Секция описания
+// ----------------------------------------------------
+.descSection {
+	margin-bottom: 80px;
+	width: 100%;
+}
+
+.descTitleSkeleton {
+	@include skeleton-shimmer-light;
+	width: 240px;
+	height: 32px;
+	margin-bottom: 30px;
+}
+
+.descSkeleton {
+	@include skeleton-shimmer-light;
+	width: 80%;
+	height: 400px;
+}
+
+// ----------------------------------------------------
+// Секция характеристик
+// ----------------------------------------------------
+.characterSection {
+	margin-bottom: 80px;
+	width: 100%;
+}
+
+.characterTitleSkeleton {
+	@include skeleton-shimmer-light;
+	width: 240px;
+	height: 32px;
+	margin-bottom: 30px;
+}
+
+.characterSkeleton {
+	@include skeleton-shimmer-light;
+	width: 100%;
+	height: 380px;
+}
+
+// ----------------------------------------------------
+// Секция рекомендаций
+// ----------------------------------------------------
+.recommendsSection {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	padding-top: 32px;
+	border-top: 1px solid var(--color-border, #eee);
+}
+
+.recommendsTitleSkeleton {
+	@include skeleton-shimmer-light;
+	width: 240px;
+	height: 32px;
+	margin-bottom: 30px;
+}
+
+.recommendsGrid {
+	display: grid;
+	grid-template-columns: repeat(1, 1fr);
+	// gap: 20px;
+
+	@media (min-width: 480px) {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	@media (min-width: 992px) {
+		grid-template-columns: repeat(4, 1fr); // 4 карточки в ряд, как в ProductRecommends
+	}
+}

@@ -1,0 +1,39 @@
+.breadcrumbs {
+	margin-bottom: 50px;
+}
+
+.list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+}
+
+.crumbWrapper {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.item,
+.separator {
+	font-size: 13px;
+	color: $color-light_gray;
+	font-weight: 400;
+	line-height: 1.5;
+}
+
+.link {
+	color: $color-light_gray;
+	text-decoration: none;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: $color-black;
+	}
+}
+
+.text {
+	color: $color-black; // Текущая или некликабельная категория выделяется темным
+	// font-weight: 500;
+}

@@ -35,14 +35,15 @@ class CategorySerializer(serializers.ModelSerializer):
 
     # рекурсивная сериализация активных дочерних элементов (до 300-500 категорий)
     def get_children(self, obj):
-        # get_children() в MPTT при использовании get_cached_trees
-        # берет данные из кэша объекта, а не из БД
-        if obj.is_leaf_node():
-            return []
+        # if obj.is_leaf_node():
+        #     return []
 
-        # Если дерево было кэшировано через get_cached_trees,
-        # этот цикл не будет делать запросов к БД
+        # get_children() в MPTT при использовании get_cached_trees
+        # берет данные из кэша объекта (_cached_children), не делая запросов в БД
         children = [child for child in obj.get_children() if child.is_active]
+        if not children:
+            return []
+        
         serializer = CategorySerializer(children, many=True, context=self.context)
         return serializer.data
 
@@ -101,8 +102,13 @@ class ProductSizeSerializer(serializers.ModelSerializer):
     #     return obj.stock > 0 and obj.product.is_active
 
     def get_is_available(self, obj):
-        # Размер доступен, если активен сам вариант и активен базовый товар
-        return obj.variant.is_active and obj.variant.product.is_active
+        """
+        Размер доступен только тогда, когда:
+        1. Активен сам размер (obj.is_active)
+        2. Активен вариант/цвет товара (obj.variant.is_active)
+        3. Активен базовый родительский товар (obj.variant.product.is_active)
+        """
+        return obj.is_active and obj.variant.is_active and obj.variant.product.is_active
 
     class Meta:
         model = ProductSize
@@ -161,8 +167,6 @@ class ProductListSerializer(serializers.ModelSerializer):
                 "name": product.category.name,
                 "slug": product.category.slug,
             },
-            # для заголовка вкладки в браузере
-            "full_title": obj.full_name,
         }
 
     def get_pricing(self, obj):
@@ -229,7 +233,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             "id",
             "slug",
             "article",
-            "gender",
             "gender_display",
             "naming",
             "pricing",
@@ -335,6 +338,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "sizes",
             "images",
             "composition",
+            "frontend_url",
         ]
 
 

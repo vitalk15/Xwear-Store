@@ -1,0 +1,18 @@
+.logoStatic {
+	display: flex;
+	align-items: center;
+	cursor: default;
+}
+
+.logoLink {
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+	transition: opacity 0.2s ease;
+}
+
+.logoImg {
+	height: 35px;
+	width: auto;
+	display: block;
+}

@@ -1,9 +1,14 @@
+import { BrowserRouter } from 'react-router-dom'
+import ScrollToTop from './components/common/ScrollToTop'
+import AppRoutes from './routes/AppRoutes'
+
 const App = () => {
 	return (
-		<div>
-			<h1>To Do List</h1>
-		</div>
-	);
-};
+		<BrowserRouter>
+			<ScrollToTop />
+			<AppRoutes />
+		</BrowserRouter>
+	)
+}
 
-export default App;
+export default App

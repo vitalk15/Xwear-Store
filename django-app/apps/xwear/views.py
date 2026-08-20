@@ -3,9 +3,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import status
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Count, Q
 from django.shortcuts import get_object_or_404
 from .utils import (
+    prune_empty_categories,
     get_similar_products,
     get_category_sidebar_filters,
     get_filtered_products,
@@ -25,18 +26,24 @@ from .serializers import (
 # КАТЕГОРИИ И КАТАЛОГ
 # ==========================================
 
-
 # дерево категорий
 @api_view(["GET"])
 def category_tree_view(request):
-    # Забираем ВСЕ активные категории одним запросом
-    queryset = Category.objects.filter(is_active=True)
+    # 1. Аннотируем каждую категорию количеством активных товаров
+    queryset = Category.objects.filter(is_active=True).annotate(
+        products_count=Count('products', filter=Q(products__is_active=True))
+    )
 
-    # Строим дерево в памяти с помощью mptt метода - это исключает N+1 запросов в сериализаторе
+    # 2. Строим дерево в памяти с помощью mptt метода - это исключает N+1 запросов в сериализаторе
     tree = queryset.get_cached_trees()
 
-    # без корневой mptt-категории [node for node in tree if node.level == 1]
-    categories = [node for node in tree if node.level == 0]
+    # 3. Рекурсивно вырезаем пустые ветки
+    filtered_tree = prune_empty_categories(tree)
+
+    # 4. Берем только корневые категории (level 0) из уже отфильтрованного дерева
+    # без корневой mptt-категории - [node for node in tree if node.level == 1]
+    categories = [node for node in filtered_tree if node.level == 0]
+
     serializer = CategorySerializer(categories, many=True, context={"request": request})
     return Response(serializer.data)
 
@@ -57,7 +64,7 @@ def category_detail_view(request, pk):
     categories = category.get_descendants(include_self=True)
 
     # 2. Получаем данные для сайдбара
-    filters_data = get_category_sidebar_filters(categories)
+    filters_data = get_category_sidebar_filters(categories, request.query_params)
 
     # 3. Получаем отфильтрованные товары
     products_queryset = get_filtered_products(categories, request.query_params)

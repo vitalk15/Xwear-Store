@@ -1,0 +1,141 @@
+.actionsList {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	list-style: none;
+}
+
+.actionBtn {
+	position: relative; // Поднимаем кнопку над полем поиска
+	z-index: 2;
+	background: none;
+	border: none;
+	color: #ffffff;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	transition: color 0.2s ease;
+	padding: 16px 12px;
+
+	svg {
+		height: 18px;
+		width: auto;
+	}
+
+	.starIcon path {
+		stroke-width: 1.8;
+	}
+
+	&:hover {
+		color: $color-blue;
+	}
+}
+
+.cartBtn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 15px 0 15px 12px;
+}
+
+.cartInfo {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-family: 'Cera Pro', sans-serif;
+	font-weight: 700;
+}
+
+.cartPrice {
+	font-size: 16px;
+	color: $color-light_gray;
+	line-height: 1;
+
+	:global(.nbrb-icon) {
+		font-size: 18px;
+		font-weight: bold;
+	}
+}
+
+.cartBadge {
+	font-size: 14px;
+	background-color: $color-blue;
+	color: #fff;
+	border-radius: 50%;
+	width: 20px;
+	height: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	span {
+		line-height: normal;
+		margin-top: 2px;
+	}
+}
+
+/* --- АНИМАЦИЯ ПОИСКА --- */
+.searchWrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end; // Прижимаем всё к правому краю
+}
+
+.searchInput {
+	position: absolute;
+	right: 0; // Растет от кнопки влево
+	top: 50%;
+	transform: translateY(-50%);
+
+	/* Изначально скрыто */
+	width: 0;
+	padding: 0;
+	opacity: 0;
+	visibility: hidden;
+
+	/* Стилизация поля ввода */
+	height: 52px;
+	// background-color: #1a1a1e;
+	background-color: $color-black;
+	border: none;
+	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+	border-radius: 26px;
+	color: #ffffff;
+	font-size: 14px;
+	font-weight: 600;
+	outline: none;
+
+	/* Анимация */
+	transition:
+		width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+		opacity 0.4s ease,
+		box-shadow 0.4s ease,
+		visibility 0.4s;
+
+	&::placeholder {
+		color: #fff;
+		opacity: 0.4;
+		font-size: 14px;
+		font-weight: 600;
+		white-space: nowrap; // Текст не переносится при сворачивании поля
+	}
+
+	&:focus {
+		box-shadow: 0 0 1px 1px rgba(73, 208, 255, 1);
+		outline: none; // убираем стандартный синий аутлайн браузера
+	}
+}
+
+/* Модификаторы активного состояния */
+.searchInputOpen {
+	width: 850px;
+	padding: 0 60px 0 28px;
+	opacity: 1;
+	visibility: visible;
+}
+
+.actionBtnActive {
+	color: $color-blue;
+}

@@ -1,0 +1,49 @@
+@use 'normalize';
+@use 'fonts';
+
+#root {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+body {
+	// display: flex;
+	// justify-content: center;
+	// align-items: start;
+	font-family: 'RF Dewi Expanded', sans-serif;
+	background-color: #fff;
+	min-height: 100vh;
+}
+
+.container {
+	width: 100%;
+	max-width: #{$container-desktop-width + ($container-padding-x * 2)};
+	margin: 0 auto;
+	padding-inline: $container-padding-x;
+}
+
+// Для графического знака белорусского рубля с помощью иконочного шрифта
+.nbrb-icon {
+	font-family: 'nbrb' !important;
+	font-size: 19px;
+	font-style: normal;
+	font-weight: normal;
+	font-variant: normal;
+	text-transform: none;
+	// line-height: 1;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	letter-spacing: normal;
+	-webkit-font-feature-settings: 'liga';
+	-moz-font-feature-settings: 'liga=1';
+	-moz-font-feature-settings: 'liga';
+	-ms-font-feature-settings: 'liga' 1;
+	font-feature-settings: 'liga';
+	-webkit-font-variant-ligatures: discretionary-ligatures;
+	font-variant-ligatures: discretionary-ligatures;
+}
+
+.nbrb-icon-byn:before {
+	content: '\e901'; /* Юникод для знака */
+}
