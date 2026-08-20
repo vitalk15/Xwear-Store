@@ -47,3 +47,13 @@ export const fetchProductDetail = async (productId) => {
 	const { data } = await apiClient.get(`/shop/products/${productId}/`)
 	return data
 }
+
+/**
+ * Получить список рекомендованных товаров (похожих предложений) для конкретного варианта товара
+ * @param {string|number} productId - ID текущего варианта товара
+ * @returns {Promise<Array>} Массив объектов товаров для ленты рекомендаций
+ */
+export const getProductRecommends = async (productId) => {
+	const response = await apiClient.get(`/shop/products/${productId}/recommends/`)
+	return response.data
+}
