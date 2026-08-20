@@ -8,8 +8,15 @@ const ProductRecommends = ({ productId }) => {
 
 	const [currentIndex, setCurrentIndex] = useState(0)
 
+	// Стейты для отслеживания касаний
+	const [touchStart, setTouchStart] = useState(null)
+	const [touchEnd, setTouchEnd] = useState(null)
+
 	// Если нет рекомендаций — ничего не показываем
 	if (!recommends || recommends.length === 0) return null
+
+	// Минимальная дистанция свайпа в пикселях для срабатывания
+	const minSwipeDistance = 50
 
 	const visibleCards = 4 // Количество карточек на экране
 	const maxIndex = Math.max(0, recommends.length - visibleCards)
@@ -17,11 +24,42 @@ const ProductRecommends = ({ productId }) => {
 	const handlePrev = () => setCurrentIndex((prev) => Math.max(0, prev - 1))
 	const handleNext = () => setCurrentIndex((prev) => Math.min(maxIndex, prev + 1))
 
+	// --- Обработчики свайпа ---
+	const onTouchStart = (e) => {
+		setTouchEnd(null) // Сбрасываем конец касания при новом тапе
+		setTouchStart(e.targetTouches[0].clientX)
+	}
+
+	const onTouchMove = (e) => {
+		setTouchEnd(e.targetTouches[0].clientX)
+	}
+
+	const onTouchEnd = () => {
+		if (!touchStart || !touchEnd) return
+
+		const distance = touchStart - touchEnd
+		const isLeftSwipe = distance > minSwipeDistance
+		const isRightSwipe = distance < -minSwipeDistance
+
+		if (isLeftSwipe && currentIndex < maxIndex) {
+			handleNext()
+		}
+
+		if (isRightSwipe && currentIndex > 0) {
+			handlePrev()
+		}
+	}
+
 	return (
 		<section className={styles.section}>
 			<h2 className={styles.title}>Интересные предложения</h2>
 
-			<div className={styles.carouselContainer}>
+			<div
+				className={styles.carouselContainer}
+				onTouchStart={onTouchStart}
+				onTouchMove={onTouchMove}
+				onTouchEnd={onTouchEnd}
+			>
 				<div
 					className={styles.track}
 					// Сдвигаем ленту влево на 25% (одна карточка) за каждый шаг
