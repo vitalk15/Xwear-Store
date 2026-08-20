@@ -112,7 +112,7 @@ const ProductDescription = ({ description }) => {
 	}
 
 	return (
-		<div className={styles.wrapper}>
+		<section className={styles.descWrapper}>
 			<h2 className={styles.mainTitle}>Описание</h2>
 
 			<div className={styles.checkerboard}>
@@ -153,7 +153,7 @@ const ProductDescription = ({ description }) => {
 						)
 					})}
 			</div>
-		</div>
+		</section>
 	)
 }
 

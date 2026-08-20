@@ -1,14 +1,14 @@
-.wrapper {
-	margin-bottom: 64px;
+.characterWrapper {
+	margin-bottom: 80px;
 	width: 100%;
 }
 
 .mainTitle {
 	font-size: 28px;
-	font-weight: 700;
+	font-weight: 900;
 	text-transform: uppercase;
 	margin-bottom: 30px;
-	color: #000;
+	color: $color-black;
 }
 
 /* Контейнер для блоков характеристик. 
@@ -25,10 +25,10 @@
 }
 
 .blockTitle {
-	font-size: 20px;
-	font-weight: 600;
-	margin-bottom: 24px;
-	color: #333;
+	font-size: 18px;
+	font-weight: 700;
+	margin-bottom: 18px;
+	color: $color-black;
 }
 
 .specList {
@@ -47,8 +47,9 @@
 }
 
 .specLabel {
-	font-size: 16px;
-	color: #000; /* Как на макете - название чуть более тусклое */
+	font-size: 14px;
+	font-weight: 600;
+	color: $color-black; /* Как на макете - название чуть более тусклое */
 	white-space: nowrap; /* Запрещаем перенос названия */
 }
 
@@ -61,11 +62,11 @@
 }
 
 .specValue {
-	font-size: 16px;
-	font-weight: 500;
-	color: #000; /* Значение более контрастное */
-	white-space: nowrap; /* Запрещаем перенос значения */
+	font-size: 14px;
+	font-weight: 600;
+	color: $color-black;
+	// white-space: nowrap; /* Запрещаем перенос значения */
 	text-align: left;
-	width: 62%; /* Отводим под значения ровно 45% ширины строки */
+	width: 70%; /* Отводим под значения ровно 70% ширины строки */
 	flex-shrink: 0; /* Запрещаем колонке сужаться, чтобы линия была идеально ровной */
 }

@@ -38,14 +38,14 @@ const ProductCharacteristics = ({ product }) => {
 	)
 
 	return (
-		<div className={styles.wrapper}>
+		<section className={styles.characterWrapper}>
 			<h2 className={styles.mainTitle}>Характеристики</h2>
 
 			<div className={styles.blocksContainer}>
 				{/* Блок общих характеристик */}
 				{generalSpecs.length > 0 && (
 					<div className={styles.specBlock}>
-						<h3 className={styles.blockTitle}>Общие характеристики</h3>
+						<h3 className={styles.blockTitle}>Общая характеристика</h3>
 						{renderSpecList(generalSpecs)}
 					</div>
 				)}
@@ -58,7 +58,7 @@ const ProductCharacteristics = ({ product }) => {
 					</div>
 				)}
 			</div>
-		</div>
+		</section>
 	)
 }
 
