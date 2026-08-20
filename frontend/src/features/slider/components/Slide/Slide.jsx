@@ -1,3 +1,4 @@
+import SmartLink from '@/shared/ui/SmartLink'
 import placeholderBanner from '@/assets/images/placeholder-banner.webp'
 import styles from './Slide.module.scss'
 
@@ -5,7 +6,7 @@ const Slide = ({ slide }) => {
 	// Распаковываем данные из JSON
 	const {
 		title,
-		links = [], // !!! Todo: от бэкенда в links.url приходят прямые абсолютные ссылки, переход по ним присходит с перезагрузкой приложения. Нужно это исправить
+		links = [],
 		grid_layout = 'center_left',
 		content_width = 50,
 		text_color = 'dark',
@@ -52,14 +53,14 @@ const Slide = ({ slide }) => {
 					{links.length > 0 && (
 						<div className={styles.linksGroup}>
 							{links.map((link, idx) => (
-								<a
+								<SmartLink
 									key={idx}
-									href={link.url}
+									to={link.url}
 									className={`${styles.linkItem} ${styles.btn} ${styles[`btn_${link.style || 'primary'}`]}`}
 									style={{ fontSize: font_size_link }}
 								>
 									{link.title}
-								</a>
+								</SmartLink>
 							))}
 						</div>
 					)}
