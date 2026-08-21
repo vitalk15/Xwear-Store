@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django.contrib.postgres',  # для полнотекстового поиска
     "core.apps.CoreConfig",
     "xwear.apps.XwearConfig",
     "accounts.apps.AccountsConfig",

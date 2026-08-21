@@ -50,23 +50,36 @@ def category_tree_view(request):
 
 # товары категории
 @api_view(["GET"])
-def category_detail_view(request, pk):
-    category = get_object_or_404(Category, pk=pk, is_active=True)
-
-    # MPTT breadcrumbs
-    breadcrumbs = [
-        {"name": cat.name, "slug": cat.slug, "id": cat.id}
-        for cat in category.get_ancestors(include_self=True)
-    ]
-
-    # Фильтрация для сайдбара
-    # 1. Получаем саму категорию и всех её потомков (для MPTT)
-    categories = category.get_descendants(include_self=True)
+def category_detail_view(request, pk=None):
+    # 1. Определяем контекст: ищем внутри категории или по всему каталогу
+    if pk is not None:
+        # --- Логика для конкретной категории ---
+        category = get_object_or_404(Category, pk=pk, is_active=True)
+        # Получаем саму категорию и всех её потомков (для MPTT)
+        categories = category.get_descendants(include_self=True)
+        # MPTT breadcrumbs
+        breadcrumbs = [
+            {"name": cat.name, "slug": cat.slug, "id": cat.id}
+            for cat in category.get_ancestors(include_self=True)
+        ]
+        
+        category_data = {
+            "id": category.id,
+            "name": category.name,
+            "breadcrumbs": breadcrumbs,
+        }
+    else:
+        # Логика для глобального поиска (по всему каталогу)
+        # Берем все активные категории, чтобы фильтры сайдбара сформировались корректно
+        categories = Category.objects.filter(is_active=True)
+        # В ответе вернем category: null
+        category_data = None
 
     # 2. Получаем данные для сайдбара
+    # Функции-хелперы получат либо ветку текущей категории, либо все категории каталога
     filters_data = get_category_sidebar_filters(categories, request.query_params)
 
-    # 3. Получаем отфильтрованные товары
+    # 3. Получаем отфильтрованные товары (и применяем поиск)
     products_queryset = get_filtered_products(categories, request.query_params)
 
     # 4. Пагинация (из settings.py) и сериализация
@@ -79,16 +92,12 @@ def category_detail_view(request, pk):
     response = paginator.get_paginated_response(serializer.data)
 
     # Внедряем наши кастомные данные на верхний уровень JSON
-    response.data["category"] = {
-        "id": category.id,
-        "name": category.name,
-        "breadcrumbs": breadcrumbs,
-    }
+    response.data["category"] = category_data
     response.data["filters"] = {
-        "brands": BrandSerializer(filters_data["brands"], many=True).data,
-        "colors": ColorSerializer(filters_data["colors"], many=True).data,
-        "sizes": filters_data["sizes"],
-        "price_range": filters_data["price_range"],
+        "brands": BrandSerializer(filters_data["brands"], many=True).data if filters_data.get("brands") else [],
+        "colors": ColorSerializer(filters_data["colors"], many=True).data if filters_data.get("colors") else [],
+        "sizes": filters_data.get("sizes", []),
+        "price_range": filters_data.get("price_range", {"min_price": 0, "max_price": 0}),
     }
 
     # В результате структура JSON-ответа будет:
