@@ -17,13 +17,17 @@ const CategoryPage = () => {
 	const category = useCategoryByPath(fullPath)
 
 	// !!! Todo: Потом заменить на показ страницы PageNotFound
-	if (!category) {
+	if (fullPath && !category) {
 		return (
 			<div className="container" style={{ padding: '80px 0' }}>
 				Категория не найдена (404)
 			</div>
 		)
 	}
+
+	// Если пути нет (fullPath === ""), значит мы в корне каталога (глобальный поиск).
+	// Передаем categoryId как null (или undefined)
+	const targetCategoryId = category ? category.id : null
 
 	return (
 		<>
@@ -33,7 +37,7 @@ const CategoryPage = () => {
 				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
 					<Suspense fallback={<CategorySkeleton />}>
 						{/* Передаем ID найденной категории во внутренний компонент */}
-						<CategoryContent categoryId={category.id} />
+						<CategoryContent categoryId={targetCategoryId} />
 					</Suspense>
 				</ErrorBoundary>
 			</div>

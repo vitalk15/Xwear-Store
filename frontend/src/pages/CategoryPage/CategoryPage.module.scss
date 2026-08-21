@@ -41,10 +41,14 @@
 
 .layout {
 	display: flex;
-	gap: 22px;
+	gap: 30px;
 	align-items: flex-start;
 	justify-content: space-between;
 	container-type: inline-size;
+}
+
+.layoutNoBreadcrumbs {
+	margin-top: 40px;
 }
 
 .main {

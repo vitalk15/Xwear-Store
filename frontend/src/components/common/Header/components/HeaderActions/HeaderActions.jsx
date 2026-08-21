@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import SearchIcon from '@/shared/icons/search.svg'
 import StarIcon from '@/shared/icons/star.svg'
 import UserIcon from '@/shared/icons/user.svg'
@@ -18,11 +19,29 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 	// Ссылки для управления фокусом поля поиска и кликом вне области
 	const searchWrapperRef = useRef(null)
 	const inputRef = useRef(null)
+	const navigate = useNavigate() // Инициализируем навигацию
 
 	// Обработчик клика по лупе
 	const handleSearchToggle = (e) => {
 		e.preventDefault()
 		setIsSearchOpen(!isSearchOpen)
+	}
+
+	// Обработчик нажатия клавиш
+	const handleKeyDown = (e) => {
+		if (e.key === 'Enter') {
+			const query = inputRef.current.value.trim()
+
+			if (query) {
+				// Переходим на страницу каталога, передавая текст в URL
+				navigate(`/catalog?search=${encodeURIComponent(query)}`)
+
+				// Закрываем поиск и очищаем поле после перехода
+				setIsSearchOpen(false)
+				inputRef.current.value = ''
+				inputRef.current.blur()
+			}
+		}
 	}
 
 	// Управление фокусом поля поиска и очисткой
@@ -67,6 +86,7 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 					type="text"
 					className={`${styles.searchInput} ${isSearchOpen ? styles.searchInputOpen : ''}`}
 					placeholder="Поиск по каталогу товаров"
+					onKeyDown={handleKeyDown}
 				/>
 				<button
 					className={`${styles.actionBtn} ${isSearchOpen ? styles.actionBtnActive : ''}`}

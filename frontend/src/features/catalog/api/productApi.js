@@ -12,12 +12,19 @@ import { apiClient } from '@/shared/api/apiClient'
  * @param {string|number} [params.min_price] - Минимальная цена
  * @param {string|number} [params.max_price] - Максимальная цена
  * @param {string} [params.sort] - Параметр сортировки (например, "price" или "-price")
+ * @param {string} [params.search] - Текстовый запрос для поиска (например, "nike")
  * @returns {Promise<Object>} Объект ответа DRF { count, next, previous, results: [], category: {}, filters: {} }
  */
 export const fetchCategoryProducts = async (categoryId, params = {}) => {
-	const { data } = await apiClient.get(`/shop/categories/${categoryId}/products/`, {
+	// Динамически определяем эндпоинт
+	const endpoint = categoryId
+		? `/shop/categories/${categoryId}/products/`
+		: '/shop/products/'
+
+	const { data } = await apiClient.get(endpoint, {
 		params,
 	})
+
 	return data
 }
 
