@@ -8,5 +8,6 @@
 .mainContent {
 	flex: 1 0 auto; // Заставляет main занимать всё доступное пространство по вертикали
 	width: 100%;
+	min-height: 100vh;
 	padding-top: $header-height;
 }

@@ -5,6 +5,7 @@ import { SilentFallback } from '@/components/common/ErrorBoundary/SilentFallback
 import { useCategoryByPath } from '@/entities/category/hooks/useCategoryByPath'
 import { handleCriticalError } from '@/shared/utils/errorHandler'
 import PageTitle from '@/components/common/PageTitle'
+import NotFoundPage from '../NotFoundPage'
 import CategoryContent from './CategoryContent'
 import CategorySkeleton from './CategorySkeleton'
 import styles from './CategoryPage.module.scss'
@@ -16,14 +17,8 @@ const CategoryPage = () => {
 	// Ищем ID категории в нашем закэшированном дереве навигации
 	const category = useCategoryByPath(fullPath)
 
-	// !!! Todo: Потом заменить на показ страницы PageNotFound
-	if (fullPath && !category) {
-		return (
-			<div className="container" style={{ padding: '80px 0' }}>
-				Категория не найдена (404)
-			</div>
-		)
-	}
+	if (fullPath && !category)
+		return <NotFoundPage title="Упс! Категория не найдена (404)" />
 
 	// Если пути нет (fullPath === ""), значит мы в корне каталога (глобальный поиск).
 	// Передаем categoryId как null (или undefined)
