@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import ArrowIcon from '@/shared/icons/arrow.svg'
 import { useDocuments } from '@/entities/documents/hooks/useDocuments'
-import { apiClient } from '@/shared/api/apiClient'
+import apiClient from '@/shared/api/apiClient'
 import styles from '@/components/common/Footer/Footer.module.scss'
 
 const API_URL = apiClient.defaults.baseURL || 'http://127.0.0.1:8000/api'

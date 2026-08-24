@@ -1,4 +1,4 @@
-import { apiClient } from '@/shared/api/apiClient'
+import apiClient from '@/shared/api/apiClient'
 
 /**
  * Получить список товаров для конкретной категории с учетом фильтрации и пагинации
