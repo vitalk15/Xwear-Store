@@ -17,8 +17,7 @@ const CategoryPage = () => {
 	// Ищем ID категории в нашем закэшированном дереве навигации
 	const category = useCategoryByPath(fullPath)
 
-	if (fullPath && !category)
-		return <NotFoundPage title="Упс! Категория не найдена (404)" />
+	if (fullPath && !category) return <NotFoundPage />
 
 	// Если пути нет (fullPath === ""), значит мы в корне каталога (глобальный поиск).
 	// Передаем categoryId как null (или undefined)
