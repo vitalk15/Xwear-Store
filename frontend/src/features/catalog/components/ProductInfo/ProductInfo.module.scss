@@ -341,33 +341,46 @@
 	text-transform: uppercase;
 }
 
+// .addToCartBtn {
+// 	display: flex;
+// 	align-items: center;
+// 	gap: 18px;
+// 	background-color: $color-black;
+// 	color: #fff;
+//   font-size: 13px;
+// 	font-weight: 800;
+// 	text-transform: uppercase;
+// 	line-height: normal;
+// 	padding: 23px 27px;
+// 	border: none;
+// 	border-radius: $border-radius;
+// 	cursor: pointer;
+// 	transition: background-color 0.2s ease;
+
+// 	&:hover:not(:disabled) {
+// 		background-color: $color-blue;
+
+// 		.cartIcon {
+// 			transform: translateX(4px);
+// 		}
+// 	}
+
+// 	&:disabled {
+// 		background-color: #ccc;
+// 		cursor: not-allowed;
+// 	}
+// }
+
 .addToCartBtn {
-	display: flex;
-	align-items: center;
-	gap: 18px;
-	background-color: $color-black;
-	color: #fff;
 	font-size: 13px;
 	font-weight: 800;
 	text-transform: uppercase;
 	line-height: normal;
-	padding: 24px 27px;
-	border: none;
-	border-radius: $border-radius;
-	cursor: pointer;
-	transition: background-color 0.2s ease;
 
 	&:hover:not(:disabled) {
-		background-color: $color-blue;
-
 		.cartIcon {
 			transform: translateX(4px);
 		}
-	}
-
-	&:disabled {
-		background-color: #ccc;
-		cursor: not-allowed;
 	}
 }
 

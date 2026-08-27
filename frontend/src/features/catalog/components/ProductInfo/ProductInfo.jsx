@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
+import Button from '@/components/ui/Button'
 import ArrowIcon from '@/shared/icons/arrow.svg'
 import styles from './ProductInfo.module.scss'
 
@@ -111,14 +112,13 @@ const ProductInfo = ({ product }) => {
 					)}
 				</div>
 
-				<button
-					type="button"
+				<Button
 					className={styles.addToCartBtn}
 					disabled={!selectedSize} // Блокируем кнопку, если размер не выбран
 				>
 					Добавить в корзину
 					<ArrowIcon className={styles.cartIcon} />
-				</button>
+				</Button>
 			</div>
 
 			{/* 4. Другие цвета (кружочки-ссылки) */}

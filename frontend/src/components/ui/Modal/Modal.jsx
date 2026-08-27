@@ -2,6 +2,24 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './Modal.module.scss'
 
+/**
+ * Универсальный компонент модального окна на основе React Portals.
+ * ( Это позволит рендерить окно прямо в document.body, независимо от того,
+ * насколько глубоко в дереве компонентов оно будет вызвано.
+ * Это защищает нас от конфликтов с z-index и overflow родительских блоков.)
+ *
+ * Отображается по центру экрана поверх полупрозрачного оверлея,
+ * блокирует скролл страницы при открытии и поддерживает закрытие
+ * по нажатию клавиши Escape или клику на тёмный фон.
+ *
+ * @param {Object} props - Пропсы компонента.
+ * @param {boolean} props.isOpen - Состояние отображения модального окна (true — открыто, false — закрыто).
+ * @param {() => void} props.onClose - Функция обратного вызова для обработки закрытия модального окна.
+ * @param {React.ReactNode} [props.title] - Необязательный заголовок в шапке модального окна.
+ * @param {React.ReactNode} props.children - Содержимое, рендерящееся внутри тела модального окна.
+ *
+ * @returns {React.ReactPortal | null} Возвращает React Portal в body или null, если isOpen === false.
+ */
 const Modal = ({ isOpen, onClose, title, children }) => {
 	// Обработка закрытия по клавише Escape и блокировка скролла
 	useEffect(() => {

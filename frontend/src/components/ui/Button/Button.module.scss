@@ -1,0 +1,21 @@
+.button {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+	background-color: $color-black;
+	color: #fff;
+	padding: 23px 27px;
+	border: none;
+	border-radius: $border-radius;
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+
+	&:hover:not(:disabled) {
+		background-color: $color-blue;
+	}
+
+	&:disabled {
+		background-color: #ccc;
+		cursor: not-allowed;
+	}
+}
