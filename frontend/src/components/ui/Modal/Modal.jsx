@@ -17,10 +17,19 @@ import styles from './Modal.module.scss'
  * @param {() => void} props.onClose - Функция обратного вызова для обработки закрытия модального окна.
  * @param {React.ReactNode} [props.title] - Необязательный заголовок в шапке модального окна.
  * @param {React.ReactNode} props.children - Содержимое, рендерящееся внутри тела модального окна.
+ * @param {string} [props.className=''] - Дополнительные CSS-классы для переопределения или добавления стилей контейнеру окна.
+ * @param {boolean} [props.showCloseButton=true] - Флаг, определяющий отображение стандартной кнопки закрытия (крестика) в базовом компоненте.
  *
  * @returns {React.ReactPortal | null} Возвращает React Portal в body или null, если isOpen === false.
  */
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({
+	isOpen,
+	onClose,
+	title,
+	children,
+	className = '',
+	showCloseButton = true,
+}) => {
 	// Обработка закрытия по клавише Escape и блокировка скролла
 	useEffect(() => {
 		const handleKeyDown = (e) => {
@@ -51,11 +60,13 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 	// Рендерим модалку прямо в <body> через Портал
 	return createPortal(
 		<div className={styles.overlay} onClick={handleOverlayClick}>
-			<div className={styles.modal}>
+			<div className={`${styles.modal} ${className}`.trim()}>
 				{/* Кнопка закрытия (крестик) */}
-				<button className={styles.closeBtn} onClick={onClose} aria-label="Закрыть">
-					&times;
-				</button>
+				{showCloseButton && (
+					<button className={styles.closeBtn} onClick={onClose} aria-label="Закрыть">
+						&times;
+					</button>
+				)}
 
 				{/* Опциональный заголовок */}
 				{title && <h2 className={styles.title}>{title}</h2>}
