@@ -1,17 +1,22 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SearchIcon from '@/shared/icons/search.svg'
 import StarIcon from '@/shared/icons/star.svg'
 import UserIcon from '@/shared/icons/user.svg'
 import BagIcon from '@/shared/icons/bag.svg'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
+import AuthModal from '@/components/auth/AuthModal'
 import styles from './HeaderActions.module.scss'
 
 // Принимаем пропсы из Header
 const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 	// Todo: После подключим Zustand Store для авторизации и корзины
+
+	// Состояние для модального окна авторизации
+	const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+
 	// Имитация состояния авторизации (потом заменим на Zustand useAuthStore)
-	const isAuthenticated = true
+	const isAuthenticated = false
 	// Имитация данных корзины (потом заменим на Zustand useCartStore)
 	const cartTotalItems = 5
 	const cartTotalPrice = formatPriceBy(1250)
@@ -78,62 +83,78 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 		return () => document.removeEventListener('mousedown', handleClickOutside)
 	}, [isSearchOpen, setIsSearchOpen])
 
-	return (
-		<ul className={styles.actionsList}>
-			<li className={styles.searchWrapper} ref={searchWrapperRef}>
-				<input
-					ref={inputRef}
-					type="text"
-					className={`${styles.searchInput} ${isSearchOpen ? styles.searchInputOpen : ''}`}
-					placeholder="Поиск по каталогу товаров"
-					onKeyDown={handleKeyDown}
-				/>
-				<button
-					className={`${styles.actionBtn} ${isSearchOpen ? styles.actionBtnActive : ''}`}
-					aria-label="Открыть поиск"
-					onClick={handleSearchToggle}
-				>
-					<SearchIcon />
-				</button>
-			</li>
+	// Обработчик открытия модалки авторизации
+	const handleOpenAuth = () => {
+		setIsAuthModalOpen(true)
+	}
 
-			{isAuthenticated ? (
-				// Авторизованный пользователь
-				<>
+	return (
+		<>
+			<ul className={styles.actionsList}>
+				<li className={styles.searchWrapper} ref={searchWrapperRef}>
+					<input
+						ref={inputRef}
+						type="text"
+						className={`${styles.searchInput} ${isSearchOpen ? styles.searchInputOpen : ''}`}
+						placeholder="Поиск по каталогу товаров"
+						onKeyDown={handleKeyDown}
+					/>
+					<button
+						className={`${styles.actionBtn} ${isSearchOpen ? styles.actionBtnActive : ''}`}
+						aria-label="Открыть поиск"
+						onClick={handleSearchToggle}
+					>
+						<SearchIcon />
+					</button>
+				</li>
+
+				{isAuthenticated ? (
+					// Авторизованный пользователь
+					<>
+						<li>
+							<button className={styles.actionBtn} aria-label="Избранное">
+								<StarIcon className={styles.starIcon} />
+							</button>
+						</li>
+						<li>
+							{/* Если авторизован - переходим в профиль */}
+							<button className={styles.actionBtn} aria-label="Профиль">
+								<UserIcon />
+							</button>
+						</li>
+						<li>
+							<button
+								className={`${styles.actionBtn} ${styles.cartBtn}`}
+								aria-label="Корзина"
+							>
+								<BagIcon />
+								<div className={styles.cartInfo}>
+									<span className={styles.cartPrice}>{cartTotalPrice}</span>
+									<span className={styles.cartBadge}>
+										<span>{cartTotalItems}</span>
+									</span>
+								</div>
+							</button>
+						</li>
+					</>
+				) : (
+					// НЕ авторизованный пользователь
 					<li>
-						<button className={styles.actionBtn} aria-label="Избранное">
-							<StarIcon className={styles.starIcon} />
-						</button>
-					</li>
-					<li>
-						<button className={styles.actionBtn} aria-label="Профиль">
+						{/* Если не авторизован - открываем модалку авторизации */}
+						<button
+							className={styles.actionBtn}
+							onClick={handleOpenAuth}
+							aria-label="Войти"
+						>
 							<UserIcon />
 						</button>
 					</li>
-					<li>
-						<button
-							className={`${styles.actionBtn} ${styles.cartBtn}`}
-							aria-label="Корзина"
-						>
-							<BagIcon />
-							<div className={styles.cartInfo}>
-								<span className={styles.cartPrice}>{cartTotalPrice}</span>
-								<span className={styles.cartBadge}>
-									<span>{cartTotalItems}</span>
-								</span>
-							</div>
-						</button>
-					</li>
-				</>
-			) : (
-				// НЕ авторизованный пользователь
-				<li>
-					<button className={styles.actionBtn} aria-label="Войти">
-						<UserIcon />
-					</button>
-				</li>
-			)}
-		</ul>
+				)}
+			</ul>
+
+			{/* Рендерим модальное окно авторизации */}
+			<AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+		</>
 	)
 }
 
