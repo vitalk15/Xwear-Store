@@ -124,11 +124,123 @@
 		}
 
 		&[type='password']::placeholder {
-			font-size: 10px;
+			font-size: 8px;
 			color: #858793;
 			letter-spacing: 3px;
 		}
 	}
+
+	.errorText {
+		color: #d32f2f;
+		font-size: 11px;
+		margin-top: 2px;
+		font-weight: 500;
+	}
+}
+
+.passwordInputWrapper {
+	display: flex;
+	position: relative;
+	width: 100%;
+
+	input {
+		width: 100%;
+		padding-right: 70px; /* Оставляем место для кнопки справа */
+	}
+}
+
+.eyeBtn {
+	display: flex;
+	width: auto;
+	height: 100%;
+	align-items: center;
+	position: absolute;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	color: #666;
+	cursor: pointer;
+	padding: 0 5px;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: #111;
+	}
+
+	svg {
+		width: 18px;
+		height: auto;
+	}
+}
+
+/* Всплывающий блок с подсказками */
+.passwordHintsContainer {
+	position: absolute;
+	bottom: 100%; /* Располагаем ровно над инпутом */
+	left: 0;
+	z-index: 10; /* Поверх остальных элементов */
+	// width: 100%;
+	background-color: #fff;
+	border: 1px solid #eee;
+	border-radius: $border-radius;
+	padding: 12px 16px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+	margin-bottom: 30px;
+
+	/* Скрытое состояние и анимация (выезжает снизу вверх) */
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(10px);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+	font-size: 11px;
+	color: #888;
+
+	p {
+		margin: 0 0 6px 0;
+		font-weight: 600;
+		color: #333;
+	}
+
+	ul {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	li {
+		transition: color 0.3s ease;
+		display: flex;
+		align-items: center;
+
+		&::before {
+			content: '• ';
+			margin-right: 6px;
+			font-size: 14px;
+		}
+
+		/* Состояние, когда условие выполнено */
+		&.hintValid {
+			color: #2e7d32;
+
+			&::before {
+				content: '✓ '; /* Меняем точку на галочку */
+				font-weight: 700;
+			}
+		}
+	}
+}
+
+/* Класс для отображения всплывающего блока */
+.passwordHintsContainerVisible {
+	opacity: 1;
+	visibility: visible;
+	transform: translateY(0);
 }
 
 /* Строка с чекбоксом и ссылкой "Забыли пароль?" */
