@@ -1,0 +1,169 @@
+.closeBtn {
+	position: absolute;
+	top: 12px;
+	right: 16px;
+	background: none;
+	border: none;
+	font-size: 28px;
+	line-height: 1;
+	color: #888;
+	cursor: pointer;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: #111;
+	}
+}
+
+.title {
+	text-align: left;
+	margin: 0 0 26px;
+	font-size: 23px;
+	font-weight: 700;
+	line-height: 1.3;
+	color: $color-dark_gray;
+}
+
+.form {
+	display: flex;
+	flex-direction: column;
+	gap: 30px;
+}
+
+.inputGroup {
+	display: flex;
+	flex-direction: column;
+	background-color: #f9f9f9;
+	padding: 14px 22px;
+	border-radius: $border-radius;
+	transition: background-color 0.2s ease;
+
+	&:focus-within {
+		background-color: #f0f0f0; /* Легкое затемнение при фокусе */
+	}
+
+	label {
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.7;
+		color: #3c3d44;
+	}
+
+	input {
+		background: transparent;
+		border: none;
+		font-size: 14px;
+		font-weight: 400;
+		line-height: 1.6;
+		letter-spacing: 1px;
+		color: $color-black;
+		outline: none;
+		padding: 0;
+
+		&[type='password'] {
+			letter-spacing: 3px;
+		}
+
+		&::placeholder {
+			color: #424347;
+			letter-spacing: 1px;
+		}
+
+		&[type='password']::placeholder {
+			font-size: 8px;
+			color: #858793;
+			letter-spacing: 3px;
+		}
+	}
+
+	.errorText {
+		color: #d32f2f;
+		font-size: 11px;
+		margin-top: 2px;
+		font-weight: 500;
+	}
+}
+
+.passwordInputWrapper {
+	display: flex;
+	position: relative;
+	width: 100%;
+
+	input {
+		width: 100%;
+		padding-right: 70px; /* Оставляем место для кнопки справа */
+	}
+}
+
+.eyeBtn {
+	display: flex;
+	width: auto;
+	height: 100%;
+	align-items: center;
+	position: absolute;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	color: #666;
+	cursor: pointer;
+	padding: 0 5px;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: #111;
+	}
+
+	svg {
+		width: 18px;
+		height: auto;
+	}
+}
+
+/* Обертка для центрирования кнопки */
+.submitBtnWrapper {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 35px;
+}
+
+.submitBtn {
+	min-width: 200px;
+	font-weight: 800;
+	font-size: 12px;
+	line-height: normal;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	text-align: center;
+}
+
+/* Ссылка переворота формы внизу */
+.toggleText {
+	text-align: center;
+	margin-top: auto;
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.4;
+	color: #000;
+
+	button {
+		background: none;
+		border: none;
+		color: #676767;
+		cursor: pointer;
+		text-decoration: underline;
+		text-decoration-style: solid;
+		text-decoration-skip-ink: none;
+		text-decoration-thickness: auto;
+		text-underline-offset: auto;
+		text-underline-offset: 1px;
+		text-underline-position: from-font;
+		padding: 0;
+		transition: color 0.18s ease;
+
+		&:hover {
+			color: $color-black;
+		}
+	}
+}

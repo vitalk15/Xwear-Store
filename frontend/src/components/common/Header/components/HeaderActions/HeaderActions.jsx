@@ -5,7 +5,7 @@ import StarIcon from '@/shared/icons/star.svg'
 import UserIcon from '@/shared/icons/user.svg'
 import BagIcon from '@/shared/icons/bag.svg'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
-import AuthModal from '@/components/auth/AuthModal'
+import AuthModal from '@/features/auth/components/AuthModal'
 import styles from './HeaderActions.module.scss'
 
 // Принимаем пропсы из Header
