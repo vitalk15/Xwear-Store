@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { registerSchema } from '@/features/auth/schemas/auth.schema'
+import { registerUser } from '@/features/auth/api/auth.api'
 import Button from '@/components/ui/Button'
 import PasswordHints from '../PasswordHints'
 import ShowIcon from '@/shared/icons/show.svg'
@@ -16,12 +17,16 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 	// Состояние фокуса на поле пароля
 	const [isPasswordFocused, setIsPasswordFocused] = useState(false)
 
+	const [isSuccess, setIsSuccess] = useState(false)
+	const [registeredEmail, setRegisteredEmail] = useState('')
+
 	// Инициализация формы регистрации и подключение схемы
 	const {
 		register,
 		handleSubmit,
-		formState: { errors },
+		formState: { errors, isSubmitting },
 		control, // <-- для хука слежения useWatch
+		setError,
 	} = useForm({
 		resolver: zodResolver(registerSchema),
 		defaultValues: { email: '', password: '', confirmPassword: '' },
@@ -37,10 +42,93 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 	const confirmProps = register('confirmPassword')
 
 	// Обработчик отправки данных
-	const onSubmit = (data) => {
-		console.log('Отправка регистрации:', data)
-		// TODO: Здесь будет вызов API DRF для получения JWT
-		// TODO: Вызов экшена Zustand
+	const onSubmit = async (data) => {
+		try {
+			// Отправляем (маппим) данные, которые ожидает бэкенд
+			// const response = await registerUser({
+			// 	email: data.email,
+			// 	password: data.password,
+			// 	password_confirm: data.confirmPassword,
+			// })
+
+			// Успех! DRF вернул 201 Created
+			// console.log('Успех:', response.message)
+
+			// Временно используем alert для уведомления пользователя
+			// alert(response.message)
+
+			// Отправляем (маппим) данные, которые ожидает бэкенд
+			await registerUser({
+				email: data.email,
+				password: data.password,
+				password_confirm: data.confirmPassword,
+			})
+
+			setRegisteredEmail(data.email)
+			setIsSuccess(true)
+		} catch (error) {
+			// Перехватываем ошибки валидации от Django (400 Bad Request)
+			if (error.response && error.response.status === 400) {
+				const backendErrors = error.response.data
+
+				// DRF возвращает ошибки в виде объекта с массивами строк: { email: ["Такой email уже существует."] }
+				// Обработка ошибки Email
+				if (backendErrors.email) {
+					const customEmailMessage = backendErrors.email[0].includes('уже существует')
+						? 'Пользователь с таким email уже зарегистрирован'
+						: backendErrors.email[0]
+
+					setError('email', {
+						type: 'server',
+						message: customEmailMessage,
+					})
+				}
+
+				// Обработка ошибок пароля (если Django решит, что он слишком простой)
+				if (backendErrors.password) {
+					setError('password', {
+						type: 'server',
+						message: backendErrors.password[0],
+					})
+				}
+
+				// Обработка ошибок подтверждения пароля
+				if (backendErrors.password_confirm) {
+					setError('confirmPassword', {
+						type: 'server',
+						message: backendErrors.password_confirm[0],
+					})
+				}
+			} else {
+				alert('Произошла ошибка при соединении с сервером. Попробуйте позже.')
+			}
+		}
+	}
+
+	// Если регистрация прошла успешно — показываем красивое карточку-сообщение
+	if (isSuccess) {
+		return (
+			<div className={styles.successWrapper}>
+				<button
+					className={`${styles.closeBtn} ${styles.successBtn}`}
+					onClick={onClose}
+					aria-label="Закрыть"
+				>
+					&times;
+				</button>
+				<h2 className={styles.successTitle}>Регистрация прошла успешно!</h2>
+				<p className={styles.successMessage}>
+					Мы отправили письмо для активации аккаунта на адрес{' '}
+					<strong>{registeredEmail}</strong>.
+				</p>
+				<p className={styles.subText}>
+					Перейдите по ссылке в письме, чтобы завершить регистрацию и войти в систему.
+				</p>
+				<Button onClick={onClose} className={styles.submitBtn}>
+					ПОНЯТНО
+				</Button>
+			</div>
+		)
 	}
 
 	return (
@@ -136,7 +224,8 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 				</div>
 
 				<div className={styles.submitBtnWrapper}>
-					<Button type="submit" className={styles.submitBtn}>
+					{/* Отключаем кнопку во время загрузки (isSubmitting) */}
+					<Button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
 						ЗАРЕГИСТРИРОВАТЬСЯ
 					</Button>
 				</div>

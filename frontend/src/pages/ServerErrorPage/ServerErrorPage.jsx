@@ -1,4 +1,4 @@
-import useErrorStore from '@/store/useErrorStore'
+import useErrorStore from '@/shared/store/useErrorStore'
 import styles from './ServerErrorPage.module.scss'
 
 const ERROR_CONFIGS = {

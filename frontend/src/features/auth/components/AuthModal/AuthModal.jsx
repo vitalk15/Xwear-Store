@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Modal from '@/components/ui/Modal'
-import LoginForm from '../LoginForm'
-import RegisterForm from '../RegisterForm'
+import LoginForm from './components/LoginForm'
+import RegisterForm from './components/RegisterForm'
 import styles from './AuthModal.module.scss'
 
 const AuthModal = ({ isOpen, onClose }) => {

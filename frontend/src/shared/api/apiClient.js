@@ -1,5 +1,5 @@
 import axios from 'axios'
-import useErrorStore from '@/store/useErrorStore'
+import useErrorStore from '@/shared/store/useErrorStore'
 
 const apiClient = axios.create({
 	// Vite автоматически подхватит VITE_API_URL из .env файла

@@ -167,3 +167,77 @@
 		}
 	}
 }
+
+/* Анимация появления успешного сообщения */
+@keyframes successFadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* Обёртка успешного сообщения */
+.successWrapper {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	animation: successFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+	/* Стильный круг с галочкой/иконкой сверху */
+	&::before {
+		content: '✓';
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 54px;
+		height: 54px;
+		border-radius: 50%;
+		background-color: #e8f5e9;
+		color: #2e7d32;
+		font-size: 28px;
+		font-weight: bold;
+		margin-bottom: 16px;
+	}
+}
+
+.successBtn {
+	top: 0;
+	right: 0;
+}
+
+.successTitle {
+	margin: 0 0 26px;
+	font-size: 23px;
+	font-weight: 700;
+	line-height: 1.3;
+	color: #303030;
+}
+
+.successMessage {
+	text-align: left;
+	font-size: 16px;
+	line-height: 1.5;
+	color: #333;
+	margin: 0 0 10px 0;
+
+	strong {
+		color: #000;
+		font-weight: 600;
+		word-break: break-all; /* На случай длинных email-адресов */
+	}
+}
+
+.subText {
+	text-align: left;
+	font-size: 14px;
+	line-height: 1.4;
+	color: #777;
+	margin-bottom: 50px;
+}
