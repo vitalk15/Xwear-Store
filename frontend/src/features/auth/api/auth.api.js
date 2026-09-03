@@ -39,8 +39,6 @@ export const activateUser = async (payload) => {
  * @returns {Promise<Object>} Ответ сервера { user, access }
  */
 export const loginUser = async (credentials) => {
-	// Укажите здесь ваш точный эндпоинт для логина из Django urls.py
-	// Обычно для SimpleJWT это /auth/login/ или /auth/jwt/create/
 	const { data } = await apiClient.post('/auth/token/', credentials)
 
 	return data

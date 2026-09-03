@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema } from '@/features/auth/schemas/auth.schema'
+import { loginUser } from '@/features/auth/api/auth.api'
+import useAuthStore from '@/features/auth/store/useAuthStore'
 import Button from '@/components/ui/Button'
 import CheckmarkIcon from '@/shared/icons/checkmark.svg'
 import ShowIcon from '@/shared/icons/show.svg'
@@ -12,12 +14,16 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 	// Состояния для показа/скрытия пароля
 	const [showPassword, setShowPassword] = useState(false)
 
+	// Достаем функцию сохранения данных из Zustand-стора
+	const setAuth = useAuthStore((state) => state.setAuth)
+
 	// 1. Инициализация формы входа и подключение схемы
 	const {
 		register,
 		handleSubmit,
-		formState: { errors },
+		formState: { errors, isSubmitting },
 		control, // <-- для хука слежения useWatch
+		setError,
 	} = useForm({
 		resolver: zodResolver(loginSchema),
 		defaultValues: { email: '', password: '', rememberMe: false },
@@ -30,10 +36,56 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 	const passwordProps = register('password')
 
 	// Обработчик отправки данных
-	const onSubmit = (data) => {
-		console.log('Отправка логина:', data)
-		// TODO: Здесь будет вызов API DRF для получения JWT
-		// TODO: Вызов экшена Zustand
+	const onSubmit = async (data) => {
+		// Отправляем (маппим) данные, которые ожидает бэкенд
+		try {
+			const response = await loginUser({
+				email: data.email,
+				password: data.password,
+			})
+
+			// Если запрос успешен, сохраняем user и access-токен в Zustand
+			setAuth({
+				user: response.user,
+				access: response.access,
+			})
+
+			// Закрываем модальное окно после успешного входа
+			onClose()
+		} catch (error) {
+			if (
+				error.response &&
+				(error.response.status === 401 || error.response.status === 400)
+			) {
+				// Достаем ошибку от бэкенда (если она есть)
+				const backendDetail =
+					error.response.data.detail ||
+					(error.response.data.non_field_errors &&
+						error.response.data.non_field_errors[0])
+
+				// Задаем базовое сообщение
+				let errorMessage = 'Неверный email или пароль'
+
+				// Если пришла стандартная английская ошибка SimpleJWT — подменяем её на нашу
+				if (backendDetail === 'No active account found with the given credentials') {
+					errorMessage
+				} else if (backendDetail) {
+					// Если пришла какая-то другая ошибка (например, кастомная с бэкенда), выводим её
+					errorMessage = backendDetail
+				}
+
+				// Устанавливаем "корневую" ошибку формы, так как мы не знаем, где именно ошибся юзер (в email или пароле)
+				setError('root.serverError', {
+					type: 'server',
+					message: errorMessage,
+				})
+			} else {
+				setError('root.serverError', {
+					type: 'server',
+					message: 'Ошибка при подключении к серверу. Попробуйте позже.',
+				})
+			}
+		}
 	}
 
 	return (
@@ -45,6 +97,13 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 			<h2 className={styles.title}>Войти</h2>
 
 			<form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
+				{/* Вывод общей ошибки сервера (например, "Неверный email или пароль") */}
+				{errors.root?.serverError && (
+					<div className={styles.serverErrorMessage}>
+						{errors.root.serverError.message}
+					</div>
+				)}
+
 				{/* Email */}
 				<div className={styles.inputGroup}>
 					<label>Email адрес:</label>
@@ -110,7 +169,8 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 					</button>
 				</div>
 				<div className={styles.submitBtnWrapper}>
-					<Button type="submit" className={styles.submitBtn}>
+					{/* Блокируем кнопку на время отправки запроса */}
+					<Button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
 						ВОЙТИ
 					</Button>
 				</div>
@@ -118,7 +178,7 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 
 			<div className={styles.toggleText}>
 				<span>Нет аккаунта? </span>
-				<button type="button" onClick={onSwitchToRegister}>
+				<button type="button" onClick={onSwitchToRegister} disabled={isSubmitting}>
 					Регистрация
 				</button>
 			</div>
