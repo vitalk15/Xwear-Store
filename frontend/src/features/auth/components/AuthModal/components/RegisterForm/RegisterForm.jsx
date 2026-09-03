@@ -13,11 +13,11 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 	// Состояния для показа/скрытия паролей
 	const [showPassword, setShowPassword] = useState(false)
 	const [showConfirm, setShowConfirm] = useState(false)
-
 	// Состояние фокуса на поле пароля
 	const [isPasswordFocused, setIsPasswordFocused] = useState(false)
-
+	// Состояние успеха регистрации
 	const [isSuccess, setIsSuccess] = useState(false)
+	// состояние зарегистрированной эл.почты
 	const [registeredEmail, setRegisteredEmail] = useState('')
 
 	// Инициализация формы регистрации и подключение схемы
@@ -44,19 +44,6 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 	// Обработчик отправки данных
 	const onSubmit = async (data) => {
 		try {
-			// Отправляем (маппим) данные, которые ожидает бэкенд
-			// const response = await registerUser({
-			// 	email: data.email,
-			// 	password: data.password,
-			// 	password_confirm: data.confirmPassword,
-			// })
-
-			// Успех! DRF вернул 201 Created
-			// console.log('Успех:', response.message)
-
-			// Временно используем alert для уведомления пользователя
-			// alert(response.message)
-
 			// Отправляем (маппим) данные, которые ожидает бэкенд
 			await registerUser({
 				email: data.email,
@@ -105,7 +92,7 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 		}
 	}
 
-	// Если регистрация прошла успешно — показываем красивое карточку-сообщение
+	// Если регистрация прошла успешно — показываем сообщение
 	if (isSuccess) {
 		return (
 			<div className={styles.successWrapper}>
@@ -233,7 +220,7 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 
 			<div className={styles.toggleText}>
 				Уже есть аккаунт?{' '}
-				<button type="button" onClick={onSwitchToLogin}>
+				<button type="button" onClick={onSwitchToLogin} disabled={isSubmitting}>
 					Вход
 				</button>
 			</div>
