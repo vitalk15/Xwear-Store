@@ -38,6 +38,7 @@ User = get_user_model()
 # переопределяем так как нужно установить Refresh-токен в HttpOnly куку
 class CustomTokenObtainView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
+        # 1. Получаем стандартный ответ с токенами
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             refresh_token = response.data.get("refresh")
@@ -45,6 +46,18 @@ class CustomTokenObtainView(TokenObtainPairView):
             set_refresh_cookie(response, refresh_token)
             # Удаляем refresh из JSON-ответа
             del response.data["refresh"]
+
+            # 2. Достаем пользователя из валидированных данных и добавляем в ответ
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.user
+            
+            # 3. Формируем объект user, как ожидает фронтенд
+            response.data["user"] = {
+                "id": user.id,
+                "email": user.email,
+            }
+            
         return response
 
 
