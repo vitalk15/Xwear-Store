@@ -6,17 +6,18 @@ import UserIcon from '@/shared/icons/user.svg'
 import BagIcon from '@/shared/icons/bag.svg'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
 import AuthModal from '@/features/auth/components/AuthModal'
+import useAuthStore from '@/features/auth/store/useAuthStore'
+import { paths } from '@/routes/paths'
 import styles from './HeaderActions.module.scss'
 
 // Принимаем пропсы из Header
 const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
-	// Todo: После подключим Zustand Store для авторизации и корзины
-
 	// Состояние для модального окна авторизации
 	const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
-	// Имитация состояния авторизации (потом заменим на Zustand useAuthStore)
-	const isAuthenticated = false
+	// Достаем состояние авторизации
+	const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+
 	// Имитация данных корзины (потом заменим на Zustand useCartStore)
 	const cartTotalItems = 5
 	const cartTotalPrice = formatPriceBy(1250)
@@ -118,7 +119,11 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 						</li>
 						<li>
 							{/* Если авторизован - переходим в профиль */}
-							<button className={styles.actionBtn} aria-label="Профиль">
+							<button
+								className={styles.actionBtn}
+								aria-label="Профиль"
+								onClick={() => navigate(paths.profile)}
+							>
 								<UserIcon />
 							</button>
 						</li>
@@ -152,7 +157,7 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 				)}
 			</ul>
 
-			{/* Рендерим модальное окно авторизации */}
+			{/* Рендерим модальное окно авторизации, оно открывается только если isAuthModalOpen === true */}
 			<AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 		</>
 	)
