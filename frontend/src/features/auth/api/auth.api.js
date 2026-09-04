@@ -10,7 +10,6 @@ import apiClient from '@/shared/api/apiClient'
  */
 export const registerUser = async (userData) => {
 	const { data } = await apiClient.post('/auth/register/', userData)
-
 	return data
 }
 
@@ -39,7 +38,19 @@ export const activateUser = async (payload) => {
  * @returns {Promise<Object>} Ответ сервера { user, access }
  */
 export const loginUser = async (credentials) => {
-	const { data } = await apiClient.post('/auth/token/', credentials)
+	const { data } = await apiClient.post('/auth/token/', credentials, {
+		// Обязательный параметр для эндпоинтов, которые работают с HttpOnly cookies!
+		// Без него браузер не сохранит cookie с refresh-токеном
+		withCredentials: true,
+	})
+	return data
+}
 
+/**
+ * Выход пользователя (Удаляет HttpOnly cookie на стороне сервера)
+ * @returns {Promise<Object>}
+ */
+export const logoutUser = async () => {
+	const { data } = await apiClient.post('/auth/logout/', null, { withCredentials: true })
 	return data
 }
