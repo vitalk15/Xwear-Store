@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { registerSchema } from '@/features/auth/schemas/auth.schema'
 import { registerUser } from '@/features/auth/api/auth.api'
 import Button from '@/components/ui/Button'
-import PasswordHints from '../PasswordHints'
+import PasswordHints from '@/features/auth/components/PasswordHints'
 import ShowIcon from '@/shared/icons/show.svg'
 import HideIcon from '@/shared/icons/hide.svg'
 import styles from './RegisterForm.module.scss'
@@ -24,13 +24,15 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 	const {
 		register,
 		handleSubmit,
-		formState: { errors, isSubmitting },
+		formState: { errors, isSubmitting }, // isSubmitting - принимает значение true когда пользователь нажимает на кнопку отправки (и срабатывает функция handleSubmit(onSubmit)) и остаётся true пока выполняется запрос к серверу
 		control, // <-- для хука слежения useWatch
 		setError,
 	} = useForm({
 		resolver: zodResolver(registerSchema),
 		defaultValues: { email: '', password: '', confirmPassword: '' },
+		// mode: 'onSubmit', // Режим по-умолчанию. Проверка при отправке формы
 		// mode: 'onTouched', // Проверка при потере фокуса полем
+		// mode: 'onChange', // Режим реального времени
 	})
 
 	// Следим за полями паролей в реальном времени
@@ -111,9 +113,11 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 				<p className={styles.subText}>
 					Перейдите по ссылке в письме, чтобы завершить регистрацию и войти в систему.
 				</p>
-				<Button onClick={onClose} className={styles.submitBtn}>
-					ПОНЯТНО
-				</Button>
+				<div className="submitBtnWrapper">
+					<Button onClick={onClose} className={`submitBtn ${styles.Btn}`}>
+						ПОНЯТНО
+					</Button>
+				</div>
 			</div>
 		)
 	}
@@ -126,24 +130,22 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 			</button>
 			<h2 className={styles.title}>Регистрация</h2>
 
-			<form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
+			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
 				{/* Email */}
-				<div className={styles.inputGroup}>
+				<div className={`inputGroup ${errors.email ? 'inputError' : ''}`.trim()}>
 					<label>Email адрес:</label>
 					<input
 						type="email"
 						placeholder="yavasyaivanov@gmail.com"
 						{...register('email')}
 					/>
-					{errors.email && (
-						<span className={styles.errorText}>{errors.email.message}</span>
-					)}
+					{errors.email && <span className="errorText">{errors.email.message}</span>}
 				</div>
 
 				{/* Password с подсказками */}
-				<div className={styles.inputGroup}>
+				<div className={`inputGroup ${errors.password ? 'inputError' : ''}`.trim()}>
 					<label>Пароль:</label>
-					<div className={styles.passwordInputWrapper}>
+					<div className="passwordInputWrapper">
 						<input
 							type={showPassword ? 'text' : 'password'}
 							placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
@@ -163,7 +165,7 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 						{passwordValue.length > 0 && (
 							<button
 								type="button"
-								className={styles.eyeBtn}
+								className="eyeBtn"
 								onClick={() => setShowPassword(!showPassword)}
 								tabIndex="-1" // Чтобы кнопка не мешала навигации клавишей Tab
 							>
@@ -175,14 +177,16 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 						<PasswordHints password={passwordValue} isVisible={isPasswordFocused} />
 					</div>
 					{errors.password && (
-						<span className={styles.errorText}>{errors.password.message}</span>
+						<span className="errorText">{errors.password.message}</span>
 					)}
 				</div>
 
 				{/* Confirm Password */}
-				<div className={styles.inputGroup}>
+				<div
+					className={`inputGroup ${errors.confirmPassword ? 'inputError' : ''}`.trim()}
+				>
 					<label>Повторите пароль:</label>
-					<div className={styles.passwordInputWrapper}>
+					<div className="passwordInputWrapper">
 						<input
 							type={showConfirm ? 'text' : 'password'}
 							placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
@@ -197,7 +201,7 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 						{confirmValue.length > 0 && (
 							<button
 								type="button"
-								className={styles.eyeBtn}
+								className="eyeBtn"
 								onClick={() => setShowConfirm(!showConfirm)}
 								tabIndex="-1" // Чтобы кнопка не мешала навигации клавишей Tab
 							>
@@ -206,14 +210,18 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 						)}
 					</div>
 					{errors.confirmPassword && (
-						<span className={styles.errorText}>{errors.confirmPassword.message}</span>
+						<span className="errorText">{errors.confirmPassword.message}</span>
 					)}
 				</div>
 
-				<div className={styles.submitBtnWrapper}>
-					{/* Отключаем кнопку во время загрузки (isSubmitting) */}
-					<Button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
-						ЗАРЕГИСТРИРОВАТЬСЯ
+				<div className="submitBtnWrapper">
+					{/* Отключаем кнопку во время отправки запроса (isSubmitting) */}
+					<Button
+						type="submit"
+						className={`submitBtn ${styles.Btn}`}
+						disabled={isSubmitting}
+					>
+						{isSubmitting ? 'РЕГИСТРАЦИЯ...' : 'ЗАРЕГИСТРИРОВАТЬСЯ'}
 					</Button>
 				</div>
 			</form>

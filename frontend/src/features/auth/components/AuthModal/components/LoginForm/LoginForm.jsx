@@ -10,24 +10,26 @@ import ShowIcon from '@/shared/icons/show.svg'
 import HideIcon from '@/shared/icons/hide.svg'
 import styles from './LoginForm.module.scss'
 
-const LoginForm = ({ onClose, onSwitchToRegister }) => {
+const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
 	// Состояния для показа/скрытия пароля
 	const [showPassword, setShowPassword] = useState(false)
 
 	// Достаем функцию сохранения данных из Zustand-стора
 	const setAuth = useAuthStore((state) => state.setAuth)
 
-	// 1. Инициализация формы входа и подключение схемы
+	// Инициализация формы входа и подключение схемы
 	const {
 		register,
 		handleSubmit,
-		formState: { errors, isSubmitting },
+		formState: { errors, isSubmitting }, // isSubmitting - принимает значение true когда пользователь нажимает на кнопку отправки (и срабатывает функция handleSubmit(onSubmit)) и остаётся true пока выполняется запрос к серверу
 		control, // <-- для хука слежения useWatch
 		setError,
 	} = useForm({
 		resolver: zodResolver(loginSchema),
 		defaultValues: { email: '', password: '', rememberMe: false },
+		// mode: 'onSubmit', // Режим по-умолчанию. Проверка при отправке формы
 		// mode: 'onTouched', // Проверка при потере фокуса полем
+		// mode: 'onChange', // Режим реального времени
 	})
 
 	// Следим за полем пароля в реальном времени
@@ -96,16 +98,14 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 			</button>
 			<h2 className={styles.title}>Войти</h2>
 
-			<form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
+			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
 				{/* Вывод общей ошибки сервера (например, "Неверный email или пароль") */}
 				{errors.root?.serverError && (
-					<div className={styles.serverErrorMessage}>
-						{errors.root.serverError.message}
-					</div>
+					<div className="serverErrorMessage">{errors.root.serverError.message}</div>
 				)}
 
 				{/* Email */}
-				<div className={styles.inputGroup}>
+				<div className={`inputGroup ${errors.email ? 'inputError' : ''}`.trim()}>
 					<label>Email адрес:</label>
 					<input
 						type="email"
@@ -113,15 +113,13 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 						{...register('email')}
 					/>
 					{/* Вывод ошибки */}
-					{errors.email && (
-						<span className={styles.errorText}>{errors.email.message}</span>
-					)}
+					{errors.email && <span className="errorText">{errors.email.message}</span>}
 				</div>
 
 				{/* Password */}
-				<div className={styles.inputGroup}>
+				<div className={`inputGroup ${errors.password ? 'inputError' : ''}`.trim()}>
 					<label>Пароль:</label>
-					<div className={styles.passwordInputWrapper}>
+					<div className="passwordInputWrapper">
 						<input
 							type={showPassword ? 'text' : 'password'}
 							placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
@@ -136,7 +134,7 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 						{passwordValue.length > 0 && (
 							<button
 								type="button"
-								className={styles.eyeBtn}
+								className="eyeBtn"
 								onClick={() => setShowPassword(!showPassword)}
 								tabIndex="-1" // Чтобы кнопка не мешала навигации клавишей Tab
 							>
@@ -146,7 +144,7 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 					</div>
 					{/* Вывод ошибки */}
 					{errors.password && (
-						<span className={styles.errorText}>{errors.password.message}</span>
+						<span className="errorText">{errors.password.message}</span>
 					)}
 				</div>
 
@@ -164,14 +162,18 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
 						</span>
 						<span>Запомнить меня</span>
 					</label>
-					<button type="button" className={styles.forgotLink}>
+					<button type="button" onClick={onForgotPassword} className={styles.forgotLink}>
 						Забыли пароль?
 					</button>
 				</div>
-				<div className={styles.submitBtnWrapper}>
-					{/* Блокируем кнопку на время отправки запроса */}
-					<Button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
-						ВОЙТИ
+				<div className="submitBtnWrapper">
+					{/* Блокируем кнопку на время отправки запроса (isSubmitting) */}
+					<Button
+						type="submit"
+						className={`submitBtn ${styles.Btn}`}
+						disabled={isSubmitting}
+					>
+						{isSubmitting ? 'ВХОД...' : 'ВОЙТИ'}
 					</Button>
 				</div>
 			</form>

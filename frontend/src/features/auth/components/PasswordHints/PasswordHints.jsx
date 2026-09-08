@@ -1,6 +1,6 @@
 import styles from './PasswordHints.module.scss'
 
-const PasswordHints = ({ password = '', isVisible = false }) => {
+const PasswordHints = ({ password = '', className = '', isVisible = false }) => {
 	const isAllowedChars = password.length > 0 && /^[a-zA-Z0-9!?$@#_.]+$/.test(password)
 	const isMinLength = password.length >= 8
 	const hasLowercase = /[a-z]/.test(password)
@@ -9,7 +9,9 @@ const PasswordHints = ({ password = '', isVisible = false }) => {
 	const hasSpecialChar = /[!?$@#_.]/.test(password)
 
 	return (
-		<div className={`${styles.hintsContainer} ${isVisible ? styles.visible : ''}`}>
+		<div
+			className={`${styles.hintsContainer} ${isVisible ? styles.visible : ''} ${className}`.trim()}
+		>
 			<p>Пароль должен содержать:</p>
 			<ul>
 				<li className={isAllowedChars ? styles.hintValid : ''}>

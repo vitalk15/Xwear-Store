@@ -34,7 +34,23 @@ export const registerSchema = z
 	.object({
 		email: emailValidation,
 		password: passwordValidation,
-		confirmPassword: z.string(),
+		confirmPassword: z.string().min(1, { message: 'Подтвердите пароль' }),
+	})
+	.refine((data) => data.password === data.confirmPassword, {
+		message: 'Пароли не совпадают',
+		path: ['confirmPassword'], // Ошибка будет привязана к этому полю
+	})
+
+// Схема для сброса пароля
+export const resetSchema = z.object({
+	email: emailValidation,
+})
+
+// Схема для установки нового пароля
+export const confirmResetSchema = z
+	.object({
+		password: passwordValidation,
+		confirmPassword: z.string().min(1, { message: 'Подтвердите пароль' }),
 	})
 	.refine((data) => data.password === data.confirmPassword, {
 		message: 'Пароли не совпадают',

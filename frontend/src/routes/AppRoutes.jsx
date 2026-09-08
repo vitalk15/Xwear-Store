@@ -3,6 +3,7 @@ import MainLayout from '@/components/layout/MainLayout'
 import ProtectedRoute from '@/components/routing/ProtectedRoute'
 import HomePage from '@/pages/HomePage'
 import ActivatePage from '@/pages/ActivatePage'
+import ResetPasswordConfirmPage from '@/pages/ResetPasswordConfirmPage'
 import ProfilePage from '@/pages/ProfilePage'
 import CatalogDispatcher from './CatalogDispatcher'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -16,6 +17,7 @@ const AppRoutes = () => {
 				<Route path={paths.home} element={<HomePage />} />
 				<Route path={`${paths.catalog}/*`} element={<CatalogDispatcher />} />
 				<Route path={paths.activate} element={<ActivatePage />} />
+				<Route path={paths.reset} element={<ResetPasswordConfirmPage />} />
 				<Route element={<ProtectedRoute />}>
 					<Route path={paths.profile} element={<ProfilePage />} />
 				</Route>

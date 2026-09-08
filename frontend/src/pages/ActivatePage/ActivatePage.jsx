@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { activateUser } from '@/features/auth/api/auth.api'
 import useAuthStore from '@/features/auth/store/useAuthStore'
 import PageTitle from '@/components/common/PageTitle'
+import { paths } from '@/routes/paths'
 import styles from './ActivatePage.module.scss'
 
 // Компонент забирает uid и token из параметров URL (используя useParams из react-router-dom), отправляет запрос на сервер, сохраняет авторизацию и перенаправляет пользователя
@@ -30,7 +31,7 @@ const ActivatePage = () => {
 
 				// Через 3 секунды перенаправляем пользователя на главную
 				setTimeout(() => {
-					navigate('/')
+					navigate(paths.home)
 				}, 3000)
 			} catch (error) {
 				setStatus('error')
