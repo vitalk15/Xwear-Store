@@ -2,10 +2,12 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding: 23px 27px;
 	gap: 18px;
+	/* Фиксируем высоту, чтобы при смене текста кнопка не прыгала по вертикали */
+	min-height: 60px;
 	background-color: $color-black;
 	color: #fff;
-	padding: 23px 27px;
 	border: none;
 	border-radius: $border-radius;
 	cursor: pointer;

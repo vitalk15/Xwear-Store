@@ -23,7 +23,137 @@ body {
 	padding-inline: $container-padding-x;
 }
 
-// Для графического знака белорусского рубля с помощью иконочного шрифта
+/* --- Формы --- */
+
+.form {
+	display: flex;
+	flex-direction: column;
+	gap: 30px;
+}
+
+.inputGroup {
+	display: flex;
+	flex-direction: column;
+	background-color: #f9f9f9;
+	padding: 14px 22px;
+	border-radius: $border-radius;
+	transition: background-color 0.2s ease;
+
+	&:focus-within {
+		background-color: #f0f0f0; /* Легкое затемнение при фокусе */
+	}
+
+	label {
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.7;
+		color: #3c3d44;
+	}
+
+	input {
+		background: transparent;
+		border: none;
+		font-size: 14px;
+		font-weight: 400;
+		line-height: 1.6;
+		letter-spacing: 1px;
+		color: $color-black;
+		outline: none;
+		padding: 0;
+
+		&[type='password'] {
+			letter-spacing: 3px;
+		}
+
+		&::placeholder {
+			color: #737582;
+			letter-spacing: 1px;
+		}
+
+		&[type='password']::placeholder {
+			font-size: 8px;
+			color: #a1a3af;
+			letter-spacing: 3px;
+		}
+	}
+
+	.errorText {
+		color: #d32f2f;
+		font-size: 11px;
+		margin-top: 2px;
+		font-weight: 500;
+	}
+}
+
+.inputError {
+	box-shadow: 0px 0px 0px 1px rgba(211, 47, 47, 0.5);
+}
+
+.passwordInputWrapper {
+	display: flex;
+	position: relative;
+	width: 100%;
+
+	input {
+		width: 100%;
+		padding-right: 70px; /* Оставляем место для кнопки справа */
+	}
+}
+
+.eyeBtn {
+	display: flex;
+	width: auto;
+	height: 100%;
+	align-items: center;
+	position: absolute;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	color: #666;
+	cursor: pointer;
+	padding: 0 5px;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: #111;
+	}
+
+	svg {
+		width: 18px;
+		height: auto;
+	}
+}
+
+// Обертка для центрирования кнопки
+.submitBtnWrapper {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 35px;
+}
+
+.submitBtn {
+	min-width: 200px;
+	font-weight: 800;
+	font-size: 12px;
+	line-height: normal;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	text-align: center;
+}
+
+.serverErrorMessage {
+	background-color: #ffebee;
+	color: #c62828;
+	padding: 10px 14px;
+	border-radius: 6px;
+	font-size: 12px;
+	border: 1px solid #ef9a9a;
+}
+
+/* --- Для графического знака белорусского рубля с помощью иконочного шрифта --- */
+
 .nbrb-icon {
 	font-family: 'nbrb' !important;
 	font-size: 19px;
