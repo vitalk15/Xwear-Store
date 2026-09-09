@@ -4,6 +4,7 @@ import useAuthStore from '@/features/auth/store/useAuthStore'
 import { logoutUser } from '@/features/auth/api/auth.api'
 import { paths } from '@/routes/paths'
 import PageTitle from '@/components/common/PageTitle'
+import Breadcrumbs from '@/components/common/Breadcrumbs'
 import ProfileIcon from '@/shared/icons/profile.svg'
 import EditProfileIcon from '@/shared/icons/redaction-profile.svg'
 import StoryOrdersIcon from '@/shared/icons/story.svg'
@@ -54,13 +55,7 @@ const ProfilePage = () => {
 
 			<div className="container">
 				{/* Хлебные крошки */}
-				<nav className={styles.breadcrumbs} aria-label="Хлебные крошки">
-					<Link to={paths.home} className={styles.breadcrumbLink}>
-						Главная
-					</Link>
-					<span className={styles.breadcrumbSeparator}>/</span>
-					<span className={styles.breadcrumbCurrent}>Личный кабинет</span>
-				</nav>
+				<Breadcrumbs items={[{ name: 'Личный кабинет' }]} />
 
 				<h1 className={styles.pageTitle}>ЛИЧНЫЙ КАБИНЕТ</h1>
 
