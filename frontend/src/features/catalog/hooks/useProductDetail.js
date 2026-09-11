@@ -1,6 +1,10 @@
 import { useSuspenseQuery, skipToken } from '@tanstack/react-query'
 import { fetchProductDetail } from '../api/productApi'
 
+/**
+ * Хук для получения деталей текущего товара
+ * @param {string|number} productId - ID текущего товара
+ */
 export const useProductDetail = (productId) => {
 	return useSuspenseQuery({
 		// Уникальный ключ кэша для конкретного товара

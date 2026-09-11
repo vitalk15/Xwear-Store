@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { fetchCategoryProducts } from '../api/productApi'
 
+// хук для списка товаров категории
 export const useCategoryProducts = (categoryId, params = {}) => {
 	return useSuspenseQuery({
 		queryKey: ['categoryProducts', categoryId, params],

@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { getProductsByCategory } from '../api/productApi'
 
-// укороченный список товаров (используется для блоков на главной странице)
+// хук для укороченного списка товаров категории (используется для блоков на главной странице)
 export const useCategoryProductsQuery = (categoryId, limit = 4) => {
 	return useSuspenseQuery({
 		// Ключ кэша уникален для каждой категории и лимита
