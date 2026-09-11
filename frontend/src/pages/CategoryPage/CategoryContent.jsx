@@ -117,7 +117,7 @@ const CategoryContent = ({ categoryId }) => {
 							</div>
 
 							{/* Пагинация */}
-							<Pagination totalPages={totalPages} />
+							{totalPages > 1 && <Pagination totalPages={totalPages} />}
 						</>
 					) : (
 						// 2. Если категория пустая или по поиску ничего не найдено
