@@ -581,6 +581,7 @@ class Favorite(models.Model):
     class Meta:
         # Это гарантирует, что пользователь не сможет добавить один и тот же товар в избранное дважды
         unique_together = ("user", "variant")
+        ordering = ['-created_at']
         verbose_name = "Избранное"
         verbose_name_plural = "Избранное"
 
