@@ -5,7 +5,7 @@ import { loginSchema } from '@/features/auth/schemas/auth.schema'
 import { loginUser } from '@/features/auth/api/auth.api'
 import useAuthStore from '@/features/auth/store/useAuthStore'
 import Button from '@/components/ui/Button'
-import CheckmarkIcon from '@/shared/icons/checkmark.svg'
+// import CheckmarkIcon from '@/shared/icons/checkmark.svg'
 import ShowIcon from '@/shared/icons/show.svg'
 import HideIcon from '@/shared/icons/hide.svg'
 import styles from './LoginForm.module.scss'
@@ -26,7 +26,8 @@ const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
 		setError,
 	} = useForm({
 		resolver: zodResolver(loginSchema),
-		defaultValues: { email: '', password: '', rememberMe: false },
+		defaultValues: { email: '', password: '' },
+		// defaultValues: { email: '', password: '', rememberMe: false },
 		// mode: 'onSubmit', // Режим по-умолчанию. Проверка при отправке формы
 		// mode: 'onTouched', // Проверка при потере фокуса полем
 		// mode: 'onChange', // Режим реального времени
@@ -150,18 +151,18 @@ const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
 
 				{/* Строка с чекбоксом и ссылкой восстановления */}
 				<div className={styles.optionsRow}>
-					<label className={styles.checkboxLabel}>
-						{/* Нативный чекбокс скрыт, но сохраняет доступность для клавиатуры/скринридеров */}
-						<input
+					{/* <label className={styles.checkboxLabel}> */}
+					{/* Нативный чекбокс скрыт, но сохраняет доступность для клавиатуры/скринридеров */}
+					{/* <input
 							type="checkbox"
 							className={styles.hiddenCheckbox}
 							{...register('rememberMe')}
-						/>
-						<span className={styles.customCheckbox}>
+						/> */}
+					{/* <span className={styles.customCheckbox}>
 							<CheckmarkIcon className={styles.checkmark} />
-						</span>
-						<span>Запомнить меня</span>
-					</label>
+						</span> */}
+					{/* <span>Запомнить меня</span> */}
+					{/* </label> */}
 					<button type="button" onClick={onForgotPassword} className={styles.forgotLink}>
 						Забыли пароль?
 					</button>
