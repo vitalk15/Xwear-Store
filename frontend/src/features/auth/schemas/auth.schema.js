@@ -26,7 +26,7 @@ export const emailValidation = z
 export const loginSchema = z.object({
 	email: emailValidation,
 	password: z.string().min(1, { message: 'Введите пароль' }), // Для логина достаточно просто проверить, что поле не пустое
-	rememberMe: z.boolean().optional(),
+	// rememberMe: z.boolean().optional(),  // optional() - поле не обязательное
 })
 
 // Схема регистрации
