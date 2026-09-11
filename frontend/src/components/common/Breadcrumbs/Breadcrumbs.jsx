@@ -29,7 +29,6 @@ const Breadcrumbs = ({ items = null, backendBreadcrumbs = [], currentTitle = '' 
 	}
 	// 2. Если переданы категории бэкенда или название товара (для каталога и карточки товара)
 	else if (backendBreadcrumbs.length > 0 || currentTitle) {
-		// const isCatalogClickable = backendBreadcrumbs.length > 0 || Boolean(currentTitle)
 		// Жёстко задаём пункт "Каталог товаров" некликабельным
 		const catalogItem = {
 			id: 'catalog-root',
