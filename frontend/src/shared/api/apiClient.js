@@ -6,6 +6,7 @@ const apiClient = axios.create({
 	// Vite автоматически подхватит VITE_API_URL из .env файла
 	baseURL: import.meta.env.VITE_API_URL,
 	timeout: 10000, // 10 секунд
+	withCredentials: true, // обязательно для отправки HttpOnly куки с refresh-токеном! Браузер сам её прикрепит
 })
 
 // --- Interceptors ---
@@ -44,11 +45,8 @@ apiClient.interceptors.response.use(
 				originalRequest._isRetry = true // Ставим флаг, что это повторная попытка. Без него, если эндпоинт рефреша сломается и тоже вернет 401, приложение уйдёт в бесконечный цикл запросов.
 
 				try {
-					// Запрашиваем новый access-токен. Обязательно с withCredentials для отправки HttpOnly куки!
-					// Браузер сам прикрепит HttpOnly куку
-					const response = await apiClient.post('/auth/token/refresh/', null, {
-						withCredentials: true,
-					})
+					// Запрашиваем новый access-токен.
+					const response = await apiClient.post('/auth/token/refresh/', null)
 					const newAccess = response.data.access
 
 					// Сохраняем новый токен в Zustand (без потери данных о пользователе)
