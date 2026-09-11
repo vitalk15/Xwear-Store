@@ -22,7 +22,8 @@ def set_refresh_cookie(response, refresh_token):
         secure=settings.COOKIE_SECURE,
         samesite=settings.COOKIE_SAMESITE,
         max_age=int(refresh_lifetime.total_seconds()),
-        path=reverse("token_refresh"),  # Кука летит ТОЛЬКО на '/api/auth/token/refresh/'
+        # path=reverse("token_refresh"),  # Кука летит ТОЛЬКО на '/api/auth/token/refresh/'. На практике часто создаёт хрупкие места из-за несовпадения завершающих слешей или префиксов API между фронтендом и бэкендом.
+        path="/", # Посягательств на безопасность здесь нет, так как сама кука имеет флаг HttpOnly (JavaScript не может её прочитать и украсть через XSS) и отправляется исключительно на наш бэкенд-домен.
     )
     return response
 
