@@ -1,13 +1,20 @@
+import { useLocation } from 'react-router-dom'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import ProductGallery from '@/features/catalog/components/ProductGallery'
 import ProductInfo from '@/features/catalog/components/ProductInfo'
 import ProductDescription from '@/features/catalog/components/ProductDescription'
 import ProductCharacteristics from '@/features/catalog/components/ProductCharacteristics'
 import ProductRecommends from '@/features/catalog/components/ProductRecommends'
+import { paths } from '@/routes/paths'
 import styles from './ProductDetailPage.module.scss'
 
 const ProductDetailContent = ({ product }) => {
-	const { breadcrumbs, naming, images } = product
+	const { breadcrumbs, naming, images, id } = product
+
+	const location = useLocation()
+
+	// Проверяем, есть ли "маячок" от страницы Избранного
+	const isFromFavorites = location.state?.fromFavorites
 
 	// Формируем лаконичный заголовок для хлебных крошек (Бренд + Модель)
 	const breadcrumbTitle = `${naming.brand.name} ${naming.model}`
@@ -15,11 +22,22 @@ const ProductDetailContent = ({ product }) => {
 	return (
 		<>
 			{/* 1. Хлебные крошки */}
-			<Breadcrumbs backendBreadcrumbs={breadcrumbs} currentTitle={breadcrumbTitle} />
+			{isFromFavorites ? (
+				// Если пришли из Избранного:
+				<Breadcrumbs
+					items={[
+						{ name: 'Избранные товары', path: paths.favorites },
+						{ name: breadcrumbTitle }, // Имя текущего товара
+					]}
+				/>
+			) : (
+				// Если пришли из Каталога или по прямой ссылке:
+				<Breadcrumbs backendBreadcrumbs={breadcrumbs} currentTitle={breadcrumbTitle} />
+			)}
 
 			{/* 2. Слайдер галереи и информация о товаре */}
 			<section className={styles.topSection}>
-				<ProductGallery images={images} />
+				<ProductGallery images={images} targetId={id} />
 				<ProductInfo product={product} />
 			</section>
 

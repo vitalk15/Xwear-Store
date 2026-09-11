@@ -49,6 +49,14 @@
 	}
 }
 
+.favoriteActive {
+	color: $color-blue;
+
+	.starIcon {
+		fill: currentColor;
+	}
+}
+
 .imageLink {
 	display: block;
 	width: 100%;

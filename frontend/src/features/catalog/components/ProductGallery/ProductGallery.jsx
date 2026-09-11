@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Thumbs, FreeMode, Navigation, EffectFade } from 'swiper/modules'
+import { useFavoriteAction } from '@/features/favorites/hooks/useFavoriteAction'
+import AuthModal from '@/features/auth/components/AuthModal'
 import StarIcon from '@/shared/icons/star.svg'
 import placeholderProduct from '@/assets/images/placeholder-product.webp'
 
@@ -15,8 +17,12 @@ import styles from './ProductGallery.module.scss'
 /**
  * Галерея изображений товара со слайдером, миниатюрами и модальным окном
  * @param {Array} images - Массив объектов изображений из product.images
+ * @param {string|number} variantId - ID текущего/выбранного варианта товара
  */
-const ProductGallery = ({ images = [] }) => {
+const ProductGallery = ({ images = [], targetId }) => {
+	const { isFav, isAuthModalOpen, setIsAuthModalOpen, handleFavoriteClick } =
+		useFavoriteAction(targetId)
+
 	// Состояние для связки основного слайдера и слайдера миниатюр
 	const [thumbsSwiper, setThumbsSwiper] = useState(null)
 
@@ -40,13 +46,6 @@ const ProductGallery = ({ images = [] }) => {
 		}
 	}, [activeOriginalImage])
 
-	// Обработка клика на звёздочку
-	const handleFavoriteClick = (e) => {
-		e.stopPropagation() // Чтобы не срабатывал клик по открытию картинки
-		// !!! TODO: Добавить/удалить из избранного (Zustand/API)
-		console.log('Избранное переключено')
-	}
-
 	// Если изображения товара будут отсутствовать
 	if (!images || images.length === 0) {
 		return (
@@ -62,13 +61,15 @@ const ProductGallery = ({ images = [] }) => {
 					{/* Оставляем иконку избранного даже без фото */}
 					<button
 						type="button"
-						className={styles.favoriteBtn}
+						className={`${styles.favoriteBtn} ${isFav ? styles.favoriteActive : ''}`}
 						onClick={handleFavoriteClick}
-						aria-label="Добавить в избранное"
+						aria-label={isFav ? 'Удалить из избранного' : 'Добавить в избранное'}
 					>
 						<StarIcon className={styles.starIcon} />
 					</button>
 				</div>
+				{/* Модальное окно авторизации для незарегистрированных пользователей */}
+				<AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 			</div>
 		)
 	}
@@ -108,9 +109,9 @@ const ProductGallery = ({ images = [] }) => {
 				{/* Иконка «Избранное» в правом верхнем углу */}
 				<button
 					type="button"
-					className={styles.favoriteBtn}
+					className={`${styles.favoriteBtn} ${isFav ? styles.favoriteActive : ''}`}
 					onClick={handleFavoriteClick}
-					aria-label="Добавить в избранное"
+					aria-label={isFav ? 'Удалить из избранного' : 'Добавить в избранное'}
 				>
 					<StarIcon className={styles.starIcon} />
 				</button>
@@ -161,6 +162,9 @@ const ProductGallery = ({ images = [] }) => {
 					</div>
 				</div>
 			)}
+
+			{/* Модальное окно авторизации для незарегистрированных пользователей */}
+			<AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 		</div>
 	)
 }

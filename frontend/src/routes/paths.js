@@ -3,5 +3,6 @@ export const paths = {
 	catalog: '/catalog',
 	activate: '/activate/:uid/:token',
 	reset: '/reset-password/:uid/:token',
+	favorites: '/favorites',
 	profile: '/profile',
 }

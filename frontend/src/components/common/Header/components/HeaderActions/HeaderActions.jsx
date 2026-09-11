@@ -113,7 +113,11 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 					// Авторизованный пользователь
 					<>
 						<li>
-							<button className={styles.actionBtn} aria-label="Избранное">
+							<button
+								className={styles.actionBtn}
+								aria-label="Избранное"
+								onClick={() => navigate(paths.favorites)}
+							>
 								<StarIcon className={styles.starIcon} />
 							</button>
 						</li>

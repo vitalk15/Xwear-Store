@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
 import useAuthStore from '@/features/auth/store/useAuthStore'
 import { logoutUser } from '@/features/auth/api/auth.api'
-import { paths } from '@/routes/paths'
 import PageTitle from '@/components/common/PageTitle'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import ProfileIcon from '@/shared/icons/profile.svg'
@@ -16,7 +14,6 @@ import LogoutIcon from '@/shared/icons/logout.svg'
 import styles from './ProfilePage.module.scss'
 
 const ProfilePage = () => {
-	const navigate = useNavigate()
 	const logout = useAuthStore((state) => state.logout)
 	const user = useAuthStore((state) => state.user) // Чтобы достать имя/email
 
@@ -31,10 +28,8 @@ const ProfilePage = () => {
 			console.error('Ошибка при логауте на сервере', error)
 			// Даже если сервер недоступен, мы всё равно должны выкинуть юзера из фронтенда
 		} finally {
-			// Очищаем Zustand Store
+			// Очищаем Zustand Store и кеш React Query
 			logout()
-			// Возвращаем на главную страницу
-			navigate(paths.home)
 		}
 	}
 
