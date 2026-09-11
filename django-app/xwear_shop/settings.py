@@ -306,7 +306,7 @@ CSRF_COOKIE_SAMESITE = config("SAMESITE")
 COOKIE_HTTP_ONLY = True
 # если True, refresh-token в cookie отправляется только по HTTPS (для Production)
 COOKIE_SECURE = config("HTTPS_ONLY", default=True, cast=bool)
-# refresh-token в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет GET-переходы (Dev), 'None' — для кросс-доменных (редко))
+# refresh-token в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет GET-переходы (Dev), 'None' — для кросс-доменных (Dev))
 COOKIE_SAMESITE = config("SAMESITE")
 
 
