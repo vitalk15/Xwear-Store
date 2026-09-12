@@ -40,36 +40,10 @@
 	position: absolute;
 	top: 20px;
 	right: 20px;
-	z-index: 10;
-	background: transparent;
-	border: none;
-	color: $color-dark_gray;
-	cursor: pointer;
 	padding: 8px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition:
-		color 0.2s ease,
-		transform 0.2s ease;
-
-	.starIcon {
-		width: 24px;
-		height: auto;
-	}
-
-	&:hover {
-		color: $color-blue;
-		transform: scale(1.15);
-	}
-}
-
-.favoriteActive {
-	color: $color-blue;
-
-	.starIcon {
-		fill: currentColor;
-	}
 }
 
 // 2. Блок миниатюр

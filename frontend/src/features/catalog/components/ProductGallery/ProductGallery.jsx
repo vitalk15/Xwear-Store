@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Thumbs, FreeMode, Navigation, EffectFade } from 'swiper/modules'
-import { useFavoriteAction } from '@/features/favorites/hooks/useFavoriteAction'
-import AuthModal from '@/features/auth/components/AuthModal'
-import StarIcon from '@/shared/icons/star.svg'
+import ButtonFavorite from '@/features/favorites/components/ButtonFavorite'
 import placeholderProduct from '@/assets/images/placeholder-product.webp'
 
 // Импорт базовых стилей Swiper
@@ -20,9 +18,6 @@ import styles from './ProductGallery.module.scss'
  * @param {string|number} variantId - ID текущего/выбранного варианта товара
  */
 const ProductGallery = ({ images = [], targetId }) => {
-	const { isFav, isAuthModalOpen, setIsAuthModalOpen, handleFavoriteClick } =
-		useFavoriteAction(targetId)
-
 	// Состояние для связки основного слайдера и слайдера миниатюр
 	const [thumbsSwiper, setThumbsSwiper] = useState(null)
 
@@ -58,18 +53,8 @@ const ProductGallery = ({ images = [], targetId }) => {
 							className={styles.mainImage}
 						/>
 					</div>
-					{/* Оставляем иконку избранного даже без фото */}
-					<button
-						type="button"
-						className={`${styles.favoriteBtn} ${isFav ? styles.favoriteActive : ''}`}
-						onClick={handleFavoriteClick}
-						aria-label={isFav ? 'Удалить из избранного' : 'Добавить в избранное'}
-					>
-						<StarIcon className={styles.starIcon} />
-					</button>
+					<ButtonFavorite targetId={targetId} className={styles.favoriteBtn} />
 				</div>
-				{/* Модальное окно авторизации для незарегистрированных пользователей */}
-				<AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 			</div>
 		)
 	}
@@ -106,15 +91,7 @@ const ProductGallery = ({ images = [], targetId }) => {
 					))}
 				</Swiper>
 
-				{/* Иконка «Избранное» в правом верхнем углу */}
-				<button
-					type="button"
-					className={`${styles.favoriteBtn} ${isFav ? styles.favoriteActive : ''}`}
-					onClick={handleFavoriteClick}
-					aria-label={isFav ? 'Удалить из избранного' : 'Добавить в избранное'}
-				>
-					<StarIcon className={styles.starIcon} />
-				</button>
+				<ButtonFavorite targetId={targetId} className={styles.favoriteBtn} />
 			</div>
 
 			{/* 2. СЛАЙДЕР МИНИАТЮР (Маленькие фото) */}
@@ -162,9 +139,6 @@ const ProductGallery = ({ images = [], targetId }) => {
 					</div>
 				</div>
 			)}
-
-			{/* Модальное окно авторизации для незарегистрированных пользователей */}
-			<AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 		</div>
 	)
 }
