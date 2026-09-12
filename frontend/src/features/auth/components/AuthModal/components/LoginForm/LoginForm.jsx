@@ -1,19 +1,14 @@
-import { useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema } from '@/features/auth/schemas/auth.schema'
 import { loginUser } from '@/features/auth/api/auth.api'
 import useAuthStore from '@/features/auth/store/useAuthStore'
+import InputField from '@/components/ui/InputField'
+import PasswordInput from '@/components/ui/PasswordInput'
 import Button from '@/components/ui/Button'
-// import CheckmarkIcon from '@/shared/icons/checkmark.svg'
-import ShowIcon from '@/shared/icons/show.svg'
-import HideIcon from '@/shared/icons/hide.svg'
 import styles from './LoginForm.module.scss'
 
 const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
-	// Состояния для показа/скрытия пароля
-	const [showPassword, setShowPassword] = useState(false)
-
 	// Достаем функцию сохранения данных из Zustand-стора
 	const setAuth = useAuthStore((state) => state.setAuth)
 
@@ -22,7 +17,6 @@ const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
 		register,
 		handleSubmit,
 		formState: { errors, isSubmitting }, // isSubmitting - принимает значение true когда пользователь нажимает на кнопку отправки (и срабатывает функция handleSubmit(onSubmit)) и остаётся true пока выполняется запрос к серверу
-		control, // <-- для хука слежения useWatch
 		setError,
 	} = useForm({
 		resolver: zodResolver(loginSchema),
@@ -32,11 +26,6 @@ const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
 		// mode: 'onTouched', // Проверка при потере фокуса полем
 		// mode: 'onChange', // Режим реального времени
 	})
-
-	// Следим за полем пароля в реальном времени
-	const passwordValue = useWatch({ control, name: 'password', defaultValue: '' })
-	// Извлекаем пропсы регистрации пароля
-	const passwordProps = register('password')
 
 	// Обработчик отправки данных
 	const onSubmit = async (data) => {
@@ -106,48 +95,21 @@ const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
 				)}
 
 				{/* Email */}
-				<div className={`inputGroup ${errors.email ? 'inputError' : ''}`.trim()}>
-					<label>Email адрес:</label>
-					<input
-						type="email"
-						placeholder="yavasyaivanov@gmail.com"
-						{...register('email')}
-					/>
-					{/* Вывод ошибки */}
-					{errors.email && <span className="errorText">{errors.email.message}</span>}
-				</div>
+				<InputField
+					label="Email адрес:"
+					type="email"
+					placeholder="yavasyaivanov@gmail.com"
+					error={errors.email}
+					{...register('email')}
+				/>
 
 				{/* Password */}
-				<div className={`inputGroup ${errors.password ? 'inputError' : ''}`.trim()}>
-					<label>Пароль:</label>
-					<div className="passwordInputWrapper">
-						<input
-							type={showPassword ? 'text' : 'password'}
-							placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
-							autoComplete="new-password" // Защита от автозаполнения браузером
-							{...passwordProps}
-							onChange={(e) => {
-								passwordProps.onChange(e) // Вызываем родной onChange от RHF
-								if (e.target.value.length === 0) setShowPassword(false) // Логика сброса типа инпута
-							}}
-						/>
-						{/* Показываем кнопку только если в поле есть хотя бы 1 символ */}
-						{passwordValue.length > 0 && (
-							<button
-								type="button"
-								className="eyeBtn"
-								onClick={() => setShowPassword(!showPassword)}
-								tabIndex="-1" // Чтобы кнопка не мешала навигации клавишей Tab
-							>
-								{showPassword ? <ShowIcon /> : <HideIcon />}
-							</button>
-						)}
-					</div>
-					{/* Вывод ошибки */}
-					{errors.password && (
-						<span className="errorText">{errors.password.message}</span>
-					)}
-				</div>
+				<PasswordInput
+					label="Пароль:"
+					placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
+					error={errors.password}
+					{...register('password')}
+				/>
 
 				{/* Строка с чекбоксом и ссылкой восстановления */}
 				<div className={styles.optionsRow}>

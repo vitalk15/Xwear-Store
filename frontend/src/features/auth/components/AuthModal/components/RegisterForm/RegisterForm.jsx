@@ -4,15 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { registerSchema } from '@/features/auth/schemas/auth.schema'
 import { registerUser } from '@/features/auth/api/auth.api'
 import Button from '@/components/ui/Button'
+import InputField from '@/components/ui/InputField'
+import PasswordInput from '@/components/ui/PasswordInput'
 import PasswordHints from '@/features/auth/components/PasswordHints'
-import ShowIcon from '@/shared/icons/show.svg'
-import HideIcon from '@/shared/icons/hide.svg'
 import styles from './RegisterForm.module.scss'
 
 const RegisterForm = ({ onClose, onSwitchToLogin }) => {
-	// Состояния для показа/скрытия паролей
-	const [showPassword, setShowPassword] = useState(false)
-	const [showConfirm, setShowConfirm] = useState(false)
 	// Состояние фокуса на поле пароля
 	const [isPasswordFocused, setIsPasswordFocused] = useState(false)
 	// Состояние успеха регистрации
@@ -35,13 +32,8 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 		// mode: 'onChange', // Режим реального времени
 	})
 
-	// Следим за полями паролей в реальном времени
+	// Следим за полем пароля в реальном времени
 	const passwordValue = useWatch({ control, name: 'password', defaultValue: '' })
-	const confirmValue = useWatch({ control, name: 'confirmPassword', defaultValue: '' })
-
-	// Извлекаем пропсы регистрации паролей
-	const passwordProps = register('password')
-	const confirmProps = register('confirmPassword')
 
 	// Обработчик отправки данных
 	const onSubmit = async (data) => {
@@ -132,87 +124,35 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 
 			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
 				{/* Email */}
-				<div className={`inputGroup ${errors.email ? 'inputError' : ''}`.trim()}>
-					<label>Email адрес:</label>
-					<input
-						type="email"
-						placeholder="yavasyaivanov@gmail.com"
-						{...register('email')}
-					/>
-					{errors.email && <span className="errorText">{errors.email.message}</span>}
-				</div>
+				<InputField
+					label="Email адрес:"
+					type="email"
+					placeholder="yavasyaivanov@gmail.com"
+					error={errors.email}
+					{...register('email')}
+				/>
 
 				{/* Password с подсказками */}
-				<div className={`inputGroup ${errors.password ? 'inputError' : ''}`.trim()}>
-					<label>Пароль:</label>
-					<div className="passwordInputWrapper">
-						<input
-							type={showPassword ? 'text' : 'password'}
-							placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
-							autoComplete="new-password" // Защита от автозаполнения браузером
-							{...passwordProps} // Передаем все базовые пропсы RHF
-							onChange={(e) => {
-								passwordProps.onChange(e)
-								if (e.target.value.length === 0) setShowPassword(false)
-							}}
-							onFocus={() => setIsPasswordFocused(true)} // Показываем подсказку
-							onBlur={(e) => {
-								passwordProps.onBlur(e) // Вызываем родной onBlur от RHF
-								setIsPasswordFocused(false) // Скрываем подсказку
-							}}
-						/>
-						{/* Показываем кнопку только если в поле есть хотя бы 1 символ */}
-						{passwordValue.length > 0 && (
-							<button
-								type="button"
-								className="eyeBtn"
-								onClick={() => setShowPassword(!showPassword)}
-								tabIndex="-1" // Чтобы кнопка не мешала навигации клавишей Tab
-							>
-								{showPassword ? <ShowIcon /> : <HideIcon />}
-							</button>
-						)}
-
-						{/* Компонент подсказок */}
-						<PasswordHints password={passwordValue} isVisible={isPasswordFocused} />
-					</div>
-					{errors.password && (
-						<span className="errorText">{errors.password.message}</span>
-					)}
-				</div>
+				<PasswordInput
+					label="Пароль:"
+					placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
+					error={errors.password}
+					onFocus={() => setIsPasswordFocused(true)} // Показываем подсказку
+					{...register('password', {
+						onBlur: () => setIsPasswordFocused(false), // Передаем onBlur в RHF и скрываем подсказку
+					})}
+				>
+					{/* Компонент подсказок */}
+					<PasswordHints password={passwordValue} isVisible={isPasswordFocused} />
+				</PasswordInput>
 
 				{/* Confirm Password */}
-				<div
-					className={`inputGroup ${errors.confirmPassword ? 'inputError' : ''}`.trim()}
-				>
-					<label>Повторите пароль:</label>
-					<div className="passwordInputWrapper">
-						<input
-							type={showConfirm ? 'text' : 'password'}
-							placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
-							autoComplete="new-password" // Защита от автозаполнения браузером
-							{...confirmProps}
-							onChange={(e) => {
-								confirmProps.onChange(e)
-								if (e.target.value.length === 0) setShowConfirm(false)
-							}}
-						/>
-						{/* Показываем кнопку только если в поле есть хотя бы 1 символ */}
-						{confirmValue.length > 0 && (
-							<button
-								type="button"
-								className="eyeBtn"
-								onClick={() => setShowConfirm(!showConfirm)}
-								tabIndex="-1" // Чтобы кнопка не мешала навигации клавишей Tab
-							>
-								{showConfirm ? <ShowIcon /> : <HideIcon />}
-							</button>
-						)}
-					</div>
-					{errors.confirmPassword && (
-						<span className="errorText">{errors.confirmPassword.message}</span>
-					)}
-				</div>
+				<PasswordInput
+					label="Повторите пароль:"
+					placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
+					error={errors.confirmPassword}
+					{...register('confirmPassword')}
+				/>
 
 				<div className="submitBtnWrapper">
 					{/* Отключаем кнопку во время отправки запроса (isSubmitting) */}

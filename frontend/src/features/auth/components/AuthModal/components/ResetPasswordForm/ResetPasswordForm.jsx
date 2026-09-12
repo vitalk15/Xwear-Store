@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { resetSchema } from '@/features/auth/schemas/auth.schema'
 import { requestPasswordReset } from '@/features/auth/api/auth.api'
+import InputField from '@/components/ui/InputField'
 import Button from '@/components/ui/Button'
 import styles from './ResetPasswordForm.module.scss'
 
@@ -67,15 +68,13 @@ const ResetPasswordForm = ({ onBackToLogin }) => {
 			</p>
 
 			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-				<div className={`inputGroup ${errors.email ? 'inputError' : ''}`.trim()}>
-					<label>Email:</label>
-					<input
-						type="email"
-						placeholder="yavasyaivanov@gmail.com"
-						{...register('email')}
-					/>
-					{errors.email && <span className="errorText">{errors.email.message}</span>}
-				</div>
+				<InputField
+					label="Email:"
+					type="email"
+					placeholder="yavasyaivanov@gmail.com"
+					error={errors.email}
+					{...register('email')}
+				/>
 
 				{serverError && <div className="serverErrorMessage">{serverError}</div>}
 
