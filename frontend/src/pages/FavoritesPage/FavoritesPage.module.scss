@@ -1,3 +1,5 @@
+@use '@/assets/styles/mixins';
+
 .pageWrapper {
 	padding: 16px 0 80px;
 	container-type: inline-size;
@@ -13,7 +15,6 @@
 	text-transform: uppercase;
 	line-height: 1.3;
 	color: $color-black;
-	margin-right: 20px;
 }
 
 .count {
@@ -23,7 +24,8 @@
 	line-height: 1.4;
 }
 
-// Пустая страница
+/* --- ПУСТАЯ СТРАНИЦА --- */
+
 .emptyContainer {
 	display: flex;
 	flex-direction: column;
@@ -53,4 +55,26 @@
 			fill: #49d0ff;
 		}
 	}
+}
+
+/* --- СКЕЛЕТОНЫ --- */
+
+.breadcrumbsSkeleton {
+	@include skeleton-shimmer-light;
+	height: 18px;
+	width: 300px;
+	margin-bottom: 50px;
+}
+
+.titleSkeleton {
+	@include skeleton-shimmer-light;
+	height: 38px;
+	width: 250px;
+}
+
+.countSkeleton {
+	@include skeleton-shimmer-light;
+	height: 16px;
+	width: 100px;
+	margin-top: 8px;
 }
