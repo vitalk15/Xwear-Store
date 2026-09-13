@@ -61,5 +61,5 @@ const PasswordInput = forwardRef(
 	},
 )
 
-PasswordInput.displayName = 'PasswordInput'
+PasswordInput.displayName = 'PasswordInput' // !!! Для чего это?
 export default PasswordInput

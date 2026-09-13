@@ -13,5 +13,5 @@ const InputField = forwardRef(({ label, error, ...props }, ref) => {
 	)
 })
 
-InputField.displayName = 'InputField'
+InputField.displayName = 'InputField' // !!! Для чего это?
 export default InputField

@@ -1,0 +1,105 @@
+.overlay {
+	position: fixed;
+	top: 40px; // Отступ от верхнего края экрана
+	left: 0;
+	right: 0;
+	display: flex;
+	justify-content: center;
+	z-index: 9999; // Поверх всего сайта, включая шапку
+	pointer-events: none; // Чтобы оверлей не блокировал клики по сайту вокруг плашки
+}
+
+.notificationCard {
+	pointer-events: auto; // Сама карточка должна быть кликабельной
+	background: #ffffff;
+	border-radius: 4px;
+	box-shadow: 0px 10px 40px rgba(0, 0, 0, 0.1); // Мягкая тень как на макете
+	padding: 24px 40px 24px 24px;
+	position: relative;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	max-width: 500px;
+	animation: slideDown 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.closeBtn {
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	background: none;
+	border: none;
+	padding: 4px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #999;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: #000;
+	}
+}
+
+.closeIcon {
+	width: 14px;
+	height: 14px;
+	// fill: currentColor;
+}
+
+.content {
+	display: flex;
+	align-items: center;
+	gap: 20px;
+}
+
+.imageWrapper {
+	width: 120px;
+	flex-shrink: 0;
+
+	.image {
+		width: 100%;
+		height: auto;
+		object-fit: contain;
+	}
+}
+
+.textBlock {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.statusText {
+	font-size: 12px;
+	font-weight: 600;
+	color: #999; // Серый цвет статуса как на макете
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.productName {
+	font-size: 18px;
+	font-weight: 700;
+	color: #000;
+	text-transform: uppercase;
+}
+
+.productSize {
+	font-size: 14px;
+	font-weight: 500;
+	color: #666;
+}
+
+// Анимация выезда сверху
+@keyframes slideDown {
+	0% {
+		transform: translateY(-20px);
+		opacity: 0;
+	}
+	100% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}

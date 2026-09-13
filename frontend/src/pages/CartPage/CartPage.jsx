@@ -2,20 +2,20 @@ import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { SilentFallback } from '@/components/common/ErrorBoundary/SilentFallback'
 import { handleCriticalError } from '@/shared/utils/errorHandler'
-import ProfileContent from './ProfileContent'
-import ProfileSkeleton from './ProfileSkeleton'
 import PageTitle from '@/components/common/PageTitle'
-import styles from './ProfilePage.module.scss'
+import CartContent from './CartContent'
+import CartSkeleton from './CartSkeleton'
+import styles from './CartPage.module.scss'
 
-const ProfilePage = () => {
+const CartPage = () => {
 	return (
 		<>
-			<PageTitle title="Личный кабинет" />
+			<PageTitle title="Корзина" />
 
 			<div className={`container ${styles.pageWrapper}`}>
 				<ErrorBoundary fallback={<SilentFallback />} onError={handleCriticalError}>
-					<Suspense fallback={<ProfileSkeleton />}>
-						<ProfileContent />
+					<Suspense fallback={<CartSkeleton />}>
+						<CartContent />
 					</Suspense>
 				</ErrorBoundary>
 			</div>
@@ -23,4 +23,4 @@ const ProfilePage = () => {
 	)
 }
 
-export default ProfilePage
+export default CartPage

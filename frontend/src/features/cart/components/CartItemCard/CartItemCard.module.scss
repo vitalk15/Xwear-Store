@@ -1,0 +1,182 @@
+.card {
+	display: flex;
+	align-items: center;
+	gap: 20px;
+	padding: 20px 0;
+	border-bottom: 1px solid #e0e0e0;
+	transition: opacity 0.3s ease;
+	background: #fff;
+
+	// Состояние, когда отправлен запрос на удаление
+	&.removing {
+		opacity: 0.4;
+		pointer-events: none;
+	}
+
+	// Делаем последнюю карточку без нижней границы
+	&:last-child {
+		border-bottom: none;
+	}
+}
+
+// 1. Картинка
+.imageWrapper {
+	width: 90px;
+	height: 90px;
+	flex-shrink: 0;
+	background-color: #f7f7f7; // Легкий фон на случай PNG с прозрачностью
+	border-radius: 6px;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	.image {
+		width: 100%;
+		height: 100%;
+		object-fit: contain; // Картинка не обрезается, сохраняет пропорции
+	}
+}
+
+.placeholder {
+	width: 100%;
+	height: 100%;
+	background-color: #e9e9e9;
+}
+
+// 2. Информация о товаре (занимает всё свободное место)
+.info {
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.title {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: #000;
+	line-height: 1.3;
+	text-transform: uppercase;
+}
+
+.size {
+	font-size: 14px;
+	color: #666;
+}
+
+// 3. Блок управления количеством (+ / -)
+.quantityControls {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	border: 1px solid #dcdcdc;
+	border-radius: 4px;
+	padding: 6px 12px;
+}
+
+.qtyBtn {
+	background: none;
+	border: none;
+	padding: 0;
+	font-size: 18px;
+	line-height: 1;
+	cursor: pointer;
+	color: #000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: color 0.2s;
+
+	&:disabled {
+		color: #ccc;
+		cursor: not-allowed;
+	}
+
+	&:not(:disabled):hover {
+		color: #666;
+	}
+}
+
+.qtyValue {
+	font-size: 16px;
+	font-weight: 500;
+	min-width: 24px;
+	text-align: center;
+}
+
+// 4. Блок цены
+.priceBlock {
+	width: 120px;
+	text-align: right;
+	flex-shrink: 0;
+}
+
+.price {
+	font-size: 18px;
+	font-weight: 700;
+	color: #000;
+}
+
+// 5. Кнопка удаления
+.deleteBtn {
+	background: none;
+	border: none;
+	padding: 8px;
+	margin-left: 10px;
+	cursor: pointer;
+	color: #999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	&:not(:disabled):hover {
+		color: #000;
+		transform: scale(1.1); // Слегка увеличиваем при наведении
+	}
+}
+
+.deleteIcon {
+	width: 20px;
+	height: 20px;
+	fill: currentColor;
+}
+
+// АДАПТИВ: Перестраиваем карточку на мобилках
+@media (max-width: 600px) {
+	.card {
+		flex-wrap: wrap; // Разрешаем перенос элементов
+		position: relative;
+		padding-right: 40px; // Место для абсолютного крестика
+	}
+
+	.info {
+		width: calc(100% - 110px); // Оставляем место для картинки
+		flex-grow: 0;
+	}
+
+	// Переносим количество и цену на новую строку под информацию
+	.quantityControls {
+		margin-left: 110px; // Выравниваем под текстом
+	}
+
+	.priceBlock {
+		margin-left: auto; // Прижимаем цену вправо
+		text-align: right;
+	}
+
+	// Крестик кидаем в правый верхний угол карточки
+	.deleteBtn {
+		position: absolute;
+		top: 20px;
+		right: 0;
+		margin: 0;
+	}
+}

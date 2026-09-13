@@ -5,6 +5,7 @@ import ProductInfo from '@/features/catalog/components/ProductInfo'
 import ProductDescription from '@/features/catalog/components/ProductDescription'
 import ProductCharacteristics from '@/features/catalog/components/ProductCharacteristics'
 import ProductRecommends from '@/features/catalog/components/ProductRecommends'
+import CartNotification from '@/features/cart/components/CartNotification'
 import { paths } from '@/routes/paths'
 import styles from './ProductDetailPage.module.scss'
 
@@ -47,6 +48,8 @@ const ProductDetailContent = ({ product }) => {
 			<ProductCharacteristics product={product} />
 			{/* 5. Рекомендации */}
 			<ProductRecommends productId={product.id} />
+			{/* Всплывающая плашка добавления в корзину*/}
+			<CartNotification />
 		</>
 	)
 }

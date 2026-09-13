@@ -31,65 +31,65 @@
 	align-items: center;
 }
 
-.checkboxLabel {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	font-size: 14px;
-	font-weight: 400;
-	line-height: 1.4;
-	color: #000;
-	cursor: pointer;
-	user-select: none;
-}
+// .checkboxLabel {
+// 	display: flex;
+// 	align-items: center;
+// 	gap: 10px;
+// 	font-size: 14px;
+// 	font-weight: 400;
+// 	line-height: 1.4;
+// 	color: #000;
+// 	cursor: pointer;
+// 	user-select: none;
+// }
 
 // Скрываем нативный инпут, сохраняя его в DOM для доступности
-.hiddenCheckbox {
-	position: absolute;
-	opacity: 0;
-	width: 0;
-	height: 0;
-	margin: 0;
-	pointer-events: none;
+// .hiddenCheckbox {
+// 	position: absolute;
+// 	opacity: 0;
+// 	width: 0;
+// 	height: 0;
+// 	margin: 0;
+// 	pointer-events: none;
 
-	// Состояние: Включено (Checked)
-	&:checked {
-		& + .customCheckbox {
-			background-color: $color-blue;
+// 	// Состояние: Включено (Checked)
+// 	&:checked {
+// 		& + .customCheckbox {
+// 			background-color: $color-blue;
 
-			.checkmark {
-				opacity: 1;
-				transform: scale(1);
-			}
-		}
-	}
-}
+// 			.checkmark {
+// 				opacity: 1;
+// 				transform: scale(1);
+// 			}
+// 		}
+// 	}
+// }
 
 // Кастомный квадрат чекбокса
-.customCheckbox {
-	flex-shrink: 0;
-	width: 28px;
-	height: 28px;
-	border-radius: $border-radius;
-	background-color: #f9f9f9;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: background-color 0.18s ease;
-}
+// .customCheckbox {
+// 	flex-shrink: 0;
+// 	width: 28px;
+// 	height: 28px;
+// 	border-radius: $border-radius;
+// 	background-color: #f9f9f9;
+// 	cursor: pointer;
+// 	display: flex;
+// 	align-items: center;
+// 	justify-content: center;
+// 	transition: background-color 0.18s ease;
+// }
 
 // Галочка внутри чекбокса
-.checkmark {
-	width: 12px;
-	height: auto;
-	color: #ffffff;
-	opacity: 0;
-	transform: scale(0.6);
-	transition:
-		opacity 0.18s ease,
-		transform 0.18s ease;
-}
+// .checkmark {
+// 	width: 12px;
+// 	height: auto;
+// 	color: #ffffff;
+// 	opacity: 0;
+// 	transform: scale(0.6);
+// 	transition:
+// 		opacity 0.18s ease,
+// 		transform 0.18s ease;
+// }
 
 .forgotLink {
 	background: none;

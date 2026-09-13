@@ -7,6 +7,7 @@ import BagIcon from '@/shared/icons/bag.svg'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
 import AuthModal from '@/features/auth/components/AuthModal'
 import useAuthStore from '@/features/auth/store/useAuthStore'
+import { useCartQuery } from '@/features/cart/hooks/useCart'
 import { paths } from '@/routes/paths'
 import styles from './HeaderActions.module.scss'
 
@@ -18,10 +19,18 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 	// Достаем состояние авторизации
 	const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
 
-	// Имитация данных корзины (потом заменим на Zustand useCartStore)
-	const cartTotalItems = 5
-	const cartTotalPrice = formatPriceBy(1250)
+	/* КОРЗИНА */
+	// Получаем данные корзины
+	const { data: cartData } = useCartQuery(isAuthenticated)
 
+	// Считаем общее количество единиц товаров
+	const cartTotalItems =
+		cartData?.items?.reduce((total, item) => total + item.quantity, 0) || 0
+
+	// Форматируем цену (если total_price нет, выводим 0)
+	const cartTotalPrice = formatPriceBy(cartData?.total_price || 0)
+
+	/* ПОИСК */
 	// Ссылки для управления фокусом поля поиска и кликом вне области
 	const searchWrapperRef = useRef(null)
 	const inputRef = useRef(null)
@@ -85,9 +94,9 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 	}, [isSearchOpen, setIsSearchOpen])
 
 	// Обработчик открытия модалки авторизации
-	const handleOpenAuth = () => {
-		setIsAuthModalOpen(true)
-	}
+	// const handleOpenAuth = () => {
+	// 	setIsAuthModalOpen(true)
+	// }
 
 	return (
 		<>
@@ -135,6 +144,7 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 							<button
 								className={`${styles.actionBtn} ${styles.cartBtn}`}
 								aria-label="Корзина"
+								onClick={() => navigate(paths.cart)}
 							>
 								<BagIcon />
 								<div className={styles.cartInfo}>
@@ -152,7 +162,7 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 						{/* Если не авторизован - открываем модалку авторизации */}
 						<button
 							className={styles.actionBtn}
-							onClick={handleOpenAuth}
+							onClick={() => setIsAuthModalOpen(true)}
 							aria-label="Войти"
 						>
 							<UserIcon />

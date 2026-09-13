@@ -5,6 +5,7 @@ import HomePage from '@/pages/HomePage'
 import ActivatePage from '@/pages/ActivatePage'
 import ResetPasswordConfirmPage from '@/pages/ResetPasswordConfirmPage'
 import FavoritesPage from '@/pages/FavoritesPage'
+import CartPage from '@/pages/CartPage'
 import ProfilePage from '@/pages/ProfilePage'
 import CatalogDispatcher from './CatalogDispatcher'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -23,6 +24,7 @@ const AppRoutes = () => {
 				<Route element={<ProtectedRoute />}>
 					<Route path={paths.profile} element={<ProfilePage />} />
 					<Route path={paths.favorites} element={<FavoritesPage />} />
+					<Route path={paths.cart} element={<CartPage />} />
 				</Route>
 				{/* Перехватывает всё, что не подошло под условия выше */}
 				<Route path="*" element={<NotFoundPage />} />

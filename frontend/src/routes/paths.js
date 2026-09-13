@@ -4,5 +4,6 @@ export const paths = {
 	activate: '/activate/:uid/:token',
 	reset: '/reset-password/:uid/:token',
 	favorites: '/favorites',
+	cart: '/cart',
 	profile: '/profile',
 }
