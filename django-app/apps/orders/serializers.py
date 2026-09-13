@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from xwear.utils import get_thumbnail_data
-from xwear.models import Product, ProductSize
+from xwear.models import ProductVariant, ProductSize
 from core.serializers import CitySerializer
 from .models import Cart, CartItem, Order, OrderItem, PickupPoint
 
@@ -12,10 +12,11 @@ class ProductCartSerializer(serializers.ModelSerializer):
     # Данные о самом товаре для корзины
 
     main_image = serializers.SerializerMethodField()
+    naming = serializers.SerializerMethodField()
 
     class Meta:
-        model = Product
-        fields = ["id", "name", "slug", "main_image"]
+        model = ProductVariant
+        fields = ["id", "slug", "main_image", "naming"]
 
     def get_main_image(self, obj):
         img_obj = obj.get_main_image_obj
@@ -30,6 +31,12 @@ class ProductCartSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def get_naming(self, obj):
+
+        return {
+            "full_title": obj.full_name
+        }
+
 
 class CartItemSerializer(serializers.ModelSerializer):
     # Для проверки входящих ID (поле используется только для POST и PATCH запросов - write_only=True)
@@ -37,7 +44,7 @@ class CartItemSerializer(serializers.ModelSerializer):
         queryset=ProductSize.objects.all(), write_only=True
     )
     # Данные о товаре (имя, фото)
-    product_info = ProductCartSerializer(source="product_size.product", read_only=True)
+    product_info = ProductCartSerializer(source="product_size.variant", read_only=True)
     # Данные о размере
     size_name = serializers.CharField(source="product_size.size.name", read_only=True)
     # Цена за одну единицу (уже со скидкой)
