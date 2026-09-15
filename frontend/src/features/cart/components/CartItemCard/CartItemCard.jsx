@@ -3,7 +3,7 @@ import {
 	useRemoveCartItemMutation,
 } from '@/features/cart/hooks/useCart'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
-import DeleteIcon from '@/shared/icons/cross.svg' // Или иконка мусорки
+import DeleteIcon from '@/shared/icons/delete.svg' // Или иконка мусорки
 import styles from './CartItemCard.module.scss'
 
 const CartItemCard = ({ item }) => {
@@ -13,7 +13,7 @@ const CartItemCard = ({ item }) => {
 	// Достаем данные безопасно
 	// Когда бэкенд будет обновлен, здесь заработает item.product_info.naming.full_title
 	const title = item.product_info.naming?.full_title || item.product_info.name
-	const imageUrl = item.product_info.main_image?.thumbnail?.product_small || ''
+	const imageUrl = item.product_info.main_image?.thumbnail?.product_small?.url || ''
 	const price = formatPriceBy(item.total_item_price)
 
 	// Блокируем кнопки, если идет запрос (чтобы юзер не накликал лишнего)

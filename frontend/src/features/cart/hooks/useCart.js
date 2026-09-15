@@ -1,23 +1,53 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+	useQuery,
+	useSuspenseQuery,
+	useMutation,
+	useQueryClient,
+} from '@tanstack/react-query'
 import { cartApi } from '../api/cartApi'
 
 export const cartKeys = {
 	cart: ['cart'],
 }
 
-// !!! Todo: добавить useSuspenseQuery?
-
-// Хук для получения корзины
+/**
+ * Хук для получения данных корзины (стандартный).
+ * Подходит для фонового запроса данных (например, для счетчика в шапке),
+ * где мы можем управлять флагом enabled в зависимости от авторизации.
+ *
+ * @param {boolean} isAuthenticated - Флаг авторизации пользователя
+ * @returns {import('@tanstack/react-query').UseQueryResult} Результат запроса (данные корзины, статус загрузки и ошибки)
+ */
 export const useCartQuery = (isAuthenticated) => {
 	return useQuery({
 		queryKey: cartKeys.cart,
 		queryFn: cartApi.getCart,
 		enabled: isAuthenticated, // Запрашиваем только если юзер залогинен
+		staleTime: 5 * 60 * 1000, // Кэшируем на 5 минут
+	})
+}
+
+/**
+ * Хук для получения данных корзины с поддержкой React Suspense.
+ * Подходит для страницы корзины (CartPage), где корзина — основной контент.
+ * Внимание: Не имеет опции `enabled`. Компонент должен рендериться только для авторизованных.
+ *
+ * @returns {import('@tanstack/react-query').UseSuspenseQueryResult} Гарантированный результат запроса корзины
+ */
+export const useSuspenseCartQuery = () => {
+	return useSuspenseQuery({
+		queryKey: cartKeys.cart,
+		queryFn: cartApi.getCart,
 		staleTime: 5 * 60 * 1000,
 	})
 }
 
-// Хук для добавления товара
+/**
+ * Хук для добавления товара (конкретного размера/варианта) в корзину.
+ * При успехе инвалидирует кэш корзины, заставляя React Query перезапросить актуальные данные.
+ *
+ * @returns {import('@tanstack/react-query').UseMutationResult} Мутация для добавления товара
+ */
 export const useAddToCartMutation = () => {
 	const queryClient = useQueryClient()
 
@@ -30,7 +60,13 @@ export const useAddToCartMutation = () => {
 	})
 }
 
-// Хук для изменения количества товара
+/**
+ * Хук для изменения количества товара в корзине.
+ * Ожидает, что бэкенд возвращает обновленный объект корзины при PATCH-запросе,
+ * и сразу обновляет кэш (setQueryData) без лишних сетевых запросов.
+ *
+ * @returns {import('@tanstack/react-query').UseMutationResult} Мутация для обновления количества
+ */
 export const useUpdateCartItemMutation = () => {
 	const queryClient = useQueryClient()
 
@@ -43,7 +79,12 @@ export const useUpdateCartItemMutation = () => {
 	})
 }
 
-// Хук для удаления товара
+/**
+ * Хук для удаления товара из корзины.
+ * При успехе инвалидирует кэш корзины для её полного обновления.
+ *
+ * @returns {import('@tanstack/react-query').UseMutationResult} Мутация для удаления позиции
+ */
 export const useRemoveCartItemMutation = () => {
 	const queryClient = useQueryClient()
 

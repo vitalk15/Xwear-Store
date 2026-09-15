@@ -1,0 +1,82 @@
+.cartLayout {
+	display: grid;
+	// Левая колонка занимает оставшееся место (1fr), правая фиксирована (например, 340px)
+	grid-template-columns: 1fr 340px;
+	gap: 40px;
+	// ВАЖНО: без start сайдбар растянется на высоту всего контента и sticky не сработает
+	align-items: start;
+	padding-bottom: 60px;
+}
+
+// ЛЕВАЯ КОЛОНКА
+.itemsList {
+	display: flex;
+	flex-direction: column;
+}
+
+// ПРАВАЯ КОЛОНКА (Сайдбар)
+.summarySidebar {
+	position: sticky;
+	top: $header-height + 20px; // Отступ сверху. Если фиксированная шапка сайта, увеличьте это значение (высота шапки + 20px)
+	background-color: #f9f9f9;
+	border-radius: $border-radius;
+	padding: 30px;
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
+.summaryTitle {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 700;
+	text-transform: uppercase;
+	text-align: center;
+	color: $color-black;
+	border-bottom: 1px solid #e0e0e0;
+	padding-bottom: 16px;
+}
+
+.summaryInfo {
+	display: flex;
+	flex-direction: column;
+	font-size: 16px;
+	font-weight: 500;
+	color: #333;
+	gap: 2px;
+}
+
+.summaryRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+
+	b {
+		:global(.nbrb-icon) {
+			font-weight: bold;
+		}
+	}
+}
+
+.checkoutBtn {
+	margin-top: 12px;
+	padding: 16px 20px;
+	font-size: 13px;
+	font-weight: 800;
+	text-transform: uppercase;
+}
+
+// АДАПТИВ (Планшеты и мобильные телефоны)
+@media (max-width: 992px) {
+	.cartLayout {
+		// На планшетах перестраиваем в одну колонку
+		grid-template-columns: 1fr;
+		gap: 30px;
+	}
+
+	.summarySidebar {
+		// Отключаем залипание, так как блок теперь находится под списком товаров
+		position: static;
+		padding: 20px;
+	}
+}
