@@ -166,7 +166,11 @@ class ProductSize(models.Model):
         return self.discount_percent > 0
 
     def __str__(self):
-        return ""
+        variant_name = self.variant.full_name
+        size_name = self.size.name
+
+        return f"{variant_name} - Размер: {size_name}"
+        # return ""
 
     class Meta:
         ordering = ["size"]

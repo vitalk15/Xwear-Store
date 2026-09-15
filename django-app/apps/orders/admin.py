@@ -14,8 +14,8 @@ class CartItemInline(NoDeleteAddMixin, admin.TabularInline):
 class CartAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
     inlines = [CartItemInline]
 
-    list_display = ("user", "total_price")
-    readonly_fields = ("user", "total_price")
+    list_display = ("user", "total_quantity", "total_price")
+    readonly_fields = ("user", "total_quantity", "total_price")
     search_fields = ("user__email",)
 
 

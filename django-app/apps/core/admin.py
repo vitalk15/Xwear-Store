@@ -12,7 +12,7 @@ from .models import City, Document, ContactSettings, CommercialConfig, AboutUs
 class SingletonAdminMixin:
     """Запрещаем добавлять новые записи, если одна уже есть"""
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request, obj=None):
         return not self.model.objects.exists()
 
 
@@ -20,7 +20,7 @@ class ReadOnlyAdminMixin:
     """Миксин для создания интерфейса 'только просмотр'"""
 
     # Запрещаем добавление записи
-    def has_add_permission(self, request):
+    def has_add_permission(self, request, obj=None):
         return False
 
     # Запрещаем удаление записи
@@ -39,7 +39,7 @@ class ReadOnlyAdminMixin:
 class NoDeleteAddMixin:
     """Миксин запрещающий удаление и добавление, но разрешающий правку"""
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request, obj=None):
         return False
 
     def has_delete_permission(self, request, obj=None):
@@ -49,7 +49,7 @@ class NoDeleteAddMixin:
 class NoAddMixin:
     """Миксин запрещающий добавление, но разрешающий правку"""
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request, obj=None):
         return False
 
 

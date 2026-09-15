@@ -1,3 +1,4 @@
+from django.contrib import admin
 from django.db import models
 from django.conf import settings
 from xwear.models import Product, ProductSize
@@ -23,8 +24,14 @@ class Cart(models.Model):
         return f"Корзина {self.user.email}"
 
     @property
+    @admin.display(description="Итоговая стоимость")
     def total_price(self):
         return sum(item.total_item_price for item in self.items.all())
+
+    @property
+    @admin.display(description="Всего товаров")
+    def total_quantity(self):
+        return sum(item.quantity for item in self.items.all())
 
 
 class CartItem(models.Model):
@@ -41,9 +48,14 @@ class CartItem(models.Model):
         verbose_name_plural = "Товары в корзине"
 
     def __str__(self):
-        return f"{self.product_size.product.full_name} ({self.product_size.size.name}) x {self.quantity}"
+        # variant_name = self.product_size.variant.full_name
+        # size_name = self.product_size.size.name
+
+        # return f"{variant_name} - Размер: {size_name}"
+        return ""
 
     @property
+    @admin.display(description="Стоимость")
     def total_item_price(self):
         return self.product_size.final_price * self.quantity
 

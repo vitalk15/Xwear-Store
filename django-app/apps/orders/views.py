@@ -26,7 +26,7 @@ def cart_view(request):
     cart = (
         Cart.objects.filter(user=request.user)
         .prefetch_related(
-            "items__product_size__product__images", "items__product_size__size"
+            "items__product_size__variant__images", "items__product_size__size"
         )
         .first()
     )

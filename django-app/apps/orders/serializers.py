@@ -68,16 +68,21 @@ class CartItemSerializer(serializers.ModelSerializer):
     # Проверяем, активен ли товар и есть ли он в наличии
     def validate_product_size(self, value):
         # value — это объект ProductSize, так как PrimaryKeyRelatedField его уже нашел
-        product = value.product
+        # 1. Проверяем сам размер
+        if not value.is_active:
+            raise serializers.ValidationError("Выбранный размер недоступен.")
 
-        if not product.is_active:
-            raise serializers.ValidationError(
-                "Этот товар временно недоступен для заказа."
-            )
+        # 2. Проверяем вариант товара (цвет)
+        if not value.variant.is_active:
+            raise serializers.ValidationError("Данный вариант товара сейчас недоступен.")
 
-        # Для поля остатка в ProductSize
+        # 3. Проверяем базовый товар
+        if not value.variant.product.is_active:
+            raise serializers.ValidationError("Базовый товар недоступен.")
+
+        # Опционально: можно добавить проверку остатков, если используется stock в ProductSize
         # if value.stock <= 0:
-        #     raise serializers.ValidationError("Данного размера нет в наличии.")
+        #     raise serializers.ValidationError("Товара нет в наличии.")
 
         return value
 
