@@ -17,6 +17,10 @@
 		background-color: $color-blue;
 	}
 
+	&:active {
+		transform: scale(0.98);
+	}
+
 	&:disabled {
 		background-color: #ccc;
 		cursor: not-allowed;
