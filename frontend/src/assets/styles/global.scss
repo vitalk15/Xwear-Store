@@ -57,7 +57,7 @@ body {
 		font-weight: 400;
 		line-height: 1.6;
 		letter-spacing: 1px;
-		color: $color-black;
+		color: #424347;
 		outline: none;
 		padding: 0;
 
@@ -66,7 +66,8 @@ body {
 		}
 
 		&::placeholder {
-			color: #737582;
+			// color: #737582;
+			color: #cdcfdb;
 			letter-spacing: 1px;
 		}
 
