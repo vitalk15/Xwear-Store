@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import { useSuspenseProfileQuery } from '@/features/profile/hooks/useProfile'
 import useAuthStore from '@/features/auth/store/useAuthStore'
 import { logoutUser } from '@/features/auth/api/auth.api'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
+import EditProfileForm from '@/features/profile/components/EditProfileForm'
 import ProfileIcon from '@/shared/icons/profile.svg'
 import EditProfileIcon from '@/shared/icons/redaction-profile.svg'
 import StoryOrdersIcon from '@/shared/icons/story.svg'
-import OrdersIcon from '@/shared/icons/orders.svg'
+// import OrdersIcon from '@/shared/icons/orders.svg'
 import AddressIcon from '@/shared/icons/address.svg'
 import EditAddressIcon from '@/shared/icons/redaction-address.svg'
 import PasswordIcon from '@/shared/icons/password.svg'
@@ -14,7 +16,10 @@ import styles from './ProfilePage.module.scss'
 
 const ProfileContent = () => {
 	const logout = useAuthStore((state) => state.logout)
-	const user = useAuthStore((state) => state.user) // Чтобы достать имя/email
+	const user = useAuthStore((state) => state.user) // Чтобы достать email
+	const { data: profileData } = useSuspenseProfileQuery() // Чтобы достать имя
+
+	const userName = profileData?.profile?.first_name || user?.email || 'Пользователь'
 
 	// Временное состояние для управления активной вкладкой
 	const [activeTab, setActiveTab] = useState('account')
@@ -37,8 +42,8 @@ const ProfileContent = () => {
 		{ id: 'account', label: 'Мой аккаунт', icon: <ProfileIcon /> },
 		{ id: 'edit-profile', label: 'Редактировать профиль', icon: <EditProfileIcon /> },
 		{ id: 'orders-history', label: 'История заказов', icon: <StoryOrdersIcon /> },
-		{ id: 'my-orders', label: 'Мои заказы', icon: <OrdersIcon /> }, // По макету их два разных?
-		{ id: 'addresses', label: 'Адреса', icon: <AddressIcon /> },
+		// { id: 'my-orders', label: 'Мои заказы', icon: <OrdersIcon /> },
+		{ id: 'addresses', label: 'Адреса доставки', icon: <AddressIcon /> },
 		{ id: 'edit-addresses', label: 'Редактировать адреса', icon: <EditAddressIcon /> },
 		{ id: 'password', label: 'Пароль', icon: <PasswordIcon /> },
 	]
@@ -61,7 +66,7 @@ const ProfileContent = () => {
 										onClick={() => setActiveTab(item.id)}
 									>
 										<span className={styles.iconWrapper}>{item.icon}</span>
-										{item.label}
+										<span className={styles.labelWrapper}>{item.label}</span>
 									</button>
 								</li>
 							))}
@@ -81,10 +86,12 @@ const ProfileContent = () => {
 
 				{/* Правая колонка (Контентная часть) */}
 				<section className={styles.content}>
-					<h2 className={styles.welcomeText}>
-						Приветствуем, {user?.email || 'Пользователь'}!
-					</h2>
-					{/* Здесь мы будем рендерить компоненты в зависимости от выбранной вкладки */}
+					{activeTab === 'account' && (
+						<h2 className={styles.welcomeText}>Приветствуем, {userName}!</h2>
+					)}
+					{activeTab === 'edit-profile' && (
+						<EditProfileForm initialData={profileData || { email: user?.email }} />
+					)}
 				</section>
 			</div>
 		</>

@@ -1,0 +1,85 @@
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { editProfileSchema } from '@/features/profile/schemas/editProfileSchema'
+import { useUpdateProfileMutation } from '@/features/profile/hooks/useProfile'
+import InputField from '@/components/ui/InputField'
+import { formatBelarusPhone } from '@/shared/utils/formatPhone'
+import Button from '@/components/ui/Button'
+import styles from './EditProfileForm.module.scss'
+
+const EditProfileForm = ({ initialData }) => {
+	const { mutate: updateProfile, isPending } = useUpdateProfileMutation()
+
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+	} = useForm({
+		resolver: zodResolver(editProfileSchema),
+		defaultValues: {
+			first_name: initialData?.profile?.first_name || '',
+			last_name: initialData?.profile?.last_name || '',
+			email: initialData?.email || '',
+			phone: formatBelarusPhone(initialData?.profile?.phone) || '',
+		},
+	})
+
+	const onSubmit = (formData) => {
+		updateProfile(formData)
+	}
+
+	return (
+		<>
+			<h2 className={styles.formTitle}>Редактирование профиля</h2>
+
+			<form
+				className={`form ${styles.profileForm}`}
+				onSubmit={handleSubmit(onSubmit)}
+				noValidate
+			>
+				<div className={styles.grid}>
+					<InputField
+						label="Ваше имя:"
+						placeholder="Введите ваше имя"
+						error={errors.first_name}
+						{...register('first_name')}
+					/>
+
+					<InputField
+						label="Фамилия:"
+						placeholder="Введите вашу фамилию"
+						error={errors.last_name}
+						{...register('last_name')}
+					/>
+
+					<InputField
+						label="Email адрес:"
+						type="email"
+						disabled
+						error={errors.email}
+						{...register('email')}
+					/>
+
+					<InputField
+						label="Номер телефона:"
+						placeholder="+375 29 0000000"
+						error={errors.phone}
+						{...register('phone')}
+					/>
+				</div>
+
+				<div className={styles.submitBtn}>
+					<Button
+						type="submit"
+						disabled={isPending}
+						className={`submitBtn ${styles.Btn}`}
+					>
+						{isPending ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
+					</Button>
+				</div>
+			</form>
+		</>
+	)
+}
+
+export default EditProfileForm

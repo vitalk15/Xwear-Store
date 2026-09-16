@@ -8,29 +8,34 @@
 	font-weight: 900;
 	text-transform: uppercase;
 	line-height: 1.3;
-	margin-bottom: 24px;
+	margin-bottom: 46px;
 	color: $color-black;
 }
 
 .layout {
 	display: flex;
-	gap: 40px;
+	gap: 30px;
 	align-items: flex-start;
 }
 
 /* --- Сайдбар и Меню --- */
 .sidebar {
-	width: 280px;
+	width: 320px;
 	flex-shrink: 0;
+	// border: 1px solid #e9eaee;
 	border: 1px solid #e0e0e0;
-	border-radius: 8px;
-	padding: 10px 0;
+	border-radius: $border-radius;
+	padding: 22px 36px 22px 0;
 }
 
 .navList {
 	list-style: none; /* Убираем маркеры списка */
 	margin: 0;
 	padding: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 5px;
 }
 
 .navItem {
@@ -41,27 +46,35 @@
 .navBtn {
 	display: flex;
 	align-items: center;
-	gap: 15px;
+	gap: 20px;
 	width: 100%;
-	padding: 16px 24px;
+	padding: 12px 0 12px 36px;
 	background: transparent;
 	border: none;
 	text-align: left;
-	font-size: 16px;
+	font-size: 13px;
+	font-weight: 600;
 	color: #333;
 	cursor: pointer;
-	transition: all 0.2s ease-in-out;
-	border-left: 4px solid transparent; /* Подготовка для активного состояния */
+	transition: box-shadow 0.2s ease-in-out;
 
 	&:hover {
-		background-color: #f9f9f9;
+		.iconWrapper,
+		.labelWrapper {
+			color: $color-black;
+		}
 	}
 
 	&.active {
-		font-weight: 600;
-		color: #000;
-		border-left-color: #000; /* Черная полоска слева как в стильных дизайнах */
-		background-color: #f4f4f4;
+		// box-shadow: inset 2px 0 0 0 $color-blue;
+		box-shadow:
+			inset 1px 0 0 0 $color-blue,
+			-1px 0 0 0 $color-blue;
+
+		.iconWrapper,
+		.labelWrapper {
+			color: $color-black;
+		}
 	}
 }
 
@@ -69,14 +82,21 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 24px;
-	height: 24px;
-	color: #555;
+	flex-shrink: 0;
+	width: 20px;
+	height: 20px;
+	color: #b0b0b0;
+	transition: color 0.2s ease-in-out;
 
 	svg {
 		width: 100%;
 		height: 100%;
 	}
+}
+
+.labelWrapper {
+	color: $color-dark_gray;
+	transition: color 0.2s ease-in-out;
 }
 
 /* --- Контент --- */
@@ -85,7 +105,65 @@
 }
 
 .welcomeText {
-	font-size: 24px;
+	font-size: 22px;
 	font-weight: 600;
-	margin-bottom: 24px;
+	color: $color-dark_gray;
+	margin-bottom: 35px;
+}
+
+/* --- Скелетон --- */
+.breadcrumbsSkeleton {
+	@include skeleton-shimmer-light;
+	height: 18px;
+	width: 300px;
+	margin-bottom: 50px;
+}
+
+.titleSkeleton {
+	@include skeleton-shimmer-light;
+	height: 38px;
+	width: 250px;
+	margin-bottom: 46px;
+}
+
+.skeletonLayout {
+	display: grid;
+	grid-template-columns: 320px 1fr;
+	gap: 30px;
+
+	@media (max-width: 992px) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.sidebarSkeleton {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 22px 36px;
+}
+
+.menuItemSkeleton {
+	@include skeleton-shimmer-light;
+	height: 48px;
+	width: 100%;
+}
+
+.contentSkeleton {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.welcomeSkeleton {
+	@include skeleton-shimmer-light;
+	height: 36px;
+	width: 300px;
+	margin-bottom: 35px;
+}
+
+.tableSkeleton {
+	@include skeleton-shimmer-light;
+	width: 100%;
+	height: 200px;
 }

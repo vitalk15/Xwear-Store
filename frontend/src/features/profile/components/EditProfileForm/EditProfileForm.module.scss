@@ -1,0 +1,25 @@
+.formTitle {
+	font-size: 23px;
+	margin-bottom: 35px;
+}
+
+.profileForm {
+	gap: 30px;
+	font-weight: 700;
+	color: $color-dark_gray;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 30px;
+
+	@media (max-width: 768px) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.submitBtn {
+	display: flex;
+	justify-content: center;
+}
