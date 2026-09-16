@@ -15,9 +15,16 @@ class AddressInline(admin.TabularInline):
 class ProfileAdmin(NoDeleteAddMixin, admin.ModelAdmin):
     inlines = [AddressInline]
 
-    list_display = ["user", "phone", "first_name", "last_name"]
+    list_display = ["user", "formatted_phone", "first_name", "last_name"]
     search_fields = ["user__email", "phone"]
     readonly_fields = ("user",)
+
+    @admin.display(description="Номер телефона")
+    def formatted_phone(self, obj):
+        phone = obj.phone
+        if phone and len(phone) == 13:
+            return f"{phone[:4]} ({phone[4:6]}) {phone[6:9]}-{phone[9:11]}-{phone[11:]}"
+        return phone
 
 
 class ProfileInline(admin.StackedInline):
@@ -82,7 +89,14 @@ class UserAdmin(BaseUserAdmin):
 
     @admin.display(description="Телефон")
     def get_phone(self, obj):
-        return obj.profile.phone if hasattr(obj, "profile") else "-"
+        if hasattr(obj, "profile"):
+            phone = obj.profile.phone
+
+            if phone and len(phone) == 13:
+                return f"{phone[:4]} ({phone[4:6]}) {phone[6:9]}-{phone[9:11]}-{phone[11:]}"
+            return phone
+        else: 
+            return "-"
 
     # Запрещаем удалять пользователей, мы их деактивируем (is_active=False)
     # def has_delete_permission(self, request, obj=None):
