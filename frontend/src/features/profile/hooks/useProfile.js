@@ -4,13 +4,14 @@ import {
 	useMutation,
 	useQueryClient,
 } from '@tanstack/react-query'
-import useAuthStore from '@/features/auth/store/useAuthStore'
+// import useAuthStore from '@/features/auth/store/useAuthStore'
 import { profileApi } from '../api/profileApi'
 
 // !!! Добавить с поддержкой Suspense
 
 export const profileKeys = {
 	profile: ['user-profile'],
+	cities: ['delivery-cities'],
 }
 
 /**
@@ -47,7 +48,7 @@ export const useSuspenseProfileQuery = () => {
  */
 export const useUpdateProfileMutation = () => {
 	const queryClient = useQueryClient()
-	const setUser = useAuthStore((state) => state.setUser)
+	// const setUser = useAuthStore((state) => state.setUser)
 
 	return useMutation({
 		mutationFn: profileApi.updateProfile,
@@ -55,7 +56,33 @@ export const useUpdateProfileMutation = () => {
 			// Обновляем кэш React Query
 			queryClient.setQueryData(profileKeys.profile, updatedUserData)
 			// Обновляем данные пользователя в Zustand store
-			setUser(updatedUserData)
+			// setUser(updatedUserData)
+		},
+	})
+}
+
+/**
+ * Хук для получения доступных городов доставки.
+ */
+export const useCitiesQuery = () => {
+	return useQuery({
+		queryKey: profileKeys.cities,
+		queryFn: profileApi.getCities,
+		staleTime: 60 * 60 * 1000, // Города меняются редко, кэшируем на 1 час
+	})
+}
+
+/**
+ * Хук для добавления нового адреса доставки.
+ */
+export const useCreateAddressMutation = () => {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: profileApi.createAddress,
+		onSuccess: () => {
+			// Обновляем данные профиля, чтобы сразу подтянулся новый список адресов
+			queryClient.invalidateQueries({ queryKey: profileKeys.profile })
 		},
 	})
 }
