@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { editProfileSchema } from '@/features/profile/schemas/editProfileSchema'
@@ -5,15 +6,17 @@ import { useUpdateProfileMutation } from '@/features/profile/hooks/useProfile'
 import InputField from '@/components/ui/InputField'
 import { formatBelarusPhone } from '@/shared/utils/formatPhone'
 import Button from '@/components/ui/Button'
+import Toast from '@/components/ui/Toast'
 import styles from './EditProfileForm.module.scss'
 
 const EditProfileForm = ({ initialData }) => {
+	const [toast, setToast] = useState(null) // Состояние для уведомлений
 	const { mutate: updateProfile, isPending } = useUpdateProfileMutation()
 
 	const {
 		register,
 		handleSubmit,
-		formState: { errors },
+		formState: { errors, dirtyFields }, // dirtyFields для отправки на сервер только тех полей, которые были изменены (бэкенд принимает PATCH-запросы с флагом partial=True).
 	} = useForm({
 		resolver: zodResolver(editProfileSchema),
 		defaultValues: {
@@ -25,11 +28,35 @@ const EditProfileForm = ({ initialData }) => {
 	})
 
 	const onSubmit = (formData) => {
-		updateProfile(formData)
+		// Собираем только измененные поля
+		const changedData = {}
+
+		if (dirtyFields.first_name) changedData.first_name = formData.first_name
+		if (dirtyFields.last_name) changedData.last_name = formData.last_name
+		if (dirtyFields.phone) changedData.phone = formData.phone
+
+		// Если пользователь ничего не изменил и нажал "Сохранить"
+		if (Object.keys(changedData).length === 0) {
+			setToast({ message: 'Данные не были изменены', type: 'success' })
+			return
+		}
+
+		updateProfile(changedData, {
+			onSuccess: () => {
+				setToast({ message: 'Профиль успешно обновлен!', type: 'success' })
+			},
+			onError: () => {
+				setToast({ message: 'Ошибка при сохранении данных', type: 'error' })
+			},
+		})
 	}
 
 	return (
 		<>
+			{toast && (
+				<Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+			)}
+
 			<h2 className={styles.formTitle}>Редактирование профиля</h2>
 
 			<form
@@ -68,7 +95,7 @@ const EditProfileForm = ({ initialData }) => {
 					/>
 				</div>
 
-				<div className={styles.submitBtn}>
+				<div className={styles.submitBtnWrapper}>
 					<Button
 						type="submit"
 						disabled={isPending}
