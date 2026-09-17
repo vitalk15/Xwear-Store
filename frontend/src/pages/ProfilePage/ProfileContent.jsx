@@ -4,6 +4,7 @@ import useAuthStore from '@/features/auth/store/useAuthStore'
 import { logoutUser } from '@/features/auth/api/auth.api'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import EditProfileForm from '@/features/profile/components/EditProfileForm'
+import EditAddressForm from '@/features/profile/components/EditAddressForm'
 import ProfileIcon from '@/shared/icons/profile.svg'
 import EditProfileIcon from '@/shared/icons/redaction-profile.svg'
 import StoryOrdersIcon from '@/shared/icons/story.svg'
@@ -92,6 +93,7 @@ const ProfileContent = () => {
 					{activeTab === 'edit-profile' && (
 						<EditProfileForm initialData={profileData || { email: user?.email }} />
 					)}
+					{activeTab === 'edit-addresses' && <EditAddressForm />}
 				</section>
 			</div>
 		</>
