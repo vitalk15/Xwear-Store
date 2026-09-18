@@ -1,0 +1,196 @@
+.title {
+	font-size: 23px;
+	margin-bottom: 35px;
+	font-weight: 700;
+	color: $color-dark_gray;
+}
+
+.container {
+	display: flex;
+	flex-direction: column;
+	gap: 40px;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 30px;
+
+	@media (max-width: 992px) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.card {
+	position: relative;
+	background-color: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: $border-radius;
+	padding: 25px 30px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	cursor: pointer;
+	transition: box-shadow 0.2s ease;
+
+	&:hover:not(.defaultCard) {
+		box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.15);
+	}
+}
+
+/* Стилизация карточки по умолчанию */
+.defaultCard {
+	border: 1px solid #bdbdbd;
+}
+
+.badge {
+	position: absolute;
+	top: 0;
+	right: 0;
+	background-color: #f8f8f8;
+	padding: 8px 14px;
+	border-radius: 0 $border-radius;
+	font-size: 10px;
+	font-weight: 800;
+	color: $color-dark_gray;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.defaultBadge {
+	background-color: $color-dark_gray;
+	color: #fff;
+}
+
+.cardContent {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin-bottom: 20px;
+}
+
+.userName {
+	font-size: 18px;
+	font-weight: 600;
+	color: $color-black;
+	margin: 7px 0;
+}
+
+.addressText {
+	font-size: 14px;
+	font-weight: 400;
+	color: #3b3b3e;
+	margin: 0;
+	line-height: 1.6;
+}
+
+.infoBlock {
+	display: flex;
+	flex-direction: column;
+	// gap: 2px;
+}
+
+.infoLabel {
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 1.6;
+	color: #87878d;
+}
+
+.infoValue {
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.6;
+	color: #3b3b3e;
+}
+
+.cardActions {
+	display: flex;
+	align-items: center;
+	gap: 26px;
+	border-top: 1px solid #e9eaee;
+	padding-top: 16px;
+}
+
+.actionBtn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 0;
+	color: $color-dark_gray;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: $color-blue;
+	}
+}
+
+.deleteBtn {
+	color: $color-dark_gray;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: #e53e3e;
+	}
+}
+
+.editIcon {
+	width: 16;
+	height: auto;
+}
+
+.deleteIcon {
+	width: 16;
+	height: auto;
+}
+
+.actionText {
+	font-size: 14px;
+	font-weight: 600;
+}
+
+/* Пунктирная кнопка «Добавить новый» */
+.addCardBtn {
+	width: 100%;
+	padding: 28px;
+	border: 1px dashed #e0e0e0;
+	border-radius: $border-radius;
+	background-color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	cursor: pointer;
+	transition:
+		border-color 0.2s ease,
+		background-color 0.2s ease;
+
+	&:hover {
+		border-color: $color-dark_gray;
+		background-color: #fafafa;
+	}
+}
+
+.addIconWrapper {
+	width: 62px;
+	height: 62px;
+	border-radius: 50%;
+	background-color: #f8f8f8;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.addIcon {
+	width: 23px;
+	height: auto;
+}
+
+.addText {
+	font-size: 16px;
+	font-weight: 600;
+	color: #6f6f6f;
+}

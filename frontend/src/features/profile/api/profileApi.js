@@ -37,4 +37,16 @@ export const profileApi = {
 		})
 		return response.data
 	},
+
+	// Частичное обновление адреса (для выбора default или редактирования полей)
+	updateAddress: async ({ id, ...data }) => {
+		const response = await apiClient.patch(`/auth/addresses/${id}/`, data)
+		return response.data
+	},
+
+	// Удаление адреса
+	deleteAddress: async (id) => {
+		const response = await apiClient.delete(`/auth/addresses/${id}/`)
+		return response.data
+	},
 }

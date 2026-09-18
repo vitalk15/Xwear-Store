@@ -86,3 +86,29 @@ export const useCreateAddressMutation = () => {
 		},
 	})
 }
+
+/**
+ * Хук для частичного обновления адреса доставки.
+ */
+export const useUpdateAddressMutation = () => {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: profileApi.updateAddress,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: profileKeys.profile })
+		},
+	})
+}
+
+/**
+ * Хук для удаления адреса доставки.
+ */
+export const useDeleteAddressMutation = () => {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: profileApi.deleteAddress,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: profileKeys.profile })
+		},
+	})
+}
