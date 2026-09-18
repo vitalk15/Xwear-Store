@@ -1,21 +1,24 @@
-import { useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { editAddressSchema } from '@/features/profile/schemas/editAddressSchema'
 import {
 	useCitiesQuery,
 	useCreateAddressMutation,
+	useUpdateAddressMutation,
 } from '@/features/profile/hooks/useProfile'
 import InputField from '@/components/ui/InputField'
 import Button from '@/components/ui/Button'
-import Toast from '@/components/ui/Toast'
 import CustomSelect from '@/components/ui/CustomSelect'
 import styles from './EditAddressForm.module.scss'
 
-const EditAddressForm = () => {
-	const [toast, setToast] = useState(null) // Состояние для уведомлений
+const EditAddressForm = ({ editingAddress, onSuccess, onError }) => {
 	const { data: cities = [], isLoading: isCitiesLoading } = useCitiesQuery()
-	const { mutate: createAddress, isPending } = useCreateAddressMutation()
+
+	const { mutate: createAddress, isPending: isCreating } = useCreateAddressMutation()
+	const { mutate: updateAddress, isPending: isUpdating } = useUpdateAddressMutation()
+
+	const isEditMode = Boolean(editingAddress)
+	const isLoading = isCreating || isUpdating
 
 	const {
 		register,
@@ -26,32 +29,44 @@ const EditAddressForm = () => {
 	} = useForm({
 		resolver: zodResolver(editAddressSchema),
 		defaultValues: {
-			city_id: '',
-			street: '',
-			house: '',
-			apartment: '',
+			city_id: editingAddress?.city?.id || '',
+			street: editingAddress?.street || '',
+			house: editingAddress?.house || '',
+			apartment: editingAddress?.apartment || '',
 		},
 	})
 
 	const onSubmit = (formData) => {
-		createAddress(formData, {
-			onSuccess: () => {
-				setToast({ message: 'Адрес успешно сохранен!', type: 'success' })
-				reset() // Очищаем форму после успешного сохранения
-			},
-			onError: () => {
-				setToast({ message: 'Ошибка при сохранении адреса', type: 'error' })
-			},
-		})
+		if (isEditMode) {
+			updateAddress(
+				{ id: editingAddress.id, ...formData },
+				{
+					onSuccess: () => {
+						if (onSuccess) onSuccess('Адрес успешно обновлен!') // Передаем текст в родителя
+					},
+					onError: () => {
+						if (onError) onError('Ошибка при обновлении адреса')
+					},
+				},
+			)
+		} else {
+			createAddress(formData, {
+				onSuccess: () => {
+					reset() // Очищаем форму после успешного сохранения
+					if (onSuccess) onSuccess('Адрес успешно добавлен!')
+				},
+				onError: () => {
+					if (onError) onError('Ошибка при добавлении адреса')
+				},
+			})
+		}
 	}
 
 	return (
 		<>
-			{toast && (
-				<Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-			)}
-
-			<h2 className={styles.formTitle}>Редактирование адреса</h2>
+			<h2 className={styles.formTitle}>
+				{isEditMode ? 'Редактирование адреса' : 'Добавление адреса'}
+			</h2>
 
 			<form
 				className={`form ${styles.addressForm}`}
@@ -59,30 +74,7 @@ const EditAddressForm = () => {
 				noValidate
 			>
 				<div className={styles.grid}>
-					{/* Кастомное поле выбора города */}
-					{/* <div className={`inputGroup ${errors.city_id ? 'inputError' : ''}`.trim()}>
-						<label>Город</label>
-						<select
-							className={`${styles.selectInput} ${
-								errors.city_id ? styles.selectError : ''
-							}`.trim()}
-							disabled={isCitiesLoading}
-							{...register('city_id')}
-						>
-							<option value="" disabled>
-								{isCitiesLoading ? 'Загрузка городов...' : 'Выберите ваш город'}
-							</option>
-							{cities.map((city) => (
-								<option key={city.id} value={city.id}>
-									{city.name}
-								</option>
-							))}
-						</select>
-						{errors.city_id && (
-							<span className="errorText">{errors.city_id.message}</span>
-						)}
-					</div> */}
-
+					{/* Кастомный селект выбора города */}
 					<Controller
 						name="city_id"
 						control={control}
@@ -99,8 +91,8 @@ const EditAddressForm = () => {
 					/>
 
 					<InputField
-						label="Улица:"
-						placeholder="Введите название улицы"
+						label="Улица / Проспект / Переулок:"
+						placeholder="Например: пр-т Независимости"
 						error={errors.street}
 						{...register('street')}
 					/>
@@ -123,10 +115,10 @@ const EditAddressForm = () => {
 				<div className={styles.submitBtnWrapper}>
 					<Button
 						type="submit"
-						disabled={isPending}
+						disabled={isLoading}
 						className={`submitBtn ${styles.Btn}`}
 					>
-						{isPending ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
+						{isLoading ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
 					</Button>
 				</div>
 			</form>

@@ -5,10 +5,11 @@ import { logoutUser } from '@/features/auth/api/auth.api'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import EditProfileForm from '@/features/profile/components/EditProfileForm'
 import EditAddressForm from '@/features/profile/components/EditAddressForm'
+import AddressList from '@/features/profile/components/AddressList'
+import Toast from '@/components/ui/Toast'
 import ProfileIcon from '@/shared/icons/profile.svg'
 import EditProfileIcon from '@/shared/icons/redaction-profile.svg'
 import StoryOrdersIcon from '@/shared/icons/story.svg'
-// import OrdersIcon from '@/shared/icons/orders.svg'
 import AddressIcon from '@/shared/icons/address.svg'
 import EditAddressIcon from '@/shared/icons/redaction-address.svg'
 import PasswordIcon from '@/shared/icons/password.svg'
@@ -24,7 +25,24 @@ const ProfileContent = () => {
 
 	// Временное состояние для управления активной вкладкой
 	const [activeTab, setActiveTab] = useState('account')
+	// Состояние редактируемого адреса
+	const [editingAddress, setEditingAddress] = useState(null)
+	// Глобальный стейт для уведомлений профиля
+	const [toast, setToast] = useState(null)
 
+	// Переход к редактированию конкретного адреса
+	const handleEditAddress = (address) => {
+		setEditingAddress(address)
+		setActiveTab('edit-addresses')
+	}
+
+	// Переход к созданию нового адреса
+	const handleAddNewAddress = () => {
+		setEditingAddress(null)
+		setActiveTab('edit-addresses')
+	}
+
+	// Выход из аккаунта
 	const handleLogout = async () => {
 		try {
 			// Отправляем запрос на сервер для удаления куки
@@ -52,6 +70,10 @@ const ProfileContent = () => {
 	return (
 		<>
 			<Breadcrumbs items={[{ name: 'Личный кабинет' }]} />
+
+			{toast && (
+				<Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+			)}
 
 			<h1 className={styles.title}>ЛИЧНЫЙ КАБИНЕТ</h1>
 
@@ -91,9 +113,35 @@ const ProfileContent = () => {
 						<h2 className={styles.welcomeText}>Приветствуем, {userName}!</h2>
 					)}
 					{activeTab === 'edit-profile' && (
-						<EditProfileForm initialData={profileData || { email: user?.email }} />
+						<EditProfileForm
+							initialData={profileData || { email: user?.email }}
+							onSuccess={(message) => setToast({ message, type: 'success' })}
+							onError={(message) => setToast({ message, type: 'error' })}
+						/>
 					)}
-					{activeTab === 'edit-addresses' && <EditAddressForm />}
+					{activeTab === 'addresses' && (
+						<AddressList
+							profileData={profileData}
+							onEditAddress={handleEditAddress}
+							onAddNewAddress={handleAddNewAddress}
+							onSuccess={(message) => setToast({ message, type: 'success' })}
+							onError={(message) => setToast({ message, type: 'error' })}
+						/>
+					)}
+					{activeTab === 'edit-addresses' && (
+						<EditAddressForm
+							editingAddress={editingAddress}
+							onSuccess={(message) => {
+								setToast({ message, type: 'success' })
+								setActiveTab('addresses')
+							}}
+							onError={(message) => {
+								// Устанавливаем ошибку, но не меняем вкладку,
+								// чтобы пользователь мог исправить данные
+								setToast({ message, type: 'error' })
+							}}
+						/>
+					)}
 				</section>
 			</div>
 		</>

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { editProfileSchema } from '@/features/profile/schemas/editProfileSchema'
@@ -6,11 +5,9 @@ import { useUpdateProfileMutation } from '@/features/profile/hooks/useProfile'
 import InputField from '@/components/ui/InputField'
 import { formatBelarusPhone } from '@/shared/utils/formatPhone'
 import Button from '@/components/ui/Button'
-import Toast from '@/components/ui/Toast'
 import styles from './EditProfileForm.module.scss'
 
-const EditProfileForm = ({ initialData }) => {
-	const [toast, setToast] = useState(null) // Состояние для уведомлений
+const EditProfileForm = ({ initialData, onSuccess, onError }) => {
 	const { mutate: updateProfile, isPending } = useUpdateProfileMutation()
 
 	const {
@@ -37,26 +34,22 @@ const EditProfileForm = ({ initialData }) => {
 
 		// Если пользователь ничего не изменил и нажал "Сохранить"
 		if (Object.keys(changedData).length === 0) {
-			setToast({ message: 'Данные не были изменены', type: 'success' })
+			if (onSuccess) onSuccess('Данные не были изменены')
 			return
 		}
 
 		updateProfile(changedData, {
 			onSuccess: () => {
-				setToast({ message: 'Профиль успешно обновлен!', type: 'success' })
+				if (onSuccess) onSuccess('Профиль успешно обновлен!')
 			},
 			onError: () => {
-				setToast({ message: 'Ошибка при сохранении данных', type: 'error' })
+				if (onError) onError('Ошибка обновления профиля')
 			},
 		})
 	}
 
 	return (
 		<>
-			{toast && (
-				<Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-			)}
-
 			<h2 className={styles.formTitle}>Редактирование профиля</h2>
 
 			<form
