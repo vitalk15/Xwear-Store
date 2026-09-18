@@ -44,76 +44,88 @@ const AddressList = ({
 		})
 	}
 
+	// Проверяем, есть ли адреса
+	const hasAddresses = addresses.length > 0
+
 	return (
 		<>
 			<h2 className={styles.title}>Мои адреса</h2>
 
 			<div className={styles.container}>
-				<div className={styles.grid}>
-					{addresses.map((address, index) => {
-						const isDefault =
-							address.is_default || (index === 0 && !addresses.some((a) => a.is_default))
+				{/* Если адреса есть — показываем сетку карточек */}
+				{hasAddresses ? (
+					<div className={styles.grid}>
+						{addresses.map((address, index) => {
+							const isDefault =
+								address.is_default ||
+								(index === 0 && !addresses.some((a) => a.is_default))
 
-						return (
-							<div
-								key={address.id}
-								className={`${styles.card} ${isDefault ? styles.defaultCard : ''}`}
-								onClick={() => handleSetDefault(address.id, isDefault)}
-							>
-								{/* Бейдж с номером адреса */}
+							return (
 								<div
-									className={`${styles.badge} ${isDefault ? styles.defaultBadge : ''}`}
+									key={address.id}
+									className={`${styles.card} ${isDefault ? styles.defaultCard : ''}`}
+									onClick={() => handleSetDefault(address.id, isDefault)}
 								>
-									АДРЕС ДОСТАВКИ #{index + 1}
-								</div>
-
-								<div className={styles.cardContent}>
-									<h3 className={styles.userName}>{userFullName}</h3>
-									<p className={styles.addressText}>
-										{address.city?.name}, {address.address_simple}
-									</p>
-
-									{userPhone && (
-										<div className={styles.infoBlock}>
-											<span className={styles.infoLabel}>Телефон</span>
-											<span className={styles.infoValue}>{userPhone}</span>
-										</div>
-									)}
-
-									{userEmail && (
-										<div className={styles.infoBlock}>
-											<span className={styles.infoLabel}>Email</span>
-											<span className={styles.infoValue}>{userEmail}</span>
-										</div>
-									)}
-								</div>
-
-								{/* Действия с карточкой */}
-								<div className={styles.cardActions}>
-									<button
-										type="button"
-										className={styles.actionBtn}
-										onClick={(e) => {
-											e.stopPropagation()
-											onEditAddress(address)
-										}}
+									{/* Бейдж с номером адреса */}
+									<div
+										className={`${styles.badge} ${isDefault ? styles.defaultBadge : ''}`}
 									>
-										<EditIcon className={styles.editIcon} />
-										<span className={styles.actionText}>Редактировать</span>
-									</button>
-									<button
-										type="button"
-										className={`${styles.actionBtn} ${styles.deleteBtn}`}
-										onClick={(e) => handleDelete(e, address.id)}
-									>
-										<DeleteIcon className={styles.deleteIcon} />
-										<span className={styles.actionText}>Удалить</span>
-									</button>
+										АДРЕС ДОСТАВКИ #{index + 1}
+									</div>
+
+									<div className={styles.cardContent}>
+										<h3 className={styles.userName}>{userFullName}</h3>
+										<p className={styles.addressText}>
+											{address.city?.name}, {address.address_simple}
+										</p>
+
+										{userPhone && (
+											<div className={styles.infoBlock}>
+												<span className={styles.infoLabel}>Телефон</span>
+												<span className={styles.infoValue}>{userPhone}</span>
+											</div>
+										)}
+
+										{userEmail && (
+											<div className={styles.infoBlock}>
+												<span className={styles.infoLabel}>Email</span>
+												<span className={styles.infoValue}>{userEmail}</span>
+											</div>
+										)}
+									</div>
+
+									{/* Действия с карточкой */}
+									<div className={styles.cardActions}>
+										<button
+											type="button"
+											className={styles.actionBtn}
+											onClick={(e) => {
+												e.stopPropagation()
+												onEditAddress(address)
+											}}
+										>
+											<EditIcon className={styles.editIcon} />
+											<span className={styles.actionText}>Редактировать</span>
+										</button>
+										<button
+											type="button"
+											className={`${styles.actionBtn} ${styles.deleteBtn}`}
+											onClick={(e) => handleDelete(e, address.id)}
+										>
+											<DeleteIcon className={styles.deleteIcon} />
+											<span className={styles.actionText}>Удалить</span>
+										</button>
+									</div>
 								</div>
-							</div>
-						)
-					})}
-				</div>
+							)
+						})}
+					</div>
+				) : (
+					// Если адресов нет — показываем сообщение
+					<div className={styles.emptyState}>
+						<p>У вас нет сохранённых адресов.</p>
+					</div>
+				)}
 
 				{/* Кнопка с пунктирной рамкой «Добавить новый» */}
 				<button type="button" className={styles.addCardBtn} onClick={onAddNewAddress}>
