@@ -6,6 +6,7 @@ import Breadcrumbs from '@/components/common/Breadcrumbs'
 import EditProfileForm from '@/features/profile/components/EditProfileForm'
 import EditAddressForm from '@/features/profile/components/EditAddressForm'
 import AddressList from '@/features/profile/components/AddressList'
+import ChangePasswordForm from '@/features/profile/components/ChangePasswordForm'
 import Toast from '@/components/ui/Toast'
 import ProfileIcon from '@/shared/icons/profile.svg'
 import EditProfileIcon from '@/shared/icons/redaction-profile.svg'
@@ -140,6 +141,12 @@ const ProfileContent = () => {
 								// чтобы пользователь мог исправить данные
 								setToast({ message, type: 'error' })
 							}}
+						/>
+					)}
+					{activeTab === 'password' && (
+						<ChangePasswordForm
+							onSuccess={(message) => setToast({ message, type: 'success' })}
+							onError={(message) => setToast({ message, type: 'error' })}
 						/>
 					)}
 				</section>

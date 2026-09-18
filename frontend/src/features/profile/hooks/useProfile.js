@@ -4,7 +4,7 @@ import {
 	useMutation,
 	useQueryClient,
 } from '@tanstack/react-query'
-// import useAuthStore from '@/features/auth/store/useAuthStore'
+import useAuthStore from '@/features/auth/store/useAuthStore'
 import { profileApi } from '../api/profileApi'
 
 // !!! Добавить с поддержкой Suspense
@@ -48,15 +48,12 @@ export const useSuspenseProfileQuery = () => {
  */
 export const useUpdateProfileMutation = () => {
 	const queryClient = useQueryClient()
-	// const setUser = useAuthStore((state) => state.setUser)
 
 	return useMutation({
 		mutationFn: profileApi.updateProfile,
 		onSuccess: (updatedUserData) => {
 			// Обновляем кэш React Query
 			queryClient.setQueryData(profileKeys.profile, updatedUserData)
-			// Обновляем данные пользователя в Zustand store
-			// setUser(updatedUserData)
 		},
 	})
 }
@@ -92,6 +89,7 @@ export const useCreateAddressMutation = () => {
  */
 export const useUpdateAddressMutation = () => {
 	const queryClient = useQueryClient()
+
 	return useMutation({
 		mutationFn: profileApi.updateAddress,
 		onSuccess: () => {
@@ -105,10 +103,33 @@ export const useUpdateAddressMutation = () => {
  */
 export const useDeleteAddressMutation = () => {
 	const queryClient = useQueryClient()
+
 	return useMutation({
 		mutationFn: profileApi.deleteAddress,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: profileKeys.profile })
+		},
+	})
+}
+
+/**
+ * Хук для смены пароля.
+ */
+export const useChangePasswordMutation = () => {
+	// Достаем нужные данные из стора
+	const setAuth = useAuthStore((state) => state.setAuth)
+	const user = useAuthStore((state) => state.user)
+
+	return useMutation({
+		mutationFn: profileApi.changePassword,
+		onSuccess: (data) => {
+			// Если бэкенд вернул новый access-токен, обновляем его в Zustand
+			if (data?.access) {
+				setAuth({
+					user: user, // Сохраняем текущего пользователя
+					access: data.access, // Записываем новый токен
+				})
+			}
 		},
 	})
 }

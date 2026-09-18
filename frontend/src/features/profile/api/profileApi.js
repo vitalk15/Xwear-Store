@@ -1,11 +1,13 @@
 import apiClient from '@/shared/api/apiClient'
 
 export const profileApi = {
+	// Получение данных профиля
 	getProfile: async () => {
 		const response = await apiClient.get('/auth/profile/')
 		return response.data
 	},
 
+	// Обновление данных профиля
 	updateProfile: async (data) => {
 		const profilePayload = {}
 
@@ -47,6 +49,12 @@ export const profileApi = {
 	// Удаление адреса
 	deleteAddress: async (id) => {
 		const response = await apiClient.delete(`/auth/addresses/${id}/`)
+		return response.data
+	},
+
+	// Смена пароля
+	changePassword: async (data) => {
+		const response = await apiClient.post('/auth/change-password/', data)
 		return response.data
 	},
 }
