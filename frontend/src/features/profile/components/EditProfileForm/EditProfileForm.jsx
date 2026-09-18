@@ -52,11 +52,7 @@ const EditProfileForm = ({ initialData, onSuccess, onError }) => {
 		<>
 			<h2 className={styles.formTitle}>Редактирование профиля</h2>
 
-			<form
-				className={`form ${styles.profileForm}`}
-				onSubmit={handleSubmit(onSubmit)}
-				noValidate
-			>
+			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
 				<div className={styles.grid}>
 					<InputField
 						label="Ваше имя:"

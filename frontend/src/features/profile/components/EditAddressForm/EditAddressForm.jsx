@@ -68,11 +68,7 @@ const EditAddressForm = ({ editingAddress, onSuccess, onError }) => {
 				{isEditMode ? 'Редактирование адреса' : 'Добавление адреса'}
 			</h2>
 
-			<form
-				className={`form ${styles.addressForm}`}
-				onSubmit={handleSubmit(onSubmit)}
-				noValidate
-			>
+			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
 				<div className={styles.grid}>
 					{/* Кастомный селект выбора города */}
 					<Controller
