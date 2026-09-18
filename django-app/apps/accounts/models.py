@@ -112,7 +112,7 @@ class Address(models.Model):
 
     @property
     def address_simple(self):
-        addr = f"ул. {self.street}, д. {self.house}"
+        addr = f"{self.street}, д. {self.house}"
         if self.apartment:
             addr += f", кв. {self.apartment}"
         return addr
