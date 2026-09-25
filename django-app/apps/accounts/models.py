@@ -60,7 +60,12 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name="Пользователь",
+        related_name="profile",
+    )
     first_name = models.CharField(max_length=150, blank=True, verbose_name="Имя")
     last_name = models.CharField(max_length=150, blank=True, verbose_name="Фамилия")
     phone = models.CharField(
@@ -73,7 +78,8 @@ class Profile(models.Model):
     )
 
     def __str__(self):
-        return f"Профиль {self.user.email}"
+        # return f"Профиль {self.user.email}"
+        return ""
 
     class Meta:
         verbose_name = "Профиль пользователя"
@@ -129,4 +135,5 @@ class Address(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"г. {self.city} | {self.address_simple}"
+        # return f"г. {self.city} | {self.address_simple}"
+        return ""
