@@ -11,7 +11,6 @@ const CartItemCard = ({ item }) => {
 	const { mutate: removeItem, isPending: isRemoving } = useRemoveCartItemMutation()
 
 	// Достаем данные безопасно
-	// Когда бэкенд будет обновлен, здесь заработает item.product_info.naming.full_title
 	const title = item.product_info.naming?.full_title || item.product_info.name
 	const imageUrl = item.product_info.main_image?.thumbnail?.product_small?.url || ''
 	const price = formatPriceBy(item.total_item_price)

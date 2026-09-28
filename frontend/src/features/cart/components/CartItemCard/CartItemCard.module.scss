@@ -3,7 +3,7 @@
 	align-items: center;
 	gap: 20px;
 	padding: 20px 0;
-	border-bottom: 1px solid #e0e0e0;
+	// border-bottom: 1px solid #e0e0e0;
 	transition: opacity 0.3s ease;
 
 	// Состояние, когда отправлен запрос на удаление
@@ -13,9 +13,9 @@
 	}
 
 	// Делаем последнюю карточку без нижней границы
-	&:last-child {
-		border-bottom: none;
-	}
+	// &:last-child {
+	// 	border-bottom: none;
+	// }
 }
 
 // 1. Картинка
