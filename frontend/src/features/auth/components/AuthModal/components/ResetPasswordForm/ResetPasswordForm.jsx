@@ -33,7 +33,14 @@ const ResetPasswordForm = ({ onBackToLogin }) => {
 		} catch (err) {
 			// Бэкенд возвращает 200 даже если email не найден (для безопасности),
 			// но на случай 500-й ошибки или проблем с сетью обрабатываем catch
-			setServerError(err.response?.data?.error || 'Произошла ошибка. Попробуйте позже.')
+
+			// Достаем ошибку от бэкенда (если она есть)
+			const backendDetail =
+				err.response?.data?.error ||
+				err.response?.data?.detail ||
+				(err.response?.data?.non_field_errors && err.response.data.non_field_errors[0])
+
+			setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
 		}
 	}
 
@@ -69,7 +76,7 @@ const ResetPasswordForm = ({ onBackToLogin }) => {
 
 			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
 				<InputField
-					label="Email:"
+					label="Email: *"
 					type="email"
 					placeholder="yavasyaivanov@gmail.com"
 					error={errors.email}
@@ -77,15 +84,6 @@ const ResetPasswordForm = ({ onBackToLogin }) => {
 				/>
 
 				{serverError && <div className="serverErrorMessage">{serverError}</div>}
-
-				{/* Блокируем кнопку пока поле не будет правильно заполнено (isValid) и на время отправки запроса (isSubmitting) */}
-				{/* <Button
-				type="submit"
-				className={styles.submitBtn}
-				disabled={!isValid || isSubmitting}
-			>
-				{isSubmitting ? 'ОТПРАВКА...' : 'СБРОС ПАРОЛЯ'}
-			</Button> */}
 
 				<div className="submitBtnWrapper">
 					{/* Блокируем кнопку на время отправки запроса (isSubmitting) */}

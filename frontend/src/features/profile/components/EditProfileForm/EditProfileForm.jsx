@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { editProfileSchema } from '@/features/profile/schemas/editProfileSchema'
@@ -7,8 +8,9 @@ import { formatBelarusPhone } from '@/shared/utils/formatPhone'
 import Button from '@/components/ui/Button'
 import styles from './EditProfileForm.module.scss'
 
-const EditProfileForm = ({ initialData, onSuccess, onError }) => {
+const EditProfileForm = ({ initialData, onSuccess }) => {
 	const { mutate: updateProfile, isPending } = useUpdateProfileMutation()
+	const [serverError, setServerError] = useState('')
 
 	const {
 		register,
@@ -25,6 +27,8 @@ const EditProfileForm = ({ initialData, onSuccess, onError }) => {
 	})
 
 	const onSubmit = (formData) => {
+		setServerError('')
+
 		// Собираем только измененные поля
 		const changedData = {}
 
@@ -38,14 +42,30 @@ const EditProfileForm = ({ initialData, onSuccess, onError }) => {
 			return
 		}
 
-		updateProfile(changedData, {
-			onSuccess: () => {
-				if (onSuccess) onSuccess('Профиль успешно обновлен!')
-			},
-			onError: () => {
-				if (onError) onError('Ошибка обновления профиля')
-			},
-		})
+		try {
+			updateProfile(changedData, {
+				onSuccess: () => {
+					if (onSuccess) onSuccess('Профиль успешно обновлен!')
+				},
+			})
+		} catch (err) {
+			// Достаем ошибку от бэкенда (если она есть)
+			const backendDetail =
+				err.response?.data?.error ||
+				err.response?.data?.detail ||
+				(err.response?.data?.non_field_errors && err.response.data.non_field_errors[0])
+
+			setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
+		}
+
+		// updateProfile(changedData, {
+		// 	onSuccess: () => {
+		// 		if (onSuccess) onSuccess('Профиль успешно обновлен!')
+		// 	},
+		// 	onError: () => {
+		// 		if (onError) onError('Ошибка обновления профиля')
+		// 	},
+		// })
 	}
 
 	return (
@@ -53,6 +73,7 @@ const EditProfileForm = ({ initialData, onSuccess, onError }) => {
 			<h2 className={styles.formTitle}>Редактирование профиля</h2>
 
 			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+				{serverError && <div className="serverErrorMessage">{serverError}</div>}
 				<div className={styles.grid}>
 					<InputField
 						label="Ваше имя:"

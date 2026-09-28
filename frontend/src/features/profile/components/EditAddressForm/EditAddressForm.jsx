@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { editAddressSchema } from '@/features/profile/schemas/editAddressSchema'
@@ -11,8 +12,9 @@ import Button from '@/components/ui/Button'
 import CustomSelect from '@/components/ui/CustomSelect'
 import styles from './EditAddressForm.module.scss'
 
-const EditAddressForm = ({ editingAddress, onSuccess, onError }) => {
+const EditAddressForm = ({ editingAddress, onSuccess, initialCityId }) => {
 	const { data: cities = [], isLoading: isCitiesLoading } = useCitiesQuery()
+	const [serverError, setServerError] = useState('')
 
 	const { mutate: createAddress, isPending: isCreating } = useCreateAddressMutation()
 	const { mutate: updateAddress, isPending: isUpdating } = useUpdateAddressMutation()
@@ -29,7 +31,7 @@ const EditAddressForm = ({ editingAddress, onSuccess, onError }) => {
 	} = useForm({
 		resolver: zodResolver(editAddressSchema),
 		defaultValues: {
-			city_id: editingAddress?.city?.id || '',
+			city_id: editingAddress?.city?.id || initialCityId || '',
 			street: editingAddress?.street || '',
 			house: editingAddress?.house || '',
 			apartment: editingAddress?.apartment || '',
@@ -37,28 +39,64 @@ const EditAddressForm = ({ editingAddress, onSuccess, onError }) => {
 	})
 
 	const onSubmit = (formData) => {
+		setServerError('')
+
 		if (isEditMode) {
-			updateAddress(
-				{ id: editingAddress.id, ...formData },
-				{
-					onSuccess: () => {
-						if (onSuccess) onSuccess('Адрес успешно обновлен!') // Передаем текст в родителя
+			try {
+				updateAddress(
+					{ id: editingAddress.id, ...formData },
+					{
+						onSuccess: () => {
+							if (onSuccess) onSuccess('Адрес успешно обновлен!') // Передаем текст в родителя
+						},
 					},
-					onError: () => {
-						if (onError) onError('Ошибка при обновлении адреса')
-					},
-				},
-			)
+				)
+			} catch (err) {
+				// Достаем ошибку от бэкенда (если она есть)
+				const backendDetail =
+					err.response?.data?.error ||
+					err.response?.data?.detail ||
+					(err.response?.data?.non_field_errors && err.response.data.non_field_errors[0])
+
+				setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
+			}
+			// updateAddress(
+			// 	{ id: editingAddress.id, ...formData },
+			// 	{
+			// 		onSuccess: () => {
+			// 			if (onSuccess) onSuccess('Адрес успешно обновлен!') // Передаем текст в родителя
+			// 		},
+			// 		onError: () => {
+			// 			if (onError) onError('Ошибка при обновлении адреса')
+			// 		},
+			// 	},
+			// )
 		} else {
-			createAddress(formData, {
-				onSuccess: () => {
-					reset() // Очищаем форму после успешного сохранения
-					if (onSuccess) onSuccess('Адрес успешно добавлен!')
-				},
-				onError: () => {
-					if (onError) onError('Ошибка при добавлении адреса')
-				},
-			})
+			try {
+				createAddress(formData, {
+					onSuccess: () => {
+						reset() // Очищаем форму после успешного сохранения
+						if (onSuccess) onSuccess('Адрес успешно добавлен!')
+					},
+				})
+			} catch (err) {
+				// Достаем ошибку от бэкенда (если она есть)
+				const backendDetail =
+					err.response?.data?.error ||
+					err.response?.data?.detail ||
+					(err.response?.data?.non_field_errors && err.response.data.non_field_errors[0])
+
+				setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
+			}
+			// createAddress(formData, {
+			// 	onSuccess: () => {
+			// 		reset() // Очищаем форму после успешного сохранения
+			// 		if (onSuccess) onSuccess('Адрес успешно добавлен!')
+			// 	},
+			// 	onError: () => {
+			// 		if (onError) onError('Ошибка при добавлении адреса')
+			// 	},
+			// })
 		}
 	}
 
@@ -69,6 +107,7 @@ const EditAddressForm = ({ editingAddress, onSuccess, onError }) => {
 			</h2>
 
 			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+				{serverError && <div className="serverErrorMessage">{serverError}</div>}
 				<div className={styles.grid}>
 					{/* Кастомный селект выбора города */}
 					<Controller
@@ -87,14 +126,14 @@ const EditAddressForm = ({ editingAddress, onSuccess, onError }) => {
 					/>
 
 					<InputField
-						label="Улица / Проспект / Переулок:"
+						label="Улица / Проспект / Переулок: *"
 						placeholder="Например: пр-т Независимости"
 						error={errors.street}
 						{...register('street')}
 					/>
 
 					<InputField
-						label="Номер дома:"
+						label="Номер дома: *"
 						placeholder="Введите номер дома"
 						error={errors.house}
 						{...register('house')}
@@ -102,7 +141,7 @@ const EditAddressForm = ({ editingAddress, onSuccess, onError }) => {
 
 					<InputField
 						label="Номер квартиры:"
-						placeholder="Введите номер квартиры (необязательно)"
+						placeholder="Введите номер квартиры"
 						error={errors.apartment}
 						{...register('apartment')}
 					/>

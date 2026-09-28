@@ -10,6 +10,7 @@ import PasswordHints from '@/features/auth/components/PasswordHints'
 import styles from './RegisterForm.module.scss'
 
 const RegisterForm = ({ onClose, onSwitchToLogin }) => {
+	const [serverError, setServerError] = useState('')
 	// Состояние фокуса на поле пароля
 	const [isPasswordFocused, setIsPasswordFocused] = useState(false)
 	// Состояние успеха регистрации
@@ -37,6 +38,8 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 
 	// Обработчик отправки данных
 	const onSubmit = async (data) => {
+		setServerError('')
+
 		try {
 			// Отправляем (маппим) данные, которые ожидает бэкенд
 			await registerUser({
@@ -81,7 +84,7 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 					})
 				}
 			} else {
-				alert('Произошла ошибка при соединении с сервером. Попробуйте позже.')
+				setServerError('Произошла ошибка при соединении с сервером. Попробуйте позже.')
 			}
 		}
 	}
@@ -123,9 +126,11 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 			<h2 className={styles.title}>Регистрация</h2>
 
 			<form className="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+				{serverError && <div className="serverErrorMessage">{serverError}</div>}
+
 				{/* Email */}
 				<InputField
-					label="Email адрес:"
+					label="Email адрес: *"
 					type="email"
 					placeholder="yavasyaivanov@gmail.com"
 					error={errors.email}
@@ -134,7 +139,7 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 
 				{/* Password с подсказками */}
 				<PasswordInput
-					label="Пароль:"
+					label="Пароль: *"
 					placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
 					error={errors.password}
 					onFocus={() => setIsPasswordFocused(true)} // Показываем подсказку
@@ -148,7 +153,7 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
 
 				{/* Confirm Password */}
 				<PasswordInput
-					label="Повторите пароль:"
+					label="Повторите пароль: *"
 					placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
 					error={errors.confirmPassword}
 					{...register('confirmPassword')}

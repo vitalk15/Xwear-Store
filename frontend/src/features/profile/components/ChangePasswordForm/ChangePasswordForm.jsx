@@ -8,8 +8,9 @@ import PasswordHints from '@/features/auth/components/PasswordHints'
 import Button from '@/components/ui/Button'
 import styles from './ChangePasswordForm.module.scss'
 
-const ChangePasswordForm = ({ onSuccess, onError }) => {
+const ChangePasswordForm = ({ onSuccess }) => {
 	const { mutate: changePassword, isPending } = useChangePasswordMutation()
+	const [serverError, setServerError] = useState('')
 
 	// Состояние фокуса на поле пароля
 	const [isPasswordFocused, setIsPasswordFocused] = useState(false)
@@ -21,7 +22,7 @@ const ChangePasswordForm = ({ onSuccess, onError }) => {
 		handleSubmit,
 		control,
 		reset,
-		setError,
+		// setError,
 		formState: { errors },
 	} = useForm({
 		resolver: zodResolver(changePasswordSchema),
@@ -36,40 +37,62 @@ const ChangePasswordForm = ({ onSuccess, onError }) => {
 	const newPasswordValue = useWatch({ control, name: 'new_password', defaultValue: '' })
 
 	const onSubmit = (formData) => {
-		changePassword(formData, {
-			onSuccess: (response) => {
-				reset() // Очищаем значения полей в RHF
-				setIsPasswordFocused(false) // Скрываем подсказки
-				setResetKey((prev) => prev + 1) // Перемонтируем инпуты (сбрасывает глазик в closed / type="password")
+		setServerError('')
 
-				if (onSuccess) onSuccess(response?.message || 'Пароль успешно изменён!')
-			},
-			onError: (error) => {
-				const serverErrors = error.response?.data
+		try {
+			changePassword(formData, {
+				onSuccess: (response) => {
+					reset() // Очищаем значения полей в RHF
+					setIsPasswordFocused(false) // Скрываем подсказки
+					setResetKey((prev) => prev + 1) // Перемонтируем инпуты (сбрасывает глазик в closed / type="password")
 
-				// Если бэкенд вернул ошибку конкретного поля (например, неверный старый пароль)
-				if (serverErrors && typeof serverErrors === 'object') {
-					Object.keys(serverErrors).forEach((field) => {
-						const message = Array.isArray(serverErrors[field])
-							? serverErrors[field][0]
-							: serverErrors[field]
+					if (onSuccess) onSuccess(response?.message || 'Пароль успешно изменён!')
+				},
+			})
+		} catch (err) {
+			// Достаем ошибку от бэкенда (если она есть)
+			const backendDetail =
+				err.response?.data?.error ||
+				err.response?.data?.detail ||
+				(err.response?.data?.non_field_errors && err.response.data.non_field_errors[0])
 
-						if (
-							['old_password', 'new_password', 'new_password_confirm'].includes(field)
-						) {
-							setError(field, { type: 'server', message })
-						}
-					})
+			setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
+		}
 
-					if (serverErrors.non_field_errors) {
-						if (onError) onError(serverErrors.non_field_errors[0])
-						return
-					}
-				}
+		// changePassword(formData, {
+		// 	onSuccess: (response) => {
+		// 		reset() // Очищаем значения полей в RHF
+		// 		setIsPasswordFocused(false) // Скрываем подсказки
+		// 		setResetKey((prev) => prev + 1) // Перемонтируем инпуты (сбрасывает глазик в closed / type="password")
 
-				if (onError) onError('Не удалось изменить пароль. Проверьте введенные данные.')
-			},
-		})
+		// 		if (onSuccess) onSuccess(response?.message || 'Пароль успешно изменён!')
+		// 	},
+		// onError: (error) => {
+		// 	const serverErrors = error.response?.data
+
+		// 	// Если бэкенд вернул ошибку конкретного поля (например, неверный старый пароль)
+		// 	if (serverErrors && typeof serverErrors === 'object') {
+		// 		Object.keys(serverErrors).forEach((field) => {
+		// 			const message = Array.isArray(serverErrors[field])
+		// 				? serverErrors[field][0]
+		// 				: serverErrors[field]
+
+		// 			if (
+		// 				['old_password', 'new_password', 'new_password_confirm'].includes(field)
+		// 			) {
+		// 				setError(field, { type: 'server', message })
+		// 			}
+		// 		})
+
+		// 		if (serverErrors.non_field_errors) {
+		// 			if (onError) onError(serverErrors.non_field_errors[0])
+		// 			return
+		// 		}
+		// 	}
+
+		// 	if (onError) onError('Не удалось изменить пароль. Проверьте введенные данные.')
+		// },
+		// })
 	}
 
 	return (
@@ -80,10 +103,11 @@ const ChangePasswordForm = ({ onSuccess, onError }) => {
 				onSubmit={handleSubmit(onSubmit)}
 				noValidate
 			>
+				{serverError && <div className="serverErrorMessage">{serverError}</div>}
 				<div className={styles.grid}>
 					<PasswordInput
 						key={`old_${resetKey}`}
-						label="Текущий пароль:"
+						label="Текущий пароль: *"
 						placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
 						error={errors.old_password}
 						{...register('old_password')}
@@ -91,7 +115,7 @@ const ChangePasswordForm = ({ onSuccess, onError }) => {
 
 					<PasswordInput
 						key={`new_${resetKey}`}
-						label="Новый пароль:"
+						label="Новый пароль: *"
 						placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
 						error={errors.new_password}
 						onFocus={() => setIsPasswordFocused(true)} // Показываем подсказку
@@ -105,7 +129,7 @@ const ChangePasswordForm = ({ onSuccess, onError }) => {
 
 					<PasswordInput
 						key={`confirm_${resetKey}`}
-						label="Новый пароль еще раз:"
+						label="Новый пароль еще раз: *"
 						placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
 						error={errors.new_password_confirm}
 						{...register('new_password_confirm')}

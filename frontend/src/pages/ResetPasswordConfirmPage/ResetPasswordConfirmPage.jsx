@@ -87,7 +87,7 @@ const ResetPasswordConfirmPage = () => {
 						<h1 className={styles.title}>УСТАНОВКА НОВОГО ПАРОЛЯ</h1>
 
 						<PasswordInput
-							label="Новый пароль:"
+							label="Новый пароль: *"
 							placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
 							error={errors.password}
 							onFocus={() => setIsPasswordFocused(true)} // Показываем подсказку
@@ -100,7 +100,7 @@ const ResetPasswordConfirmPage = () => {
 						</PasswordInput>
 
 						<PasswordInput
-							label="Подтвердите новый пароль:"
+							label="Подтвердите новый пароль: *"
 							placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
 							error={errors.confirmPassword}
 							{...register('confirmPassword')}

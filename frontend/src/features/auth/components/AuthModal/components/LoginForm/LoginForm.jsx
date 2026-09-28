@@ -96,7 +96,7 @@ const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
 
 				{/* Email */}
 				<InputField
-					label="Email адрес:"
+					label="Email адрес: *"
 					type="email"
 					placeholder="yavasyaivanov@gmail.com"
 					error={errors.email}
@@ -105,7 +105,7 @@ const LoginForm = ({ onClose, onSwitchToRegister, onForgotPassword }) => {
 
 				{/* Password */}
 				<PasswordInput
-					label="Пароль:"
+					label="Пароль: *"
 					placeholder="✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱✱"
 					error={errors.password}
 					{...register('password')}

@@ -175,7 +175,6 @@ const CheckoutForm = ({ onDeliveryInfoChange }) => {
 	// }, [pickupPoints, selectedPickupId])
 
 	// Обработчик успешного создания адреса в EditAddressForm
-	// ! Todo: добавить Toast
 	const handleAddressCreated = (message) => {
 		setIsAddingNew(false)
 		// Если сообщение пришло, показываем Toast
@@ -208,44 +207,47 @@ const CheckoutForm = ({ onDeliveryInfoChange }) => {
 			>
 				{!showAddAddressForm ? (
 					<form id="checkout-form" onSubmit={handleSubmit(onSubmit)}>
-						{/* ПЕРЕКЛЮЧАТЕЛЬ СПОСОБА ПОЛУЧЕНИЯ */}
-						<div className={styles.toggleGroup}>
-							<button
-								type="button"
-								className={`${styles.toggleBtn} ${currentMethod === 'delivery' ? styles.active : ''}`}
-								onClick={() => setValue('delivery_method', 'delivery')}
-							>
-								Доставка курьером
-							</button>
-							<button
-								type="button"
-								className={`${styles.toggleBtn} ${currentMethod === 'pickup' ? styles.active : ''}`}
-								onClick={() => setValue('delivery_method', 'pickup')}
-							>
-								Самовывоз
-							</button>
-						</div>
+						<div className={styles.topFormWrapper}>
+							{/* ПЕРЕКЛЮЧАТЕЛЬ СПОСОБА ПОЛУЧЕНИЯ */}
+							<div className={styles.toggleGroup}>
+								<button
+									type="button"
+									className={`${styles.toggleBtn} ${currentMethod === 'delivery' ? styles.active : ''}`}
+									onClick={() => setValue('delivery_method', 'delivery')}
+								>
+									Доставка курьером
+								</button>
+								<button
+									type="button"
+									className={`${styles.toggleBtn} ${currentMethod === 'pickup' ? styles.active : ''}`}
+									onClick={() => setValue('delivery_method', 'pickup')}
+								>
+									Самовывоз
+								</button>
+							</div>
 
-						{/* 1. ВЫБОР ГОРОДА (Общий для обоих способов) */}
-						<Controller
-							name="city_id"
-							control={control}
-							rules={{ required: 'Выберите город' }}
-							render={({ field }) => (
-								<CustomSelect
-									label="Город доставки / получения"
-									options={cities}
-									value={field.value}
-									onChange={(val) => {
-										field.onChange(val)
-										setIsAddingNew(false)
-									}}
-									placeholder={isCitiesLoading ? 'Загрузка...' : 'Выберите ваш город'}
-									error={errors.city_id}
-									disabled={isCitiesLoading}
-								/>
-							)}
-						/>
+							{/* 1. ВЫБОР ГОРОДА (Общий для обоих способов) */}
+							<Controller
+								name="city_id"
+								control={control}
+								rules={{ required: 'Выберите город' }}
+								render={({ field }) => (
+									<CustomSelect
+										className={styles.selectCity}
+										label="Город доставки / получения"
+										options={cities}
+										value={field.value}
+										onChange={(val) => {
+											field.onChange(val)
+											setIsAddingNew(false)
+										}}
+										placeholder={isCitiesLoading ? 'Загрузка...' : 'Выберите ваш город'}
+										error={errors.city_id}
+										disabled={isCitiesLoading}
+									/>
+								)}
+							/>
+						</div>
 
 						{/* 2. СЕКЦИЯ: ДОСТАВКА КУРЬЕРОМ */}
 						{currentMethod === 'delivery' && (

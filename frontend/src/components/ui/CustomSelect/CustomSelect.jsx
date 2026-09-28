@@ -8,7 +8,8 @@ const CustomSelect = ({
 	placeholder,
 	error,
 	disabled,
-	label = 'Город',
+	className = '',
+	label = 'Город *',
 }) => {
 	const [isOpen, setIsOpen] = useState(false)
 	const containerRef = useRef(null)
@@ -29,7 +30,7 @@ const CustomSelect = ({
 
 	return (
 		<div
-			className={`inputGroup ${styles.selectWrapper} ${isOpen ? styles.wrapperActive : ''} ${error ? 'inputError' : ''}`}
+			className={`inputGroup ${styles.selectWrapper} ${className} ${isOpen ? styles.wrapperActive : ''} ${error ? 'inputError' : ''}`}
 			ref={containerRef}
 		>
 			<label>{label}</label>
