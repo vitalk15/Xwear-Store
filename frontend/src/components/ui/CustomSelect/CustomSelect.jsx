@@ -1,7 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import styles from './CustomSelect.module.scss'
 
-const CustomSelect = ({ options, value, onChange, placeholder, error, disabled }) => {
+const CustomSelect = ({
+	options,
+	value,
+	onChange,
+	placeholder,
+	error,
+	disabled,
+	label = 'Город',
+}) => {
 	const [isOpen, setIsOpen] = useState(false)
 	const containerRef = useRef(null)
 
@@ -24,7 +32,7 @@ const CustomSelect = ({ options, value, onChange, placeholder, error, disabled }
 			className={`inputGroup ${styles.selectWrapper} ${isOpen ? styles.wrapperActive : ''} ${error ? 'inputError' : ''}`}
 			ref={containerRef}
 		>
-			<label>Город</label>
+			<label>{label}</label>
 
 			{/* Поле-триггер */}
 			<div
