@@ -1,25 +1,37 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion as Motion, AnimatePresence } from 'framer-motion'
 import { useSuspenseCartQuery } from '@/features/cart/hooks/useCart'
-import { useCommercialConfigQuery } from '@/features/orders/hooks/useOrders'
+import {
+	useCommercialConfigQuery,
+	useCreateOrderMutation,
+} from '@/features/orders/hooks/useOrders'
 import { calculateDeliveryCost } from '@/features/orders/utils/calculateDelivery'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
 import CartItemCard from '../CartItemCard'
 import CompactCartItem from '../CompactCartItem'
 import CheckoutForm from '../CheckoutForm'
+import { useToastStore } from '@/shared/store/useToastStore'
 import Button from '@/components/ui/Button'
+import { paths } from '@/routes/paths'
 import styles from './CartData.module.scss'
 
 const CartData = ({ onCheckoutChange }) => {
+	const navigate = useNavigate()
 	const { data: cart } = useSuspenseCartQuery()
 	const { data: config } = useCommercialConfigQuery()
+	const { mutateAsync: createOrder, isPending } = useCreateOrderMutation()
+	const showToast = useToastStore((state) => state.showToast)
 
 	// Состояние: находимся ли мы на этапе оформления
 	const [isCheckout, setIsCheckout] = useState(false)
+
 	const [deliveryInfo, setDeliveryInfo] = useState({
 		deliveryMethod: 'delivery',
 		selectedCity: null,
 	})
+
+	const isDelivery = deliveryInfo.deliveryMethod === 'delivery'
 
 	useEffect(() => {
 		// Добавляем плавную прокрутку на самый верх страницы
@@ -55,6 +67,34 @@ const CartData = ({ onCheckoutChange }) => {
 		if (onCheckoutChange) onCheckoutChange(false)
 	}
 
+	const handleOrderSubmit = async (formData) => {
+		try {
+			// 1. Формируем payload. Оставляем только нужный ID в зависимости от способа доставки
+			const payload = {
+				delivery_method: formData.delivery_method,
+				payment_method: formData.payment_method,
+				city_id: formData.city_id,
+			}
+
+			if (formData.delivery_method === 'delivery') {
+				payload.address_id = formData.address_id
+			} else {
+				payload.pickup_point_id = formData.pickup_point_id
+			}
+
+			// 2. Отправляем заказ
+			await createOrder(payload)
+
+			// 3. Показываем сообщение на текущей странице
+			showToast('Заказ успешно оформлен!', 'success')
+
+			// 4. Переходим в профиль
+			navigate(paths.profile)
+		} catch {
+			showToast('Произошла ошибка при оформлении заказа', 'error')
+		}
+	}
+
 	return (
 		<div className={styles.cartLayout}>
 			{/* ЛЕВАЯ КОЛОНКА: Список товаров */}
@@ -80,7 +120,11 @@ const CartData = ({ onCheckoutChange }) => {
 						</Motion.div>
 					) : (
 						// Состояние 2: Форма оформления заказа
-						<CheckoutForm key="checkout-view" onDeliveryInfoChange={setDeliveryInfo} />
+						<CheckoutForm
+							key="checkout-view"
+							onDeliveryInfoChange={setDeliveryInfo}
+							onSubmitOrder={handleOrderSubmit}
+						/>
 					)}
 				</AnimatePresence>
 			</div>
@@ -120,12 +164,14 @@ const CartData = ({ onCheckoutChange }) => {
 
 					{isCheckout && (
 						<>
-							<div>
-								<div className={styles.summaryRow}>
-									<span>Доставка: </span>
-									<b>{isFree ? 'Бесплатно' : formatPriceBy(deliveryCost)}</b>
+							{isDelivery && (
+								<div>
+									<div className={styles.summaryRow}>
+										<span>Доставка: </span>
+										<b>{isFree ? 'Бесплатно' : formatPriceBy(deliveryCost)}</b>
+									</div>
 								</div>
-							</div>
+							)}
 							<div className={`${styles.summaryRow} ${styles.totalRow}`}>
 								<b>Итого:</b>
 								<b>{formatPriceBy(finalTotal)}</b>
@@ -142,8 +188,13 @@ const CartData = ({ onCheckoutChange }) => {
 					</div>
 				) : (
 					<div className={styles.submitBtnAction}>
-						<Button type="submit" form="checkout-form" className={styles.checkoutBtn}>
-							ПОДТВЕРДИТЬ ЗАКАЗ
+						<Button
+							type="submit"
+							form="checkout-form"
+							disabled={isPending}
+							className={styles.checkoutBtn}
+						>
+							{isPending ? 'ОФОРМЛЕНИЕ...' : 'ОФОРМИТЬ ЗАКАЗ'}
 						</Button>
 						<button className={styles.backBtn} onClick={handleGoBack}>
 							← Вернуться к редактированию корзины
