@@ -7,10 +7,11 @@ import EditProfileForm from '@/features/profile/components/EditProfileForm'
 import EditAddressForm from '@/features/profile/components/EditAddressForm'
 import AddressList from '@/features/profile/components/AddressList'
 import ChangePasswordForm from '@/features/profile/components/ChangePasswordForm'
+import OrdersList from '@/features/profile/components/OrdersList'
 import Toast from '@/components/ui/Toast'
 import ProfileIcon from '@/shared/icons/profile.svg'
 import EditProfileIcon from '@/shared/icons/redaction-profile.svg'
-import StoryOrdersIcon from '@/shared/icons/story.svg'
+import StoryOrdersIcon from '@/shared/icons/orders.svg'
 import AddressIcon from '@/shared/icons/address.svg'
 import EditAddressIcon from '@/shared/icons/redaction-address.svg'
 import PasswordIcon from '@/shared/icons/password.svg'
@@ -111,13 +112,16 @@ const ProfileContent = () => {
 				{/* Правая колонка (Контентная часть) */}
 				<section className={styles.content}>
 					{activeTab === 'account' && (
-						<h2 className={styles.welcomeText}>Приветствуем, {userName}!</h2>
+						<>
+							<h2 className={styles.welcomeText}>Приветствуем, {userName}!</h2>
+							<OrdersList />
+						</>
 					)}
 					{activeTab === 'edit-profile' && (
 						<EditProfileForm
 							initialData={profileData || { email: user?.email }}
 							onSuccess={(message) => setToast({ message, type: 'success' })}
-							onError={(message) => setToast({ message, type: 'error' })}
+							// onError={(message) => setToast({ message, type: 'error' })}
 						/>
 					)}
 					{activeTab === 'addresses' && (
@@ -136,17 +140,17 @@ const ProfileContent = () => {
 								setToast({ message, type: 'success' })
 								setActiveTab('addresses')
 							}}
-							onError={(message) => {
-								// Устанавливаем ошибку, но не меняем вкладку,
-								// чтобы пользователь мог исправить данные
-								setToast({ message, type: 'error' })
-							}}
+							// onError={(message) => {
+							// 	// Устанавливаем ошибку, но не меняем вкладку,
+							// 	// чтобы пользователь мог исправить данные
+							// 	setToast({ message, type: 'error' })
+							// }}
 						/>
 					)}
 					{activeTab === 'password' && (
 						<ChangePasswordForm
 							onSuccess={(message) => setToast({ message, type: 'success' })}
-							onError={(message) => setToast({ message, type: 'error' })}
+							// onError={(message) => setToast({ message, type: 'error' })}
 						/>
 					)}
 				</section>

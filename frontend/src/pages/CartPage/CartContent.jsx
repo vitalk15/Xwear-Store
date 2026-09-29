@@ -10,7 +10,7 @@ const CartContent = () => {
 	const { data: cart } = useSuspenseCartQuery()
 	const [isCheckoutMode, setIsCheckoutMode] = useState(false)
 
-	// Проверяем, есть ли товары в корзине (длина массива)
+	// Показываем контент корзины, если есть товары в корзине
 	const hasItems = cart.items && cart.items.length > 0
 
 	return (

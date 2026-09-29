@@ -28,7 +28,7 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 		cartData?.items?.reduce((total, item) => total + item.quantity, 0) || 0
 
 	// Форматируем цену (если total_price нет, выводим 0)
-	const cartTotalPrice = formatPriceBy(cartData?.total_price || 0)
+	const cartTotalPrice = cartData?.total_price ? formatPriceBy(cartData.total_price) : ''
 
 	/* ПОИСК */
 	// Ссылки для управления фокусом поля поиска и кликом вне области
