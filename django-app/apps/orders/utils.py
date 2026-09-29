@@ -23,10 +23,8 @@ def get_order_email_context(order):
     for item in order.items.all():
         image_url = None
 
-        if item.product:
-            # Благодаря ordering = ["-is_main", "id"] в модели,
-            # .first() вернет главное фото или самое первое по ID
-            main_image_obj = item.product.images.first()
+        if item.variant:
+            main_image_obj = item.variant.get_main_image_obj
 
             if main_image_obj:
                 # Передаем None вместо request,
@@ -60,7 +58,7 @@ def get_order_email_context(order):
         "items": items_data,
         "items_total": items_total,  # Сумма товаров без доставки
         # "site_url": settings.SITE_URL,
-        "user_name": order.user.first_name or "клиент",
+        "user_name": order.user.profile.first_name or "клиент",
         "contacts": contacts,
         "payment_info": config.payment_info,
     }

@@ -1,8 +1,7 @@
 from django.contrib import admin
 from django.db import models
 from django.conf import settings
-from xwear.models import Product, ProductSize
-
+from xwear.models import ProductVariant, ProductSize
 
 # --- Корзина ---
 
@@ -190,11 +189,11 @@ class OrderItem(models.Model):
         related_name="items",
         verbose_name="Заказ",
     )
-    product = models.ForeignKey(
-        Product,
+    variant = models.ForeignKey(
+        ProductVariant,
         on_delete=models.SET_NULL,
         null=True,
-        verbose_name="Товар",
+        verbose_name="Вариант товара",
     )
 
     # Снимки данных на момент покупки
@@ -212,4 +211,5 @@ class OrderItem(models.Model):
         verbose_name_plural = "Товары в заказе"
 
     def __str__(self):
-        return f"{self.product_name} (x{self.quantity}) для заказа #{self.order.id}"
+        # return f"{self.product_name} (x{self.quantity}) для заказа #{self.order.id}"
+        return ""

@@ -104,7 +104,9 @@ def order_create(request):
 
     # Если применяем остатки, используем не этот код, а код в транзакции
     # -------------------------------------------------
-    cart_items = cart.items.select_related("product_size__product", "product_size__size")
+    cart_items = cart.items.select_related(
+        "product_size__variant__product", "product_size__size"
+    )
 
     # 1. Проверяем, не пуста ли корзина
     if not cart_items.exists():
@@ -112,13 +114,12 @@ def order_create(request):
             {"error": "Ваша корзина пуста"}, status=status.HTTP_400_BAD_REQUEST
         )
 
-    # 2. Валидация доступности товара перед созданием заказа
+    # 2. Валидация доступности товара (проверяем и базовый товар, и сам вариант) перед созданием заказа
     for item in cart_items:
-        if not item.product_size.product.is_active:
+        variant = item.product_size.variant
+        if not variant.is_active or not variant.product.is_active:
             return Response(
-                {
-                    "error": f"К сожалению, товар '{item.product_size.product.full_name}' больше недоступен."
-                },
+                {"error": f"К сожалению, товар '{variant.full_name}' больше недоступен."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -135,9 +136,7 @@ def order_create(request):
             )
 
         # Ищем адрес именно этого пользователя
-        address_obj = get_object_or_404(
-            Address, id=address_id, profile__user=user.profile
-        )
+        address_obj = get_object_or_404(Address, id=address_id, profile__user=user)
         city = address_obj.city
 
         if not city.is_active:
@@ -219,8 +218,8 @@ def order_create(request):
                 order_items.append(
                     OrderItem(
                         order=order,
-                        product=item.product_size.product,
-                        product_name=item.product_size.product.full_name,  # Снимок названия
+                        variant=item.product_size.variant,
+                        product_name=item.product_size.variant.full_name,  # Снимок названия
                         size_name=item.product_size.size.name,  # Снимок размера
                         price_at_purchase=price,  # Снимок цены
                         quantity=item.quantity,  # Снимок кол-ва
@@ -268,7 +267,15 @@ def order_create(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def order_list(request):
-    orders = request.user.orders.all().prefetch_related("items")
+    orders = (
+        request.user.orders.all()
+        .prefetch_related(
+            "items__variant__product",
+            "items__variant__images",  # Если сериализатор тянет картинки
+        )
+        .order_by("-created_at")
+    )  # Сразу сортируем, чтобы новые были сверху
+
     serializer = OrderSerializer(orders, many=True, context={"request": request})
     return Response(serializer.data)
 

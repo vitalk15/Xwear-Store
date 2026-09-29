@@ -33,7 +33,7 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
     readonly_fields = (
-        "product",
+        "variant",
         "product_name",
         "size_name",
         "price_at_purchase",
@@ -56,7 +56,7 @@ class OrderAdminForm(forms.ModelForm):
                 filtered = [s for s in all_statuses if s[0] != "shipped"]
             else:
                 # Убираем "Готов к получению"
-                filtered = [s for s in all_statuses if s[0] != "ready_for_pickup"]
+                filtered = [s for s in all_statuses if s[0] != "ready"]
 
             self.fields["status"].choices = filtered
 
@@ -93,7 +93,15 @@ class OrderAdmin(NoDeleteAddMixin, admin.ModelAdmin):
     fieldsets = (
         (
             "Основная информация",
-            {"fields": ("status", "delivery_method", "user", "created_at", "updated_at")},
+            {
+                "fields": (
+                    "status",
+                    "delivery_method",
+                    "user",
+                    "created_at",
+                    "updated_at",
+                )
+            },
         ),
         (
             "Локация",

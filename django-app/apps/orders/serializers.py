@@ -4,7 +4,6 @@ from xwear.models import ProductVariant, ProductSize
 from core.serializers import CitySerializer
 from .models import Cart, CartItem, Order, OrderItem, PickupPoint
 
-
 # --- КОРЗИНА ---
 
 
@@ -33,9 +32,7 @@ class ProductCartSerializer(serializers.ModelSerializer):
 
     def get_naming(self, obj):
 
-        return {
-            "full_title": obj.full_name
-        }
+        return {"full_title": obj.full_name}
 
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -135,13 +132,13 @@ class PickupPointSerializer(serializers.ModelSerializer):
 class OrderItemSerializer(serializers.ModelSerializer):
     # Если товар еще существует, можем показать его актуальное фото
     # Если удален — product_info будет None, но product_name останется!
-    product_info = ProductCartSerializer(source="product", read_only=True)
+    product_info = ProductCartSerializer(source="variant", read_only=True)
 
     class Meta:
         model = OrderItem
         fields = [
             "id",
-            "product",
+            "variant",
             "product_info",
             "product_name",
             "size_name",
