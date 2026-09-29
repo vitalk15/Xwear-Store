@@ -154,6 +154,9 @@ class OrderSerializer(serializers.ModelSerializer):
     delivery_method_display = serializers.CharField(
         source="get_delivery_method_display", read_only=True
     )
+    payment_method_display = serializers.CharField(
+        source="get_payment_method_display", read_only=True
+    )
 
     class Meta:
         model = Order
@@ -162,7 +165,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "status",
             "status_display",
             "delivery_method",
-            "delivery_method_display",
+            "delivery_method_display",  # Добавляем читаемое название
+            "payment_method",
+            "payment_method_display",  # Добавляем читаемое название
             "city",
             "city_details",
             "address_text",

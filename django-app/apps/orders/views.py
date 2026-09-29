@@ -101,6 +101,7 @@ def order_create(request):
     user = request.user
     cart = user.cart
     delivery_method = request.data.get("delivery_method")
+    payment_method = request.data.get("payment_method", "online")
 
     # Если применяем остатки, используем не этот код, а код в транзакции
     # -------------------------------------------------
@@ -199,6 +200,7 @@ def order_create(request):
             order = Order.objects.create(
                 user=user,
                 delivery_method=delivery_method,
+                payment_method=payment_method,
                 pickup_point=pickup_point,
                 city=city,
                 address_text=address_text,

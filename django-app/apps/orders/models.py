@@ -105,6 +105,11 @@ class Order(models.Model):
         ("delivery", "Доставка"),
     ]
 
+    PAYMENT_METHODS = [
+        ("online", "Онлайн картой"),
+        ("upon_receipt", "При получении"),
+    ]
+
     STATUS_CHOICES = [
         ("processing", "В обработке"),
         ("paid", "Оплачен"),  # не используется (возможно понадобится позже)
@@ -125,6 +130,12 @@ class Order(models.Model):
         choices=DELIVERY_METHODS,
         default="pickup",
         verbose_name="Способ получения",
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHODS,
+        default="online",
+        verbose_name="Способ оплаты",
     )
     pickup_point = models.ForeignKey(
         PickupPoint,

@@ -70,17 +70,26 @@ class OrderAdmin(NoDeleteAddMixin, admin.ModelAdmin):
         "id",
         "user",
         "delivery_method",
+        "payment_method",
         "status",
         "total_price",
         "created_at",
         "updated_at",
     )
     list_editable = ["status"]
-    list_filter = ("delivery_method", "status", "city", "created_at", "updated_at")
+    list_filter = (
+        "delivery_method",
+        "payment_method",
+        "status",
+        "city",
+        "created_at",
+        "updated_at",
+    )
     search_fields = ("user__email", "id")
     readonly_fields = (
         "user",
         "delivery_method",
+        "payment_method",
         "pickup_point",
         "city",
         "address_text",
@@ -97,6 +106,7 @@ class OrderAdmin(NoDeleteAddMixin, admin.ModelAdmin):
                 "fields": (
                     "status",
                     "delivery_method",
+                    "payment_method",
                     "user",
                     "created_at",
                     "updated_at",
