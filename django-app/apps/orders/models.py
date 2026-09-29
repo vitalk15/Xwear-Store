@@ -112,7 +112,7 @@ class Order(models.Model):
 
     STATUS_CHOICES = [
         ("processing", "В обработке"),
-        ("paid", "Оплачен"),  # не используется (возможно понадобится позже)
+        # ("paid", "Оплачен"),  # (возможно понадобится позже)
         ("ready", "Готов к получению"),  # только Самовывоз
         ("shipped", "Отправлен"),  # только Доставка
         ("completed", "Завершен"),
@@ -172,6 +172,14 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 
+    @property
+    def total_quantity(self):
+        return sum(item.quantity for item in self.items.all())
+
+    @property
+    def items_total_price(self):
+        return sum(item.total_price for item in self.items.all())
+
     class Meta:
         verbose_name = "Заказ"
         verbose_name_plural = "Заказы"
@@ -216,6 +224,10 @@ class OrderItem(models.Model):
         verbose_name="Цена покупки",
     )
     quantity = models.PositiveIntegerField(default=1, verbose_name="Количество")
+
+    @property
+    def total_price(self):
+        return self.price_at_purchase * self.quantity
 
     class Meta:
         verbose_name = "Товар в заказе"

@@ -3,7 +3,7 @@
 {% block order_body %}
 <p>Ваш заказ №{{ order.id }} успешно принят в обработку!</p>
 
-<h3 style="margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Состав заказа</h3>
+<h3 style="margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Детали заказа:</h3>
 <table style="width: 100%; border-collapse: collapse;">
     <thead>
         <tr style="background: #eee;">
@@ -13,19 +13,19 @@
         </tr>
     </thead>
     <tbody>
-        {% for item in items %}
+        {% for item in items.all %}
         <tr>
             <td style="padding: 8px; border-bottom: 1px solid #ddd;">
-                {% if item.image_url %}
-                    <img src="{{ item.image_url }}" width="40" style="vertical-align: middle; margin-right: 5px;">
-                {% endif %}
-                <strong>{{ item.name }}</strong>
-                {% if item.size %}
-                    <br><small style="color: #666;">Размер: {{ item.size }}</small>
-                {% endif %}
+              {% if item.variant and item.variant.get_main_image_obj %}
+                  <img src="{{ item.variant.get_main_image_obj.image.url }}" width="40" style="vertical-align: middle; margin-right: 5px;">
+              {% endif %}
+              <strong>{{ item.product_name }}</strong>
+              {% if item.size_name %}
+                  <br><small style="color: #666;">Размер: {{ item.size_name }}</small>
+              {% endif %}
             </td>
             <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">{{ item.quantity }}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">{{ item.total }} руб.</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">{{ item.total_price }} BYN.</td>
         </tr>
         {% endfor %}
     </tbody>

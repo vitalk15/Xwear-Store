@@ -76,7 +76,6 @@ class OrderAdmin(NoDeleteAddMixin, admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    list_editable = ["status"]
     list_filter = (
         "delivery_method",
         "payment_method",

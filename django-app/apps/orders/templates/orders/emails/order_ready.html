@@ -15,6 +15,6 @@
     <p style="font-size: 13px; color: #888;">При получении назовите ваш Email и номер заказа: <strong>{{ order.id }}</strong></p>
 </div>
 
-<h3 style="margin-top: 25px; font-size: 16px;">Детали заказа:</h3>
-{% include "orders/emails/includes/items_table.html" %}
+{% comment %} <h3 style="margin-top: 25px; font-size: 16px;">Детали заказа:</h3>
+{% include "orders/emails/includes/items_table.html" %} {% endcomment %}
 {% endblock %}
