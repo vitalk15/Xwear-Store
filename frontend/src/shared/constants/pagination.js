@@ -5,3 +5,6 @@ export const CATALOG_ITEMS_PER_PAGE = 12
 // Количество товаров на странице сетки Избранного.
 // Должно быть кратно 4
 export const FAVORITES_ITEMS_PER_PAGE = 12
+
+// Количество строк с заказами в таблице "Мои заказы"/"История заказов".
+export const ORDERS_ITEMS_PER_PAGE = 4

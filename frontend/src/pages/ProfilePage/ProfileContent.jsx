@@ -117,6 +117,7 @@ const ProfileContent = () => {
 							<OrdersList />
 						</>
 					)}
+					{activeTab === 'orders-history' && <OrdersList filterType="history" />}
 					{activeTab === 'edit-profile' && (
 						<EditProfileForm
 							initialData={profileData || { email: user?.email }}
