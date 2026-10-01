@@ -8,14 +8,18 @@ import EditAddressForm from '@/features/profile/components/EditAddressForm'
 import Toast from '@/components/ui/Toast'
 import styles from './CheckoutForm.module.scss'
 
-const CheckoutForm = ({ onDeliveryInfoChange }) => {
-	// Стейт для уведомлений
-	const [toastMessage, setToastMessage] = useState(null)
-
+const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 	// 1. Данные профиля (адреса)
 	const { data: profileData, isLoading: isProfileLoading } = useProfileQuery()
-	// Кешируем ссылку на массив адресов, чтобы useEffect не срабатывал на каждом рендере
-	const addresses = useMemo(() => profileData?.profile?.addresses || [], [profileData])
+
+	// Мемоизируем (кешируем) адреса, опираясь на profileData
+	const addresses = useMemo(() => {
+		const profile = profileData?.profile || profileData
+		return profile?.addresses || []
+	}, [profileData])
+
+	// Телефон (это строка, поэтому useMemo для нее не обязателен)
+	const userPhone = profileData?.profile?.phone || profileData?.phone || ''
 
 	// 2. Данные ПВЗ и Городов
 	const { data: pickupPoints = [], isLoading: isLoadingPickups } = usePickupPointsQuery()
@@ -23,6 +27,25 @@ const CheckoutForm = ({ onDeliveryInfoChange }) => {
 
 	// Состояние: режим добавления нового адреса
 	const [isAddingNew, setIsAddingNew] = useState(false)
+	// Стейт для уведомлений
+	const [toastMessage, setToastMessage] = useState(null)
+
+	// ВЫЧИСЛЯЕМ НАЧАЛЬНЫЕ ЗНАЧЕНИЯ ДО ИНИЦИАЛИЗАЦИИ ФОРМЫ
+	// Чтобы убрать дёргание анимации, когда city_id ещё пустой
+	const initialCityAndAddress = useMemo(() => {
+		if (!cities.length) return { cityId: '', addressId: null }
+
+		if (addresses.length > 0) {
+			const defaultAddr = addresses.find((a) => a.is_default) || addresses[0]
+			const defaultCityId =
+				defaultAddr.city_details?.id || defaultAddr.city?.id || defaultAddr.city
+			if (defaultCityId) {
+				return { cityId: String(defaultCityId), addressId: defaultAddr.id }
+			}
+		}
+
+		return { cityId: String(cities[0].id), addressId: null }
+	}, [cities, addresses])
 
 	const {
 		control,
@@ -32,50 +55,29 @@ const CheckoutForm = ({ onDeliveryInfoChange }) => {
 	} = useForm({
 		defaultValues: {
 			delivery_method: 'delivery', // 'delivery' | 'pickup'
-			city_id: '', // ID доступного города
-			address_id: null, // ID сохраненного адреса (если выбрана доставка)
+			payment_method: 'upon_receipt', // 'upon_receipt' | 'online'
+			city_id: initialCityAndAddress.cityId, // ID доступного города
+			address_id: initialCityAndAddress.addressId, // ID сохраненного адреса (если выбрана доставка)
 			pickup_point_id: null, // ID ПВЗ (если выбран самовывоз)
 		},
 	})
 
 	// Следим за тем, какой способ доставки выбран в реальном времени и др.
 	const currentMethod = useWatch({ control, name: 'delivery_method' })
+	const currentPayment = useWatch({ control, name: 'payment_method' })
 	const selectedCityId = useWatch({ control, name: 'city_id' })
 	const selectedAddressId = useWatch({ control, name: 'address_id' })
 	const selectedPickupId = useWatch({ control, name: 'pickup_point_id' })
 
-	// Инициализация города по умолчанию (город основного адреса или первый город)
-	// ждем строго окончания загрузки профиля и городов
+	// Синхронизируем форму, если данные загрузились чуть позже монтирования
 	useEffect(() => {
-		if (isCitiesLoading || isProfileLoading || isLoadingPickups || cities.length === 0)
-			return
-
-		// Если город уже инициализирован, не перезаписываем его
-		if (selectedCityId) return
-
-		if (addresses.length > 0) {
-			const defaultAddr = addresses.find((a) => a.is_default) || addresses[0]
-			const defaultCityId =
-				defaultAddr.city_details?.id || defaultAddr.city?.id || defaultAddr.city
-
-			if (defaultCityId) {
-				setValue('city_id', String(defaultCityId))
-				setValue('address_id', defaultAddr.id)
-				return
+		if (!selectedCityId && initialCityAndAddress.cityId) {
+			setValue('city_id', initialCityAndAddress.cityId)
+			if (initialCityAndAddress.addressId) {
+				setValue('address_id', initialCityAndAddress.addressId)
 			}
 		}
-
-		// Если у пользователя нет сохраненных адресов, берем первый город
-		setValue('city_id', String(cities[0].id))
-	}, [
-		isCitiesLoading,
-		isProfileLoading,
-		isLoadingPickups,
-		cities,
-		addresses,
-		selectedCityId,
-		setValue,
-	])
+	}, [initialCityAndAddress, selectedCityId, setValue])
 
 	// Объект выбранного города
 	const currentCityObj = useMemo(() => {
@@ -137,18 +139,37 @@ const CheckoutForm = ({ onDeliveryInfoChange }) => {
 	const pickupOptions = useMemo(() => {
 		return filteredPickupPoints.map((point) => ({
 			id: point.id,
-			name: `${point.address} (${point.work_schedule})`,
+			name: `ПВЗ №${point.id}: ${point.address} (${point.work_schedule})`,
 		}))
 	}, [filteredPickupPoints])
 
-	// Автоматический выбор первой ПВЗ при смене города
+	// Эффект для сохранения выбранного ПВЗ в localStorage
+	useEffect(() => {
+		if (selectedPickupId) {
+			localStorage.setItem('lastUsedPickupPoint', selectedPickupId)
+		}
+	}, [selectedPickupId])
+
+	// Автоматический выбор сохраненного из localStorage ПВЗ при смене города
 	useEffect(() => {
 		if (currentMethod === 'pickup') {
 			if (filteredPickupPoints.length > 0) {
-				const existsInFiltered = filteredPickupPoints.some(
+				// Считываем сохраненный ID из памяти браузера
+				const savedPointId = localStorage.getItem('lastUsedPickupPoint')
+
+				// Проверяем, существует ли сохраненный ПВЗ или текущий выпадающий в выбранном городе
+				const savedExists = filteredPickupPoints.some(
+					(p) => p.id === Number(savedPointId),
+				)
+				const currentExists = filteredPickupPoints.some(
 					(p) => p.id === Number(selectedPickupId),
 				)
-				if (!existsInFiltered) {
+
+				if (savedExists) {
+					// Выбираем ранее использованный ПВЗ
+					setValue('pickup_point_id', Number(savedPointId))
+				} else if (!currentExists) {
+					// Пользователь сменил город (где нет старого ПВЗ) или покупает впервые — выбираем первый из списка
 					setValue('pickup_point_id', filteredPickupPoints[0].id)
 				}
 			} else {
@@ -165,15 +186,6 @@ const CheckoutForm = ({ onDeliveryInfoChange }) => {
 		})
 	}, [currentMethod, currentCityObj, onDeliveryInfoChange])
 
-	// Выбранные объекты для превью-карточек
-	// const selectedAddressObj = useMemo(() => {
-	// 	return addresses.find((a) => a.id === Number(selectedAddressId)) || null
-	// }, [addresses, selectedAddressId])
-
-	// const selectedPickupObj = useMemo(() => {
-	// 	return pickupPoints.find((p) => p.id === Number(selectedPickupId)) || null
-	// }, [pickupPoints, selectedPickupId])
-
 	// Обработчик успешного создания адреса в EditAddressForm
 	const handleAddressCreated = (message) => {
 		setIsAddingNew(false)
@@ -188,210 +200,227 @@ const CheckoutForm = ({ onDeliveryInfoChange }) => {
 	// 2. ИЛИ загрузка завершилась и у пользователя ВООБЩЕ 0 адресов в системе
 	const showAddAddressForm = isAddingNew || (!isProfileLoading && addresses.length === 0)
 
-	const onSubmit = (formData) => {
-		console.log('Готовые данные для отправки заказа:', formData)
+	// Проверка телефона при доставке курьером
+	const isPhoneMissingForDelivery = currentMethod === 'delivery' && !userPhone
+
+	const handleFormSubmit = (formData) => {
+		if (isPhoneMissingForDelivery) {
+			setToastMessage('Для курьерской доставки укажите номер телефона в профиле')
+			return
+		}
+		onSubmitOrder?.(formData)
 		// Здесь позже будет отправка мутации createOrder
 	}
 
 	return (
-		<>
+		<Motion.div
+			initial={{ opacity: 0, x: -20 }}
+			animate={{ opacity: 1, x: 0 }}
+			exit={{ opacity: 0, x: -20 }}
+			className={styles.formContainer}
+		>
 			{toastMessage && (
-				<Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+				<Toast
+					message={toastMessage}
+					type={isPhoneMissingForDelivery ? 'error' : 'success'}
+					onClose={() => setToastMessage(null)}
+				/>
 			)}
 
-			<Motion.div
-				initial={{ opacity: 0, x: -20 }}
-				animate={{ opacity: 1, x: 0 }}
-				exit={{ opacity: 0, x: -20 }}
-				className={styles.formContainer}
-			>
-				{!showAddAddressForm ? (
-					<form id="checkout-form" onSubmit={handleSubmit(onSubmit)}>
-						<div className={styles.topFormWrapper}>
-							{/* ПЕРЕКЛЮЧАТЕЛЬ СПОСОБА ПОЛУЧЕНИЯ */}
-							<div className={styles.toggleGroup}>
-								<button
-									type="button"
-									className={`${styles.toggleBtn} ${currentMethod === 'delivery' ? styles.active : ''}`}
-									onClick={() => setValue('delivery_method', 'delivery')}
-								>
-									Доставка курьером
-								</button>
-								<button
-									type="button"
-									className={`${styles.toggleBtn} ${currentMethod === 'pickup' ? styles.active : ''}`}
-									onClick={() => setValue('delivery_method', 'pickup')}
-								>
-									Самовывоз
-								</button>
-							</div>
-
-							{/* 1. ВЫБОР ГОРОДА (Общий для обоих способов) */}
-							<Controller
-								name="city_id"
-								control={control}
-								rules={{ required: 'Выберите город' }}
-								render={({ field }) => (
-									<CustomSelect
-										className={styles.selectCity}
-										label="Город доставки / получения"
-										options={cities}
-										value={field.value}
-										onChange={(val) => {
-											field.onChange(val)
-											setIsAddingNew(false)
-										}}
-										placeholder={isCitiesLoading ? 'Загрузка...' : 'Выберите ваш город'}
-										error={errors.city_id}
-										disabled={isCitiesLoading}
-									/>
-								)}
-							/>
-						</div>
-
-						{/* 2. СЕКЦИЯ: ДОСТАВКА КУРЬЕРОМ */}
-						{currentMethod === 'delivery' && (
-							<div className={styles.section}>
-								{isProfileLoading ? (
-									<p className={styles.loadingText}>Загрузка адресов...</p>
-								) : filteredAddresses.length > 0 ? (
-									<div className={styles.addressSelectorGroup}>
-										{/* ВЫБОР АДРЕСА (CustomSelect) */}
-										<Controller
-											name="address_id"
-											control={control}
-											rules={{ required: 'Выберите адрес доставки' }}
-											render={({ field }) => (
-												<CustomSelect
-													label="Адрес доставки"
-													options={addressOptions}
-													value={field.value}
-													onChange={(val) => field.onChange(val)}
-													placeholder="Выберите сохранённый адрес"
-													error={errors.address_id}
-												/>
-											)}
-										/>
-
-										{/* Превью выбранного адреса */}
-										{/* {selectedAddressObj && (
-                      <div className={`${styles.addressCard} ${styles.selectedCard}`}>
-                        <div className={styles.addressInfo}>
-                          <div className={styles.addressCity}>
-                            {selectedAddressObj.city_details?.name ||
-                              selectedAddressObj.city?.name ||
-                              currentCityObj?.name}
-                            {selectedAddressObj.is_default && (
-                              <span className={styles.defaultBadge}>Основной</span>
-                            )}
-                          </div>
-                          <div className={styles.addressText}>
-                            {selectedAddressObj.address_simple}
-                          </div>
-                        </div>
-                      </div>
-                    )} */}
-
-										<button
-											type="button"
-											className={styles.addAddressBtn}
-											onClick={() => setIsAddingNew(true)}
-										>
-											+ Указать другой адрес
-										</button>
-									</div>
-								) : (
-									<div className={styles.noAddressesNotice}>
-										<p>У вас нет сохраненных адресов в этом городе.</p>
-										<button
-											type="button"
-											className={styles.addAddressBtn}
-											onClick={() => setIsAddingNew(true)}
-										>
-											+ Добавить новый адрес
-										</button>
-									</div>
-								)}
-							</div>
-						)}
-
-						{/* 3. СЕКЦИЯ: САМОВЫВОЗ */}
-						{currentMethod === 'pickup' && (
-							<div className={styles.section}>
-								{isLoadingPickups ? (
-									<p className={styles.loadingText}>Загрузка пунктов выдачи...</p>
-								) : filteredPickupPoints.length > 0 ? (
-									<div className={styles.pickupSelectorGroup}>
-										{/* ВЫБОР ПВЗ (CustomSelect) */}
-										<Controller
-											name="pickup_point_id"
-											control={control}
-											rules={{ required: 'Выберите пункт выдачи' }}
-											render={({ field }) => (
-												<CustomSelect
-													label="Адрес ПВЗ"
-													options={pickupOptions}
-													value={field.value}
-													onChange={(val) => field.onChange(val)}
-													placeholder="Выберите пункт выдачи"
-													error={errors.pickup_point_id}
-												/>
-											)}
-										/>
-
-										{/* Превью выбранного ПВЗ */}
-										{/* {selectedPickupObj && (
-                      <div className={`${styles.addressCard} ${styles.selectedCard}`}>
-                        <div className={styles.addressInfo}>
-                          <div className={styles.addressCity}>
-                            ПВЗ: {selectedPickupObj.city_name || currentCityObj?.name}
-                          </div>
-                          <div className={styles.addressText}>
-                            {selectedPickupObj.address}
-                          </div>
-                          <div className={styles.scheduleText}>
-                            Режим работы: {selectedPickupObj.work_schedule}
-                          </div>
-                          {selectedPickupObj.phone && (
-                            <div className={styles.scheduleText}>
-                              Тел: {selectedPickupObj.phone}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )} */}
-									</div>
-								) : (
-									<p className={styles.emptyText}>
-										В выбранном городе пока нет доступных пунктов выдачи.
-									</p>
-								)}
-							</div>
-						)}
-
-						{/* Способ оплаты пока пропустим, добавим позже */}
-					</form>
-				) : (
-					/* Форма создания нового адреса */
-					<div className={styles.newAddressWrapper}>
-						<EditAddressForm
-							initialCityId={selectedCityId}
-							onSuccess={handleAddressCreated}
-						/>
-
-						{addresses.length > 0 && (
+			{!showAddAddressForm ? (
+				<form id="checkout-form" onSubmit={handleSubmit(handleFormSubmit)}>
+					<div className={styles.topFormWrapper}>
+						{/* ПЕРЕКЛЮЧАТЕЛЬ СПОСОБА ПОЛУЧЕНИЯ */}
+						<div className={styles.toggleGroup}>
 							<button
 								type="button"
-								className={styles.cancelAddBtn}
-								onClick={() => setIsAddingNew(false)}
+								className={`${styles.toggleBtn} ${currentMethod === 'delivery' ? styles.active : ''}`}
+								onClick={() => setValue('delivery_method', 'delivery')}
 							>
-								← Отмена (выбрать из сохранённых адресов)
+								Доставка курьером
 							</button>
-						)}
+							<button
+								type="button"
+								className={`${styles.toggleBtn} ${currentMethod === 'pickup' ? styles.active : ''}`}
+								onClick={() => setValue('delivery_method', 'pickup')}
+							>
+								Самовывоз
+							</button>
+						</div>
+
+						{/* 1. ВЫБОР ГОРОДА (Общий для обоих способов) */}
+						<Controller
+							name="city_id"
+							control={control}
+							rules={{ required: 'Выберите город' }}
+							render={({ field }) => (
+								<CustomSelect
+									className={styles.selectCity}
+									label="Город доставки / получения"
+									options={cities}
+									value={field.value}
+									onChange={(val) => {
+										field.onChange(val)
+										setIsAddingNew(false)
+									}}
+									placeholder={isCitiesLoading ? 'Загрузка...' : 'Выберите ваш город'}
+									error={errors.city_id}
+									disabled={isCitiesLoading}
+								/>
+							)}
+						/>
 					</div>
-				)}
-			</Motion.div>
-		</>
+
+					{/* ПРЕДУПРЕЖДЕНИЕ ОБ ОТСУТСТВИИ ТЕЛЕФОНА */}
+					{isPhoneMissingForDelivery && (
+						<div className={styles.warningBox}>
+							<p>
+								Для оформления доставки курьером необходимо указать номер телефона в
+								профиле.
+							</p>
+						</div>
+					)}
+
+					{/* 2. СЕКЦИЯ: ДОСТАВКА КУРЬЕРОМ */}
+					{currentMethod === 'delivery' && (
+						<div className={styles.section}>
+							{isProfileLoading || !selectedCityId ? (
+								<p className={styles.loadingText}>Загрузка адресов...</p>
+							) : filteredAddresses.length > 0 ? (
+								<div className={styles.addressSelectorGroup}>
+									{/* ВЫБОР АДРЕСА (CustomSelect) */}
+									<Controller
+										name="address_id"
+										control={control}
+										rules={{ required: 'Выберите адрес доставки' }}
+										render={({ field }) => (
+											<CustomSelect
+												label="Адрес доставки"
+												options={addressOptions}
+												value={field.value}
+												onChange={(val) => field.onChange(val)}
+												placeholder="Выберите сохранённый адрес"
+												error={errors.address_id}
+											/>
+										)}
+									/>
+
+									<button
+										type="button"
+										className={styles.addAddressBtn}
+										onClick={() => setIsAddingNew(true)}
+									>
+										+ Указать другой адрес
+									</button>
+								</div>
+							) : (
+								<div className={styles.noAddressesNotice}>
+									<p>У вас нет сохраненных адресов в этом городе.</p>
+									<button
+										type="button"
+										className={styles.addAddressBtn}
+										onClick={() => setIsAddingNew(true)}
+									>
+										+ Добавить новый адрес
+									</button>
+								</div>
+							)}
+						</div>
+					)}
+
+					{/* 3. СЕКЦИЯ: САМОВЫВОЗ */}
+					{currentMethod === 'pickup' && (
+						<div className={styles.section}>
+							{isLoadingPickups ? (
+								<p className={styles.loadingText}>Загрузка пунктов выдачи...</p>
+							) : filteredPickupPoints.length > 0 ? (
+								<div className={styles.pickupSelectorGroup}>
+									{/* ВЫБОР ПВЗ (CustomSelect) */}
+									<Controller
+										name="pickup_point_id"
+										control={control}
+										rules={{ required: 'Выберите пункт выдачи' }}
+										render={({ field }) => (
+											<CustomSelect
+												label="Адрес ПВЗ"
+												options={pickupOptions}
+												value={field.value}
+												onChange={(val) => {
+													field.onChange(val)
+													if (val) {
+														localStorage.setItem('lastUsedPickupPoint', val)
+													}
+												}}
+												placeholder="Выберите пункт выдачи"
+												error={errors.pickup_point_id}
+											/>
+										)}
+									/>
+								</div>
+							) : (
+								<p className={styles.emptyText}>
+									В выбранном городе пока нет доступных пунктов выдачи.
+								</p>
+							)}
+						</div>
+					)}
+
+					{/* 4. СЕКЦИЯ: СПОСОБ ОПЛАТЫ */}
+					<div className={styles.paymentSection}>
+						<h3 className={styles.sectionTitle}>Способ оплаты</h3>
+						<div className={styles.paymentOptions}>
+							<label
+								className={`${styles.paymentCard} ${currentPayment === 'upon_receipt' ? styles.activePayment : ''}`}
+							>
+								<input
+									type="radio"
+									value="upon_receipt"
+									checked={currentPayment === 'upon_receipt'}
+									onChange={() => setValue('payment_method', 'upon_receipt')}
+								/>
+								<div className={styles.paymentMeta}>
+									<span className={styles.paymentTitle}>При получении</span>
+									<span className={styles.paymentSub}>Оплата картой или наличными</span>
+								</div>
+							</label>
+
+							<label
+								className={`${styles.paymentCard} ${currentPayment === 'online' ? styles.activePayment : ''}`}
+							>
+								<input
+									type="radio"
+									value="online"
+									checked={currentPayment === 'online'}
+									onChange={() => setValue('payment_method', 'online')}
+								/>
+								<div className={styles.paymentMeta}>
+									<span className={styles.paymentTitle}>Онлайн на сайте</span>
+									<span className={styles.paymentSub}>Банковской картой или СБП</span>
+								</div>
+							</label>
+						</div>
+					</div>
+				</form>
+			) : (
+				/* ФОРМА ДОБАВЛЕНИЯ АДРЕСА */
+				<div className={styles.newAddressWrapper}>
+					<EditAddressForm
+						initialCityId={selectedCityId}
+						onSuccess={handleAddressCreated}
+					/>
+
+					{addresses.length > 0 && (
+						<button
+							type="button"
+							className={styles.cancelAddBtn}
+							onClick={() => setIsAddingNew(false)}
+						>
+							← Отмена (выбрать из сохранённых адресов)
+						</button>
+					)}
+				</div>
+			)}
+		</Motion.div>
 	)
 }
 
