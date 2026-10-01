@@ -30,7 +30,7 @@ const CustomSelect = ({
 
 	return (
 		<div
-			className={`inputGroup ${styles.selectWrapper} ${className} ${isOpen ? styles.wrapperActive : ''} ${error ? 'inputError' : ''}`}
+			className={`inputGroup ${styles.selectWrapper} ${className} ${isOpen ? styles.wrapperActive : ''} ${error ? 'inputError' : ''}`.trim()}
 			ref={containerRef}
 		>
 			<label>{label}</label>
@@ -39,14 +39,14 @@ const CustomSelect = ({
 			<div
 				className={`${styles.trigger} ${error ? styles.error : ''} ${
 					disabled ? styles.disabled : ''
-				}`}
+				}`.trim()}
 				onClick={() => !disabled && setIsOpen((prev) => !prev)}
 				tabIndex={0} // <--- Добавляем возможность получить фокус
 			>
 				<span className={selectedOption ? styles.value : styles.placeholder}>
 					{selectedOption ? selectedOption.name : placeholder}
 				</span>
-				<span className={`${styles.arrow} ${isOpen ? styles.arrowOpen : ''}`} />
+				<span className={`${styles.arrow} ${isOpen ? styles.arrowOpen : ''}`.trim()} />
 			</div>
 
 			{/* Всплывающее меню с настраиваемой рамкой и скруглением */}

@@ -3,9 +3,10 @@ import { useForm, useWatch, Controller } from 'react-hook-form'
 import { motion as Motion } from 'framer-motion'
 import { useProfileQuery } from '@/features/profile/hooks/useProfile'
 import { usePickupPointsQuery, useCitiesQuery } from '@/features/orders/hooks/useOrders'
+import { useToastStore } from '@/shared/store/useToastStore'
 import CustomSelect from '@/components/ui/CustomSelect'
 import EditAddressForm from '@/features/profile/components/EditAddressForm'
-import Toast from '@/components/ui/Toast'
+// import Toast from '@/components/ui/Toast'
 import styles from './CheckoutForm.module.scss'
 
 const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
@@ -27,8 +28,9 @@ const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 
 	// Состояние: режим добавления нового адреса
 	const [isAddingNew, setIsAddingNew] = useState(false)
-	// Стейт для уведомлений
-	const [toastMessage, setToastMessage] = useState(null)
+
+	// Достаем глобальный метод уведомлений (локальный toastMessage удален)
+	const showToast = useToastStore((state) => state.showToast)
 
 	// ВЫЧИСЛЯЕМ НАЧАЛЬНЫЕ ЗНАЧЕНИЯ ДО ИНИЦИАЛИЗАЦИИ ФОРМЫ
 	// Чтобы убрать дёргание анимации, когда city_id ещё пустой
@@ -191,7 +193,7 @@ const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 		setIsAddingNew(false)
 		// Если сообщение пришло, показываем Toast
 		if (typeof message === 'string') {
-			setToastMessage(message)
+			showToast(message, 'success')
 		}
 	}
 
@@ -201,16 +203,19 @@ const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 	const showAddAddressForm = isAddingNew || (!isProfileLoading && addresses.length === 0)
 
 	// Проверка телефона при доставке курьером
-	const isPhoneMissingForDelivery = currentMethod === 'delivery' && !userPhone
+	const isPhoneMissingForDelivery =
+		currentMethod === 'delivery' && !isProfileLoading && !userPhone
 
 	const handleFormSubmit = (formData) => {
 		if (isPhoneMissingForDelivery) {
-			setToastMessage('Для курьерской доставки укажите номер телефона в профиле')
+			showToast('Для курьерской доставки укажите номер телефона в профиле', 'error')
 			return
 		}
 		onSubmitOrder?.(formData)
-		// Здесь позже будет отправка мутации createOrder
 	}
+
+	// Флаг загрузки для секции доставки
+	const isDeliveryLoading = isProfileLoading || !selectedCityId
 
 	return (
 		<Motion.div
@@ -219,13 +224,13 @@ const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 			exit={{ opacity: 0, x: -20 }}
 			className={styles.formContainer}
 		>
-			{toastMessage && (
+			{/* {toastMessage && (
 				<Toast
 					message={toastMessage}
 					type={isPhoneMissingForDelivery ? 'error' : 'success'}
 					onClose={() => setToastMessage(null)}
 				/>
-			)}
+			)} */}
 
 			{!showAddAddressForm ? (
 				<form id="checkout-form" onSubmit={handleSubmit(handleFormSubmit)}>
@@ -284,36 +289,8 @@ const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 					{/* 2. СЕКЦИЯ: ДОСТАВКА КУРЬЕРОМ */}
 					{currentMethod === 'delivery' && (
 						<div className={styles.section}>
-							{isProfileLoading || !selectedCityId ? (
-								<p className={styles.loadingText}>Загрузка адресов...</p>
-							) : filteredAddresses.length > 0 ? (
-								<div className={styles.addressSelectorGroup}>
-									{/* ВЫБОР АДРЕСА (CustomSelect) */}
-									<Controller
-										name="address_id"
-										control={control}
-										rules={{ required: 'Выберите адрес доставки' }}
-										render={({ field }) => (
-											<CustomSelect
-												label="Адрес доставки"
-												options={addressOptions}
-												value={field.value}
-												onChange={(val) => field.onChange(val)}
-												placeholder="Выберите сохранённый адрес"
-												error={errors.address_id}
-											/>
-										)}
-									/>
-
-									<button
-										type="button"
-										className={styles.addAddressBtn}
-										onClick={() => setIsAddingNew(true)}
-									>
-										+ Указать другой адрес
-									</button>
-								</div>
-							) : (
+							{/* Плашка об отсутствии адресов показывается только когда загрузка завершена и адресов точно 0 */}
+							{!isDeliveryLoading && filteredAddresses.length === 0 ? (
 								<div className={styles.noAddressesNotice}>
 									<p>У вас нет сохраненных адресов в этом городе.</p>
 									<button
@@ -324,6 +301,44 @@ const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 										+ Добавить новый адрес
 									</button>
 								</div>
+							) : (
+								/* Во время загрузки ИЛИ при наличии адресов рендерится один и тот же блок */
+								<div className={styles.addressSelectorGroup}>
+									{/* ВЫБОР АДРЕСА (CustomSelect) */}
+									<Controller
+										name="address_id"
+										control={control}
+										rules={{ required: 'Выберите адрес доставки' }}
+										render={({ field }) => (
+											<CustomSelect
+												label="Адрес доставки"
+												options={addressOptions}
+												value={field.value || ''}
+												onChange={(val) => field.onChange(val)}
+												placeholder={
+													isDeliveryLoading
+														? 'Загрузка адресов...'
+														: 'Выберите сохранённый адрес'
+												}
+												error={errors.address_id}
+												disabled={isDeliveryLoading} // Блокируем селект при загрузке
+											/>
+										)}
+									/>
+
+									<button
+										type="button"
+										className={styles.addAddressBtn}
+										onClick={() => setIsAddingNew(true)}
+										disabled={isDeliveryLoading} // Блокируем кнопку при загрузке
+										style={{
+											opacity: isDeliveryLoading ? 0.5 : 1, // Визуально приглушаем кнопку
+											cursor: isDeliveryLoading ? 'default' : 'pointer',
+										}}
+									>
+										+ Указать другой адрес
+									</button>
+								</div>
 							)}
 						</div>
 					)}
@@ -331,11 +346,14 @@ const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 					{/* 3. СЕКЦИЯ: САМОВЫВОЗ */}
 					{currentMethod === 'pickup' && (
 						<div className={styles.section}>
-							{isLoadingPickups ? (
-								<p className={styles.loadingText}>Загрузка пунктов выдачи...</p>
-							) : filteredPickupPoints.length > 0 ? (
+							{/* Сообщение об отсутствии ПВЗ показываем только когда загрузка завершена и список пуст */}
+							{isLoadingPickups && filteredPickupPoints.length === 0 ? (
+								<p className={styles.emptyText}>
+									В выбранном городе пока нет доступных ПВЗ.
+								</p>
+							) : (
+								/* Во время загрузки ИЛИ при наличии ПВЗ рендерим CustomSelect */
 								<div className={styles.pickupSelectorGroup}>
-									{/* ВЫБОР ПВЗ (CustomSelect) */}
 									<Controller
 										name="pickup_point_id"
 										control={control}
@@ -344,23 +362,24 @@ const CheckoutForm = ({ onDeliveryInfoChange, onSubmitOrder }) => {
 											<CustomSelect
 												label="Адрес ПВЗ"
 												options={pickupOptions}
-												value={field.value}
+												value={field.value || ''}
 												onChange={(val) => {
 													field.onChange(val)
 													if (val) {
 														localStorage.setItem('lastUsedPickupPoint', val)
 													}
 												}}
-												placeholder="Выберите пункт выдачи"
+												placeholder={
+													isLoadingPickups
+														? 'Загрузка пунктов выдачи...'
+														: 'Выберите пункт выдачи'
+												}
 												error={errors.pickup_point_id}
+												disabled={isLoadingPickups} // Блокируем селект при загрузке
 											/>
 										)}
 									/>
 								</div>
-							) : (
-								<p className={styles.emptyText}>
-									В выбранном городе пока нет доступных пунктов выдачи.
-								</p>
 							)}
 						</div>
 					)}
