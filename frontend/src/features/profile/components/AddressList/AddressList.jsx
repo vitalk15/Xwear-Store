@@ -31,7 +31,10 @@ const AddressList = ({
 			{ id: addressId, is_default: true },
 			{
 				onSuccess: () => onSuccess && onSuccess('Основной адрес изменен'),
-				onError: () => onError && onError('Ошибка изменения адреса'),
+				onError: (err) => {
+					const backendError = err.response?.data?.detail || err.response?.data?.error
+					if (onError) onError(backendError || 'Ошибка изменения адреса')
+				},
 			},
 		)
 	}
@@ -40,7 +43,10 @@ const AddressList = ({
 		e.stopPropagation() // Предотвращаем срабатывание выбора адреса по умолчанию
 		deleteAddress(addressId, {
 			onSuccess: () => onSuccess && onSuccess('Адрес удален'),
-			onError: () => onError && onError('Ошибка удаления адреса'),
+			onError: (err) => {
+				const backendError = err.response?.data?.detail || err.response?.data?.error
+				if (onError) onError(backendError || 'Ошибка удаления адреса')
+			},
 		})
 	}
 

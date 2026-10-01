@@ -60,17 +60,6 @@ const EditAddressForm = ({ editingAddress, onSuccess, initialCityId }) => {
 
 				setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
 			}
-			// updateAddress(
-			// 	{ id: editingAddress.id, ...formData },
-			// 	{
-			// 		onSuccess: () => {
-			// 			if (onSuccess) onSuccess('Адрес успешно обновлен!') // Передаем текст в родителя
-			// 		},
-			// 		onError: () => {
-			// 			if (onError) onError('Ошибка при обновлении адреса')
-			// 		},
-			// 	},
-			// )
 		} else {
 			try {
 				createAddress(formData, {
@@ -88,15 +77,6 @@ const EditAddressForm = ({ editingAddress, onSuccess, initialCityId }) => {
 
 				setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
 			}
-			// createAddress(formData, {
-			// 	onSuccess: () => {
-			// 		reset() // Очищаем форму после успешного сохранения
-			// 		if (onSuccess) onSuccess('Адрес успешно добавлен!')
-			// 	},
-			// 	onError: () => {
-			// 		if (onError) onError('Ошибка при добавлении адреса')
-			// 	},
-			// })
 		}
 	}
 

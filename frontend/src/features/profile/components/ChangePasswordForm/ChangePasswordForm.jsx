@@ -58,41 +58,6 @@ const ChangePasswordForm = ({ onSuccess }) => {
 
 			setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
 		}
-
-		// changePassword(formData, {
-		// 	onSuccess: (response) => {
-		// 		reset() // Очищаем значения полей в RHF
-		// 		setIsPasswordFocused(false) // Скрываем подсказки
-		// 		setResetKey((prev) => prev + 1) // Перемонтируем инпуты (сбрасывает глазик в closed / type="password")
-
-		// 		if (onSuccess) onSuccess(response?.message || 'Пароль успешно изменён!')
-		// 	},
-		// onError: (error) => {
-		// 	const serverErrors = error.response?.data
-
-		// 	// Если бэкенд вернул ошибку конкретного поля (например, неверный старый пароль)
-		// 	if (serverErrors && typeof serverErrors === 'object') {
-		// 		Object.keys(serverErrors).forEach((field) => {
-		// 			const message = Array.isArray(serverErrors[field])
-		// 				? serverErrors[field][0]
-		// 				: serverErrors[field]
-
-		// 			if (
-		// 				['old_password', 'new_password', 'new_password_confirm'].includes(field)
-		// 			) {
-		// 				setError(field, { type: 'server', message })
-		// 			}
-		// 		})
-
-		// 		if (serverErrors.non_field_errors) {
-		// 			if (onError) onError(serverErrors.non_field_errors[0])
-		// 			return
-		// 		}
-		// 	}
-
-		// 	if (onError) onError('Не удалось изменить пароль. Проверьте введенные данные.')
-		// },
-		// })
 	}
 
 	return (

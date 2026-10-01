@@ -57,15 +57,6 @@ const EditProfileForm = ({ initialData, onSuccess }) => {
 
 			setServerError(backendDetail || 'Произошла ошибка. Попробуйте позже.')
 		}
-
-		// updateProfile(changedData, {
-		// 	onSuccess: () => {
-		// 		if (onSuccess) onSuccess('Профиль успешно обновлен!')
-		// 	},
-		// 	onError: () => {
-		// 		if (onError) onError('Ошибка обновления профиля')
-		// 	},
-		// })
 	}
 
 	return (

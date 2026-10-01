@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSuspenseProfileQuery } from '@/features/profile/hooks/useProfile'
 import useAuthStore from '@/features/auth/store/useAuthStore'
+import { useToastStore } from '@/shared/store/useToastStore'
 import { logoutUser } from '@/features/auth/api/auth.api'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import EditProfileForm from '@/features/profile/components/EditProfileForm'
@@ -8,7 +9,6 @@ import EditAddressForm from '@/features/profile/components/EditAddressForm'
 import AddressList from '@/features/profile/components/AddressList'
 import ChangePasswordForm from '@/features/profile/components/ChangePasswordForm'
 import OrdersList from '@/features/profile/components/OrdersList'
-import Toast from '@/components/ui/Toast'
 import ProfileIcon from '@/shared/icons/profile.svg'
 import EditProfileIcon from '@/shared/icons/redaction-profile.svg'
 import StoryOrdersIcon from '@/shared/icons/orders.svg'
@@ -23,14 +23,15 @@ const ProfileContent = () => {
 	const user = useAuthStore((state) => state.user) // Чтобы достать email
 	const { data: profileData } = useSuspenseProfileQuery() // Чтобы достать имя
 
+	// Глобальный метод отображения уведомлений из Zustand
+	const showToast = useToastStore((state) => state.showToast)
+
 	const userName = profileData?.profile?.first_name || user?.email || 'Пользователь'
 
 	// Временное состояние для управления активной вкладкой
 	const [activeTab, setActiveTab] = useState('account')
 	// Состояние редактируемого адреса
 	const [editingAddress, setEditingAddress] = useState(null)
-	// Глобальный стейт для уведомлений профиля
-	const [toast, setToast] = useState(null)
 
 	// Переход к редактированию конкретного адреса
 	const handleEditAddress = (address) => {
@@ -50,7 +51,8 @@ const ProfileContent = () => {
 			// Отправляем запрос на сервер для удаления куки
 			await logoutUser()
 		} catch (error) {
-			console.error('Ошибка при логауте на сервере', error)
+			console.error('Ошибка при логауте', error)
+
 			// Даже если сервер недоступен, мы всё равно должны выкинуть юзера из фронтенда
 		} finally {
 			// Очищаем Zustand Store и кеш React Query
@@ -63,7 +65,6 @@ const ProfileContent = () => {
 		{ id: 'account', label: 'Мой аккаунт', icon: <ProfileIcon /> },
 		{ id: 'edit-profile', label: 'Редактировать профиль', icon: <EditProfileIcon /> },
 		{ id: 'orders-history', label: 'История заказов', icon: <StoryOrdersIcon /> },
-		// { id: 'my-orders', label: 'Мои заказы', icon: <OrdersIcon /> },
 		{ id: 'addresses', label: 'Адреса доставки', icon: <AddressIcon /> },
 		{ id: 'edit-addresses', label: 'Редактировать адреса', icon: <EditAddressIcon /> },
 		{ id: 'password', label: 'Пароль', icon: <PasswordIcon /> },
@@ -72,10 +73,6 @@ const ProfileContent = () => {
 	return (
 		<>
 			<Breadcrumbs items={[{ name: 'Личный кабинет' }]} />
-
-			{toast && (
-				<Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-			)}
 
 			<h1 className={styles.title}>ЛИЧНЫЙ КАБИНЕТ</h1>
 
@@ -121,8 +118,7 @@ const ProfileContent = () => {
 					{activeTab === 'edit-profile' && (
 						<EditProfileForm
 							initialData={profileData || { email: user?.email }}
-							onSuccess={(message) => setToast({ message, type: 'success' })}
-							// onError={(message) => setToast({ message, type: 'error' })}
+							onSuccess={(message) => showToast(message)}
 						/>
 					)}
 					{activeTab === 'addresses' && (
@@ -130,29 +126,21 @@ const ProfileContent = () => {
 							profileData={profileData}
 							onEditAddress={handleEditAddress}
 							onAddNewAddress={handleAddNewAddress}
-							onSuccess={(message) => setToast({ message, type: 'success' })}
-							onError={(message) => setToast({ message, type: 'error' })}
+							onSuccess={(message) => showToast(message)}
+							onError={(message) => showToast(message, 'error')}
 						/>
 					)}
 					{activeTab === 'edit-addresses' && (
 						<EditAddressForm
 							editingAddress={editingAddress}
 							onSuccess={(message) => {
-								setToast({ message, type: 'success' })
+								showToast(message)
 								setActiveTab('addresses')
 							}}
-							// onError={(message) => {
-							// 	// Устанавливаем ошибку, но не меняем вкладку,
-							// 	// чтобы пользователь мог исправить данные
-							// 	setToast({ message, type: 'error' })
-							// }}
 						/>
 					)}
 					{activeTab === 'password' && (
-						<ChangePasswordForm
-							onSuccess={(message) => setToast({ message, type: 'success' })}
-							// onError={(message) => setToast({ message, type: 'error' })}
-						/>
+						<ChangePasswordForm onSuccess={(message) => showToast(message)} />
 					)}
 				</section>
 			</div>
