@@ -3,7 +3,7 @@ import ArrowLeftIcon from '@/shared/icons/arrow-left.svg'
 import ArrowRightIcon from '@/shared/icons/arrow-right.svg'
 import styles from './Pagination.module.scss'
 
-const Pagination = ({ totalPages }) => {
+const Pagination = ({ totalPages, className }) => {
 	const [searchParams, setSearchParams] = useSearchParams()
 
 	// Читаем текущую страницу из URL (например, ?page=2). Если параметра нет — по умолчанию 1.
@@ -44,7 +44,7 @@ const Pagination = ({ totalPages }) => {
 	const visiblePages = getVisiblePages()
 
 	return (
-		<div className={styles.pagination}>
+		<div className={`${styles.pagination} ${className || ''}`.trim()}>
 			{/* Стрелка Назад */}
 			<button
 				className={styles.arrowBtn}
