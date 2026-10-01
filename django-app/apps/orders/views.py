@@ -146,7 +146,7 @@ def order_create(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        address_text = address_obj.address_simple
+        address_text = f"г.{city.name}, {address_obj.address_simple}"
         pickup_point = None
     else:
         pickup_id = request.data.get("pickup_point_id")
@@ -159,7 +159,7 @@ def order_create(request):
 
         pickup_point = get_object_or_404(PickupPoint, id=pickup_id, is_active=True)
         city = pickup_point.city
-        address_text = f"ПВЗ: {pickup_point.address} ({pickup_point.work_schedule})"
+        address_text = f"ПВЗ №{pickup_point.id} - г. {city.name}, {pickup_point.address} ({pickup_point.work_schedule})"
 
     try:
         # Атомарная транзакция: либо выполняется всё, либо ничего
