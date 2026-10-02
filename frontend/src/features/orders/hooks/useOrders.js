@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+	useQuery,
+	useSuspenseQuery,
+	useMutation,
+	useQueryClient,
+} from '@tanstack/react-query'
 import { ordersApi } from '../api/ordersApi'
 
 // Ключи кэша
@@ -25,6 +30,15 @@ export const usePickupPointsQuery = () => {
 		queryKey: ORDER_KEYS.pickupPoints,
 		queryFn: ordersApi.getPickupPoints,
 		staleTime: 1000 * 60 * 30, // Данные актуальны 30 минут
+	})
+}
+
+// Suspense-версия получения списка ПВЗ
+export const useSuspensePickupPointsQuery = () => {
+	return useSuspenseQuery({
+		queryKey: ORDER_KEYS.pickupPoints,
+		queryFn: ordersApi.getPickupPoints,
+		staleTime: 1000 * 60 * 30, // 30 минут
 	})
 }
 

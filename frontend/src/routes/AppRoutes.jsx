@@ -7,6 +7,7 @@ import ResetPasswordConfirmPage from '@/pages/ResetPasswordConfirmPage'
 import FavoritesPage from '@/pages/FavoritesPage'
 import CartPage from '@/pages/CartPage'
 import ProfilePage from '@/pages/ProfilePage'
+import ContactsPage from '@/pages/ContactsPage'
 import CatalogDispatcher from './CatalogDispatcher'
 import NotFoundPage from '@/pages/NotFoundPage'
 import { paths } from './paths'
@@ -20,6 +21,7 @@ const AppRoutes = () => {
 				<Route path={`${paths.catalog}/*`} element={<CatalogDispatcher />} />
 				<Route path={paths.activate} element={<ActivatePage />} />
 				<Route path={paths.reset} element={<ResetPasswordConfirmPage />} />
+				<Route path={paths.contacts} element={<ContactsPage />} />
 				{/* Защищённые маршруты, требующие аутентификации */}
 				<Route element={<ProtectedRoute />}>
 					<Route path={paths.profile} element={<ProfilePage />} />
