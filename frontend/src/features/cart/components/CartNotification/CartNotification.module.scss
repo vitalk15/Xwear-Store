@@ -1,0 +1,112 @@
+.overlay {
+	position: fixed;
+	top: $header-height + 20px; // Отступ от верхнего края экрана
+	left: 0;
+	right: 0;
+	display: flex;
+	justify-content: right;
+	z-index: 9999; // Поверх всего сайта, включая шапку
+	pointer-events: none; // Чтобы оверлей не блокировал клики по сайту вокруг плашки
+}
+
+.notificationCard {
+	pointer-events: auto; // Сама карточка должна быть кликабельной
+	background: #ffffff;
+	border-radius: 6px;
+	box-shadow:
+		0 -4px 6px 0 rgba(0, 0, 0, 0.03),
+		0 103px 41px 0 rgba(0, 0, 0, 0.01),
+		0 58px 35px 0 rgba(0, 0, 0, 0.03),
+		0 26px 26px 0 rgba(0, 0, 0, 0.04),
+		0 6px 14px 0 rgba(0, 0, 0, 0.05),
+		0 0 0 0 rgba(0, 0, 0, 0.05);
+	padding: 18px 34px 18px 18px;
+	position: relative;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	max-width: 410px;
+	margin-right: $container-padding-x;
+	animation: slideDown 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.closeBtn {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	background: none;
+	border: none;
+	padding: 5px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #999;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: #000;
+	}
+}
+
+.closeIcon {
+	width: 10px;
+	height: 10px;
+}
+
+.content {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+}
+
+.imageWrapper {
+	width: 110px;
+	flex-shrink: 0;
+
+	.image {
+		width: 100%;
+		height: auto;
+		object-fit: contain;
+	}
+}
+
+.textBlock {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.statusText {
+	font-size: 10px;
+	font-weight: 700;
+	color: #959595;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	line-height: 2.8;
+}
+
+.productName {
+	font-size: 14px;
+	font-weight: 700;
+	color: $color-black;
+	text-transform: uppercase;
+}
+
+.productSize {
+	font-size: 14px;
+	font-weight: 500;
+	color: #666;
+}
+
+// Анимация выезда сверху
+@keyframes slideDown {
+	0% {
+		transform: translateY(-20px);
+		opacity: 0;
+	}
+	100% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}

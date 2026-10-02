@@ -1,0 +1,151 @@
+import { useState } from 'react'
+import { useSuspenseProfileQuery } from '@/features/profile/hooks/useProfile'
+import useAuthStore from '@/features/auth/store/useAuthStore'
+import { useToastStore } from '@/shared/store/useToastStore'
+import { logoutUser } from '@/features/auth/api/auth.api'
+import Breadcrumbs from '@/components/common/Breadcrumbs'
+import EditProfileForm from '@/features/profile/components/EditProfileForm'
+import EditAddressForm from '@/features/profile/components/EditAddressForm'
+import AddressList from '@/features/profile/components/AddressList'
+import ChangePasswordForm from '@/features/profile/components/ChangePasswordForm'
+import OrdersList from '@/features/profile/components/OrdersList'
+import ProfileIcon from '@/shared/icons/profile.svg'
+import EditProfileIcon from '@/shared/icons/redaction-profile.svg'
+import StoryOrdersIcon from '@/shared/icons/orders.svg'
+import AddressIcon from '@/shared/icons/address.svg'
+import EditAddressIcon from '@/shared/icons/redaction-address.svg'
+import PasswordIcon from '@/shared/icons/password.svg'
+import LogoutIcon from '@/shared/icons/logout.svg'
+import styles from './ProfilePage.module.scss'
+
+const ProfileContent = () => {
+	const logout = useAuthStore((state) => state.logout)
+	const user = useAuthStore((state) => state.user) // Чтобы достать email
+	const { data: profileData } = useSuspenseProfileQuery() // Чтобы достать имя
+
+	// Глобальный метод отображения уведомлений из Zustand
+	const showToast = useToastStore((state) => state.showToast)
+
+	const userName = profileData?.profile?.first_name || user?.email || 'Пользователь'
+
+	// Временное состояние для управления активной вкладкой
+	const [activeTab, setActiveTab] = useState('account')
+	// Состояние редактируемого адреса
+	const [editingAddress, setEditingAddress] = useState(null)
+
+	// Переход к редактированию конкретного адреса
+	const handleEditAddress = (address) => {
+		setEditingAddress(address)
+		setActiveTab('edit-addresses')
+	}
+
+	// Переход к созданию нового адреса
+	const handleAddNewAddress = () => {
+		setEditingAddress(null)
+		setActiveTab('edit-addresses')
+	}
+
+	// Выход из аккаунта
+	const handleLogout = async () => {
+		try {
+			// Отправляем запрос на сервер для удаления куки
+			await logoutUser()
+		} catch (error) {
+			console.error('Ошибка при логауте', error)
+
+			// Даже если сервер недоступен, мы всё равно должны выкинуть юзера из фронтенда
+		} finally {
+			// Очищаем Zustand Store и кеш React Query
+			logout()
+		}
+	}
+
+	// Конфигурация меню для удобного рендера
+	const menuItems = [
+		{ id: 'account', label: 'Мой аккаунт', icon: <ProfileIcon /> },
+		{ id: 'edit-profile', label: 'Редактировать профиль', icon: <EditProfileIcon /> },
+		{ id: 'orders-history', label: 'История заказов', icon: <StoryOrdersIcon /> },
+		{ id: 'addresses', label: 'Адреса доставки', icon: <AddressIcon /> },
+		{ id: 'edit-addresses', label: 'Редактировать адреса', icon: <EditAddressIcon /> },
+		{ id: 'password', label: 'Пароль', icon: <PasswordIcon /> },
+	]
+
+	return (
+		<>
+			<Breadcrumbs items={[{ name: 'Личный кабинет' }]} />
+
+			<h1 className={styles.title}>ЛИЧНЫЙ КАБИНЕТ</h1>
+
+			<div className={styles.layout}>
+				{/* Левая колонка (Сайдбар) */}
+				<aside className={styles.sidebar}>
+					<nav aria-label="Меню профиля">
+						<ul className={styles.navList}>
+							{menuItems.map((item) => (
+								<li key={item.id} className={styles.navItem}>
+									<button
+										className={`${styles.navBtn} ${activeTab === item.id ? styles.active : ''}`}
+										onClick={() => setActiveTab(item.id)}
+									>
+										<span className={styles.iconWrapper}>{item.icon}</span>
+										<span className={styles.labelWrapper}>{item.label}</span>
+									</button>
+								</li>
+							))}
+
+							{/* Кнопка выхода всегда внизу и имеет отдельную логику */}
+							<li className={styles.navItem}>
+								<button className={styles.navBtn} onClick={handleLogout}>
+									<span className={styles.iconWrapper}>
+										<LogoutIcon />
+									</span>
+									Выход
+								</button>
+							</li>
+						</ul>
+					</nav>
+				</aside>
+
+				{/* Правая колонка (Контентная часть) */}
+				<section className={styles.content}>
+					{activeTab === 'account' && (
+						<>
+							<h2 className={styles.welcomeText}>Приветствуем, {userName}!</h2>
+							<OrdersList />
+						</>
+					)}
+					{activeTab === 'orders-history' && <OrdersList filterType="history" />}
+					{activeTab === 'edit-profile' && (
+						<EditProfileForm
+							initialData={profileData || { email: user?.email }}
+							onSuccess={(message) => showToast(message)}
+						/>
+					)}
+					{activeTab === 'addresses' && (
+						<AddressList
+							profileData={profileData}
+							onEditAddress={handleEditAddress}
+							onAddNewAddress={handleAddNewAddress}
+							onSuccess={(message) => showToast(message)}
+							onError={(message) => showToast(message, 'error')}
+						/>
+					)}
+					{activeTab === 'edit-addresses' && (
+						<EditAddressForm
+							editingAddress={editingAddress}
+							onSuccess={(message) => {
+								showToast(message)
+								setActiveTab('addresses')
+							}}
+						/>
+					)}
+					{activeTab === 'password' && (
+						<ChangePasswordForm onSuccess={(message) => showToast(message)} />
+					)}
+				</section>
+			</div>
+		</>
+	)
+}
+
+export default ProfileContent

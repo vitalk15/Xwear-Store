@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
-import StarIcon from '@/shared/icons/star.svg'
+import ButtonFavorite from '@/features/favorites/components/ButtonFavorite'
 import placeholderProduct from '@/assets/images/placeholder-product.webp'
 import styles from './ProductCard.module.scss'
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, variantId = null, locationState = null }) => {
 	const { id, naming, pricing, main_image, frontend_url } = product
+	const targetVariantId = variantId || id
 
 	// Безопасно извлекаем объект с миниатюрой
 	const mediumThumb = main_image?.thumbnails?.medium
@@ -20,66 +21,41 @@ const ProductCard = ({ product }) => {
 	// Форматируем цену
 	const formattedPrice = formatPriceBy(pricing.min_price)
 
-	const handleFavoriteClick = (e) => {
-		e.preventDefault() // Чтобы клик по звездочке не перекидывал на страницу товара
-		// !!! TODO: Интегрировать Zustand store для проверки авторизации и добавления в избранное
-		console.log(`Клик по избранному для товара ${id}`)
-	}
-
 	return (
-		<article className={styles.card}>
-			{/* Верхняя часть: Картинка и Иконка */}
-			<div
-				className={styles.imageWrapper}
-				style={{
-					aspectRatio: `${imageWidth} / ${imageHeight}`,
-				}}
-			>
-				<button
-					className={styles.favoriteBtn}
-					onClick={handleFavoriteClick}
-					aria-label="Добавить в избранное"
+		<>
+			<article className={styles.card}>
+				{/* Верхняя часть: Картинка и Иконка */}
+				<div
+					className={styles.imageWrapper}
+					style={{
+						aspectRatio: `${imageWidth} / ${imageHeight}`,
+					}}
 				>
-					<StarIcon className={styles.starIcon} />
-				</button>
+					<ButtonFavorite targetId={targetVariantId} className={styles.favoriteBtn} />
 
-				<Link to={frontend_url} className={styles.imageLink}>
-					<img
-						src={imageUrl}
-						alt={main_image?.alt || naming.full_title}
-						className={styles.image}
-						width={imageWidth}
-						height={imageHeight}
-						loading="lazy"
-					/>
-				</Link>
-			</div>
-
-			{/* Опционально: Палитра доступных цветов (если их больше одного) */}
-			{/* {available_colors.length > 1 && (
-				<div className={styles.colorsPalette}>
-					{available_colors.map((colorObj, index) => (
-						<Link
-							key={index}
-							to={colorObj.frontend_url}
-							className={styles.colorDot}
-							style={{ backgroundColor: colorObj.color.hex_code }}
-							title={colorObj.color.name}
+					<Link to={frontend_url} state={locationState} className={styles.imageLink}>
+						<img
+							src={imageUrl}
+							alt={main_image?.alt || naming.full_title}
+							className={styles.image}
+							width={imageWidth}
+							height={imageHeight}
+							loading="lazy"
 						/>
-					))}
+					</Link>
 				</div>
-			)} */}
 
-			{/* Нижняя часть: Информация о товаре */}
-			<div className={styles.infoWrapper}>
-				<Link to={frontend_url} className={styles.titleLink}>
-					<h3 className={styles.title}>
-						{naming.brand.name} {naming.model}
-					</h3>
-				</Link>
-				<span className={styles.price}>от {formattedPrice}</span>
-			</div>
-		</article>
+				{/* Нижняя часть: Информация о товаре */}
+				<div className={styles.infoWrapper}>
+					<Link to={frontend_url} state={locationState} className={styles.titleLink}>
+						<h3 className={styles.title}>
+							{naming.brand.name} {naming.model}
+						</h3>
+					</Link>
+					<span className={styles.price}>от {formattedPrice}</span>
+				</div>
+			</article>
+		</>
 	)
 }
 

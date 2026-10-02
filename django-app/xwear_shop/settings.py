@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",  # для полнотекстового поиска
     "core.apps.CoreConfig",
     "xwear.apps.XwearConfig",
     "accounts.apps.AccountsConfig",
@@ -305,7 +306,7 @@ CSRF_COOKIE_SAMESITE = config("SAMESITE")
 COOKIE_HTTP_ONLY = True
 # если True, refresh-token в cookie отправляется только по HTTPS (для Production)
 COOKIE_SECURE = config("HTTPS_ONLY", default=True, cast=bool)
-# refresh-token в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет GET-переходы (Dev), 'None' — для кросс-доменных (редко))
+# refresh-token в cookies отправляется только с запросов с нашего домена ('Strict' — максимальная безопасность (для Production), 'Lax' — позволяет GET-переходы (Dev), 'None' — для кросс-доменных (Dev))
 COOKIE_SAMESITE = config("SAMESITE")
 
 
@@ -483,6 +484,11 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 # EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@xwear.by")
+
+
+# Api-ключ Геокодера Яндекса
+# ---------------------
+API_KEY_GEOKODER_YANDEX = config("API_KEY_GEOKODER_YANDEX")
 
 
 # Security (production)

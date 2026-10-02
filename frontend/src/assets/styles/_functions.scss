@@ -31,7 +31,7 @@
 	$dynamic-part-rounded: math.div(math.round($dynamic-part * 100000), 100000);
 	$intersection-rounded: math.div(math.round($intersection * 100000), 100000);
 
-	// Логика красивого знака
+	// Логика знака
 	$sign: if(
 		sass($intersection-rounded >= 0): '+' ; else: '-',
 	);

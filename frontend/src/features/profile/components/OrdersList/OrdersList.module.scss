@@ -1,0 +1,237 @@
+.container {
+	width: 100%;
+	border-radius: $border-radius;
+	border: 1px solid #e9eaee;
+	padding: 26px 30px 40px;
+}
+
+.title,
+.titleTable {
+	font-size: 23px;
+	margin-bottom: 35px;
+	font-weight: 700;
+	color: $color-dark_gray;
+}
+
+.titleTable {
+	margin-bottom: 16px;
+}
+
+/* Общая структура строк таблицы */
+.tableHeader,
+.rowMain {
+	display: grid;
+	grid-template-columns: 1.4fr 1.5fr 1.5fr 1fr; /* Пропорции колонок */
+	align-items: center;
+	font-size: 14px;
+	letter-spacing: 0.14px;
+	color: #333;
+}
+
+.tableHeader {
+	border-bottom: 1px solid #ebebeb;
+	font-weight: 700;
+	text-transform: uppercase;
+	padding: 10px 14px;
+}
+
+.rowWrapper {
+	border-bottom: 1px solid #ebebeb;
+
+	&:hover {
+		transform: translateZ(0);
+		transition: box-shadow 0.2s ease;
+		box-shadow:
+			0 -5px 5px -5px rgba(0, 0, 0, 0.2),
+			0 5px 5px -5px rgba(0, 0, 0, 0.2);
+	}
+
+	// &:last-child {
+	// 	border-bottom: none;
+	// }
+
+	&:nth-child(odd) {
+		background-color: #fbfbfb;
+	}
+}
+
+.rowMain {
+	cursor: pointer;
+	padding: 18px 14px;
+
+	.colStatus {
+		&.statusSuccess {
+			color: #09b11b;
+		}
+
+		&.statusCanceled {
+			color: #e74c3c;
+		}
+	}
+
+	.colTotal {
+		font-size: 15px;
+		font-weight: 700;
+		color: $color-black;
+
+		:global(.nbrb-icon) {
+			font-size: 18px;
+			font-weight: bold;
+		}
+	}
+}
+
+/* Скрытый контент аккордеона */
+.rowDetailsWrapper {
+	overflow: hidden; /* Важно для Framer Motion */
+}
+
+.rowDetailsContent {
+	padding: 24px;
+	background: #fff;
+	border: 1px solid #eee;
+	border-radius: 4px;
+	margin-block: 0 14px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.detailsHeader {
+	margin-bottom: 20px;
+
+	h3 {
+		font-size: 17px;
+		font-weight: 700;
+		margin-bottom: 8px;
+		color: $color-black;
+	}
+
+	.detailsMeta {
+		font-size: 14px;
+		color: #666;
+		margin-bottom: 16px;
+
+		b {
+			color: #141414;
+		}
+	}
+
+	.statusBadge {
+		padding: 8px 13px;
+		border: 1px solid #f0eeee;
+		border-radius: 2px;
+		font-weight: 600;
+		margin-left: 10px;
+
+		&.statusSuccess {
+			color: #09b11b;
+		}
+
+		&.statusCanceled {
+			color: #e74c3c;
+		}
+	}
+}
+
+/* Блок с информацией о способе получения и адресе */
+.deliveryInfoSection {
+	background-color: #f9f9f9;
+	border-radius: $border-radius;
+	padding: 18px 14px;
+	margin-bottom: 20px;
+	display: inline-flex;
+	flex-direction: column;
+	gap: 8px;
+
+	.infoRow {
+		font-size: 14px;
+
+		.infoLabel {
+			color: #666;
+		}
+
+		.infoValue {
+			color: $color-black;
+			font-weight: 600;
+			margin-left: 10px;
+		}
+	}
+}
+
+/* Внутренняя таблица (Товар / Итого) */
+.itemsHeader,
+.itemRow,
+.summaryRow {
+	display: grid;
+	grid-template-columns: 3.8fr 1fr; /* Пропорции колонок */
+	align-items: center;
+	font-size: 14px;
+	letter-spacing: 0.14px;
+	color: #333;
+}
+
+.itemsHeader {
+	border-bottom: 1px solid #ebebeb;
+	font-weight: 700;
+	text-transform: uppercase;
+	padding: 10px 14px;
+}
+
+.itemRow {
+	padding: 16px 14px;
+	border-bottom: 1px solid #ebebeb;
+
+	.itemQty {
+		color: #888;
+		margin-left: 6px;
+	}
+
+	.itemSum {
+		color: $color-black;
+		font-size: 15px;
+
+		:global(.nbrb-icon) {
+			font-size: 18px;
+		}
+	}
+}
+
+/* Итоги */
+.summaryRow {
+	padding: 16px 14px;
+	font-weight: 700;
+
+	.summaryPrice {
+		font-size: 15px;
+
+		:global(.nbrb-icon) {
+			font-size: 18px;
+			font-weight: bold;
+		}
+	}
+
+	&.deliveryCost {
+		border-top: 1px solid #ebebeb;
+	}
+
+	&.finalTotal {
+		font-size: 18px;
+		font-weight: 700;
+		letter-spacing: 0.19px;
+		border-top: 2px dashed #ebebeb; /* Пунктирная линия из макета */
+
+		:global(.nbrb-icon) {
+			font-size: 20px;
+			font-weight: bold;
+		}
+	}
+}
+
+.paginationWrapper {
+	margin-top: 34px;
+	display: flex;
+	justify-content: flex-start; /* Выравнивание по левому краю */
+
+	.orderPagination {
+		margin-top: 0;
+	}
+}

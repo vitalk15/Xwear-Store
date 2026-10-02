@@ -26,7 +26,7 @@ def cart_view(request):
     cart = (
         Cart.objects.filter(user=request.user)
         .prefetch_related(
-            "items__product_size__product__images", "items__product_size__size"
+            "items__product_size__variant__images", "items__product_size__size"
         )
         .first()
     )
@@ -101,10 +101,13 @@ def order_create(request):
     user = request.user
     cart = user.cart
     delivery_method = request.data.get("delivery_method")
+    payment_method = request.data.get("payment_method", "online")
 
     # Если применяем остатки, используем не этот код, а код в транзакции
     # -------------------------------------------------
-    cart_items = cart.items.select_related("product_size__product", "product_size__size")
+    cart_items = cart.items.select_related(
+        "product_size__variant__product", "product_size__size"
+    )
 
     # 1. Проверяем, не пуста ли корзина
     if not cart_items.exists():
@@ -112,13 +115,12 @@ def order_create(request):
             {"error": "Ваша корзина пуста"}, status=status.HTTP_400_BAD_REQUEST
         )
 
-    # 2. Валидация доступности товара перед созданием заказа
+    # 2. Валидация доступности товара (проверяем и базовый товар, и сам вариант) перед созданием заказа
     for item in cart_items:
-        if not item.product_size.product.is_active:
+        variant = item.product_size.variant
+        if not variant.is_active or not variant.product.is_active:
             return Response(
-                {
-                    "error": f"К сожалению, товар '{item.product_size.product.full_name}' больше недоступен."
-                },
+                {"error": f"К сожалению, товар '{variant.full_name}' больше недоступен."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -135,9 +137,7 @@ def order_create(request):
             )
 
         # Ищем адрес именно этого пользователя
-        address_obj = get_object_or_404(
-            Address, id=address_id, profile__user=user.profile
-        )
+        address_obj = get_object_or_404(Address, id=address_id, profile__user=user)
         city = address_obj.city
 
         if not city.is_active:
@@ -146,7 +146,7 @@ def order_create(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        address_text = address_obj.address_simple
+        address_text = f"г.{city.name}, {address_obj.address_simple}"
         pickup_point = None
     else:
         pickup_id = request.data.get("pickup_point_id")
@@ -159,7 +159,7 @@ def order_create(request):
 
         pickup_point = get_object_or_404(PickupPoint, id=pickup_id, is_active=True)
         city = pickup_point.city
-        address_text = f"ПВЗ: {pickup_point.address} ({pickup_point.work_schedule})"
+        address_text = f"ПВЗ №{pickup_point.id} - г. {city.name}, {pickup_point.address} ({pickup_point.work_schedule})"
 
     try:
         # Атомарная транзакция: либо выполняется всё, либо ничего
@@ -200,6 +200,7 @@ def order_create(request):
             order = Order.objects.create(
                 user=user,
                 delivery_method=delivery_method,
+                payment_method=payment_method,
                 pickup_point=pickup_point,
                 city=city,
                 address_text=address_text,
@@ -219,8 +220,8 @@ def order_create(request):
                 order_items.append(
                     OrderItem(
                         order=order,
-                        product=item.product_size.product,
-                        product_name=item.product_size.product.full_name,  # Снимок названия
+                        variant=item.product_size.variant,
+                        product_name=item.product_size.variant.full_name,  # Снимок названия
                         size_name=item.product_size.size.name,  # Снимок размера
                         price_at_purchase=price,  # Снимок цены
                         quantity=item.quantity,  # Снимок кол-ва
@@ -268,7 +269,15 @@ def order_create(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def order_list(request):
-    orders = request.user.orders.all().prefetch_related("items")
+    orders = (
+        request.user.orders.all()
+        .prefetch_related(
+            "items__variant__product",
+            "items__variant__images",  # Если сериализатор тянет картинки
+        )
+        .order_by("-created_at")
+    )  # Сразу сортируем, чтобы новые были сверху
+
     serializer = OrderSerializer(orders, many=True, context={"request": request})
     return Response(serializer.data)
 

@@ -1,4 +1,4 @@
-import useErrorStore from '@/store/useErrorStore'
+import useErrorStore from '@/shared/store/useErrorStore'
 
 export const handleCriticalError = (error, info) => {
 	// 1. Логируем ошибку в консоль

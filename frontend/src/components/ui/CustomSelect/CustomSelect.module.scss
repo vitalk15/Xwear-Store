@@ -1,0 +1,82 @@
+.selectWrapper {
+	position: relative;
+}
+
+.wrapperActive {
+	background-color: #f0f0f0;
+}
+
+.trigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	user-select: none;
+
+	&:focus {
+		outline: none;
+	}
+}
+
+.value {
+	font-size: 14px;
+	font-weight: 400;
+	color: #424347;
+}
+
+.placeholder {
+	font-size: 14px;
+	font-weight: 400;
+	color: #cdcfdb;
+	letter-spacing: 1px;
+}
+
+.arrow {
+	width: 0;
+	height: 0;
+	border-left: 5px solid transparent;
+	border-right: 5px solid transparent;
+	border-top: 5px solid $color-dark_gray;
+	transition: transform 0.2s ease;
+
+	&Open {
+		transform: rotate(180deg);
+	}
+}
+
+/* Настраиваемый выпадающий список */
+.dropdown {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	right: 0;
+	z-index: 50;
+	margin: 0;
+	padding: 8px 0;
+	list-style: none;
+	background-color: #ffffff;
+	border-radius: $border-radius;
+	border: 1px solid #e5e7eb; // Цвет границы
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.option {
+	padding: 10px 16px;
+	font-size: 14px;
+	font-weight: 400;
+	color: #424347;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+
+	&:hover {
+		background-color: #f3f4f6;
+	}
+
+	// &.selected {
+	//   font-weight: 600;
+	//   background-color: #e5e7eb;
+	// }
+}

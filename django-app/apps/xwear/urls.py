@@ -13,7 +13,11 @@ from .views import (
 urlpatterns = [
     path("slider/", slider_banner_list_view, name="slider-list"),
     path("categories/", category_tree_view, name="category_tree"),
+    # Товары конкретной категории
     path("categories/<int:pk>/products/", category_detail_view, name="category_detail"),
+    # Весь каталог (глобальный поиск и фильтрация)
+    path('products/', category_detail_view, name='all_products'),
+    # Детали товара
     path("products/<int:pk>/", product_detail_view, name="product_detail"),
     path(
         "products/<int:pk>/recommends/",

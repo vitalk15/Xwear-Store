@@ -14,8 +14,8 @@ class CartItemInline(NoDeleteAddMixin, admin.TabularInline):
 class CartAdmin(ReadOnlyAdminMixin, admin.ModelAdmin):
     inlines = [CartItemInline]
 
-    list_display = ("user", "total_price")
-    readonly_fields = ("user", "total_price")
+    list_display = ("user", "total_quantity", "total_price")
+    readonly_fields = ("user", "total_quantity", "total_price")
     search_fields = ("user__email",)
 
 
@@ -33,7 +33,7 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
     readonly_fields = (
-        "product",
+        "variant",
         "product_name",
         "size_name",
         "price_at_purchase",
@@ -56,7 +56,7 @@ class OrderAdminForm(forms.ModelForm):
                 filtered = [s for s in all_statuses if s[0] != "shipped"]
             else:
                 # Убираем "Готов к получению"
-                filtered = [s for s in all_statuses if s[0] != "ready_for_pickup"]
+                filtered = [s for s in all_statuses if s[0] != "ready"]
 
             self.fields["status"].choices = filtered
 
@@ -70,17 +70,26 @@ class OrderAdmin(NoDeleteAddMixin, admin.ModelAdmin):
         "id",
         "user",
         "delivery_method",
+        "payment_method",
         "status",
         "total_price",
         "created_at",
         "updated_at",
     )
-    list_editable = ["status"]
-    list_filter = ("delivery_method", "status", "city", "created_at", "updated_at")
+    # list_editable = ["status"]s
+    list_filter = (
+        "delivery_method",
+        "payment_method",
+        "status",
+        "city",
+        "created_at",
+        "updated_at",
+    )
     search_fields = ("user__email", "id")
     readonly_fields = (
         "user",
         "delivery_method",
+        "payment_method",
         "pickup_point",
         "city",
         "address_text",
@@ -93,7 +102,16 @@ class OrderAdmin(NoDeleteAddMixin, admin.ModelAdmin):
     fieldsets = (
         (
             "Основная информация",
-            {"fields": ("status", "delivery_method", "user", "created_at", "updated_at")},
+            {
+                "fields": (
+                    "status",
+                    "delivery_method",
+                    "payment_method",
+                    "user",
+                    "created_at",
+                    "updated_at",
+                )
+            },
         ),
         (
             "Локация",

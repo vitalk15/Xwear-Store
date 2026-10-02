@@ -8,25 +8,41 @@ class AddressInline(admin.TabularInline):
     model = Address
     extra = 0
     fields = ["city", "street", "house", "apartment", "is_default", "created_at"]
-    readonly_fields = ["created_at"]
+    readonly_fields = ["city", "street", "house", "apartment", "is_default", "created_at"]
 
 
 @admin.register(Profile)
 class ProfileAdmin(NoDeleteAddMixin, admin.ModelAdmin):
     inlines = [AddressInline]
 
-    list_display = ["user", "phone", "first_name", "last_name"]
-    search_fields = ["user__email", "phone"]
-    readonly_fields = ("user",)
+    list_display = ["user", "first_name", "last_name", "formatted_phone"]
+    search_fields = ["user__email", "formatted_phone"]
+    fields = ("user", "first_name", "last_name", "formatted_phone")
+    readonly_fields = ("user", "first_name", "last_name", "formatted_phone")
+
+    @admin.display(description="Номер телефона")
+    def formatted_phone(self, obj):
+        phone = obj.phone
+        if phone and len(phone) == 13:
+            return f"{phone[:4]} ({phone[4:6]}) {phone[6:9]}-{phone[9:11]}-{phone[11:]}"
+        return phone
 
 
-class ProfileInline(admin.StackedInline):
+class ProfileInline(admin.TabularInline):
     model = Profile
     can_delete = False  # Нельзя удалить профиль отдельно от юзера
-    fields = (("first_name", "last_name"), "phone")
+    fields = (("first_name", "last_name"), "formatted_phone")
+    readonly_fields = ("first_name", "last_name", "formatted_phone")
 
     verbose_name = "Персональные данные"
     verbose_name_plural = "Персональные данные"
+
+    @admin.display(description="Номер телефона")
+    def formatted_phone(self, obj):
+        phone = obj.phone
+        if phone and len(phone) == 13:
+            return f"{phone[:4]} ({phone[4:6]}) {phone[6:9]}-{phone[9:11]}-{phone[11:]}"
+        return phone
 
     class Media:
         # Прячем заголовок h3 внутри инлайна (появляется при StackedInline)
@@ -76,13 +92,22 @@ class UserAdmin(BaseUserAdmin):
         ),
     )
 
-    readonly_fields = ["last_login", "date_joined"]
+    readonly_fields = ["email", "last_login", "date_joined"]
     list_select_related = ["profile"]  # Оптимизация
     ordering = ("email",)  # BaseUserAdmin требует сортировку
 
     @admin.display(description="Телефон")
     def get_phone(self, obj):
-        return obj.profile.phone if hasattr(obj, "profile") else "-"
+        if hasattr(obj, "profile"):
+            phone = obj.profile.phone
+
+            if phone and len(phone) == 13:
+                return (
+                    f"{phone[:4]} ({phone[4:6]}) {phone[6:9]}-{phone[9:11]}-{phone[11:]}"
+                )
+            return phone
+        else:
+            return "-"
 
     # Запрещаем удалять пользователей, мы их деактивируем (is_active=False)
     # def has_delete_permission(self, request, obj=None):

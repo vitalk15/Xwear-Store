@@ -1,7 +1,8 @@
 # ВЫБОРКА И ФИЛЬТРАЦИЯ ДАННЫХ ДЛЯ КАТАЛОГА, РЕКОМЕНДАЦИИ
 
 import random
-from django.db.models import Prefetch, Min, Max, Q
+from django.contrib.postgres.search import SearchVector, SearchQuery
+from django.db.models import Prefetch, Min, Max, Q, Case, When, Value, CharField
 
 
 def prune_empty_categories(nodes):
@@ -34,7 +35,6 @@ def prune_empty_categories(nodes):
 
 # Собирает только доступные значения для сайдбара (бренды, размеры, диапазон цен, цвета)
 def get_category_sidebar_filters(categories, query_params):
-    # from ..models import ProductVariant, ProductSize, Brand, Color
     from ..models import ProductSize, Brand, Color
 
     # 1. Цены (Применяем все фильтры КРОМЕ цен)
@@ -66,44 +66,6 @@ def get_category_sidebar_filters(categories, query_params):
         .distinct()
     )
 
-    # # Базовый кверисет — только активные варианты активных базовых товаров
-    # sidebar_data_qs = ProductVariant.objects.filter(
-    #     product__category__in=categories, is_active=True, product__is_active=True
-    # )
-
-    # # 1. Цены, доступные в этой категории
-    # price_stats = sidebar_data_qs.aggregate(
-    #     min_p=Min("sizes__final_price", filter=Q(sizes__is_active=True)),
-    #     max_p=Max("sizes__final_price", filter=Q(sizes__is_active=True)),
-    # )
-
-    # # 2. Бренды, доступные в этой категории
-    # brands = Brand.objects.filter(
-    #     products__variants__is_active=True,
-    #     products__category__in=categories,
-    #     products__is_active=True,
-    # ).distinct()
-
-    # # 3. Размеры, доступные в этой категории
-    # sizes = (
-    #     ProductSize.objects.filter(
-    #         variant__product__category__in=categories,
-    #         variant__is_active=True,
-    #         variant__product__is_active=True,
-    #         is_active=True,
-    #     )
-    #     .values_list("size__name", flat=True)
-    #     .distinct()
-    #     # .order_by("size__name")
-    # )
-
-    # # 4. Цвета, доступные в этой категории
-    # colors = Color.objects.filter(
-    #     variants__product__category__in=categories,
-    #     variants__is_active=True,
-    #     variants__product__is_active=True,
-    # ).distinct()
-
     return {
         "brands": brands,
         "sizes": list(sizes),
@@ -127,6 +89,22 @@ def get_filtered_products(categories, query_params, exclude_group=None):
             # Находим минимальную цену среди размеров для этого товара
             annotated_min_final_price=Min(
                 "sizes__final_price", filter=Q(sizes__is_active=True)
+            ),
+            # Переводим системные ключи в русский текст для поиска
+            gender_ru=Case(
+                When(product__gender="M", then=Value("мужской мужская мужские мужчинам")),
+                When(product__gender="F", then=Value("женский женская женские женщинам")),
+                When(product__gender="U", then=Value("унисекс")),
+                default=Value(""),
+                output_field=CharField(),
+            ),
+            season_ru=Case(
+                When(product__season="WINTER", then=Value("зима зимнее зимняя зимние зимний")),
+                When(product__season="SUMMER", then=Value("лето летнее летняя летние летний")),
+                When(product__season="AUTUMN_SPRING", then=Value("демисезон осенние весенние")),
+                When(product__season="ALL_SEASON", then=Value("всесезонный всесезонные")),
+                default=Value(""),
+                output_field=CharField(),
             )
         )
         .select_related("product__brand", "product__category", "color")
@@ -145,6 +123,37 @@ def get_filtered_products(categories, query_params, exclude_group=None):
     )
 
     # -------------- ПРИМЕНЯЕМ ФИЛЬТРЫ (если группа не исключена) --------------
+
+    # --- ПОЛНОТЕКСТОВЫЙ ПОИСК POSTGRESQL ---
+    search_query = query_params.get("search")
+    if search_query:
+        search_query = search_query.strip()
+        if search_query:
+            # Создаем вектор поиска по всем нужным полям и указываем русский словарь
+            vector = SearchVector(
+                'product__model_name',
+                'product__brand__name',
+                'product__category__name',
+                'color__name',
+                "gender_ru",
+                "season_ru",
+                config='russian'
+            )
+            # Создаем поисковый запрос (Postgres сам разобьет его на слова и найдет корни)
+            # search_type='websearch' позволяет корректно обрабатывать фразы из нескольких слов
+            query = SearchQuery(search_query, config='russian', search_type="websearch")
+            
+            # Аннотируем queryset вектором и фильтруем по нему
+            # Объединяем полнотекстовый поиск и точный поиск по артикулу
+            # queryset = queryset.annotate(search=vector).filter(search=query).distinct()
+            queryset = (
+                queryset.annotate(search=vector)
+                .filter(
+                    Q(search=query) | Q(article__icontains=search_query)
+                )
+                .distinct()
+            )
+
     # 1. Современный подход через запятую (в URL: ?brands=nike,adidas)
     # Фильтр по брендам
     brands_param = query_params.get("brands")

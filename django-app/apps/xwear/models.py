@@ -166,7 +166,11 @@ class ProductSize(models.Model):
         return self.discount_percent > 0
 
     def __str__(self):
-        return ""
+        variant_name = self.variant.full_name
+        size_name = self.size.name
+
+        return f"{variant_name} - Размер: {size_name}"
+        # return ""
 
     class Meta:
         ordering = ["size"]
@@ -581,6 +585,7 @@ class Favorite(models.Model):
     class Meta:
         # Это гарантирует, что пользователь не сможет добавить один и тот же товар в избранное дважды
         unique_together = ("user", "variant")
+        ordering = ['-created_at']
         verbose_name = "Избранное"
         verbose_name_plural = "Избранное"
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Thumbs, FreeMode, Navigation, EffectFade } from 'swiper/modules'
-import StarIcon from '@/shared/icons/star.svg'
+import ButtonFavorite from '@/features/favorites/components/ButtonFavorite'
 import placeholderProduct from '@/assets/images/placeholder-product.webp'
 
 // Импорт базовых стилей Swiper
@@ -15,8 +15,9 @@ import styles from './ProductGallery.module.scss'
 /**
  * Галерея изображений товара со слайдером, миниатюрами и модальным окном
  * @param {Array} images - Массив объектов изображений из product.images
+ * @param {string|number} variantId - ID текущего/выбранного варианта товара
  */
-const ProductGallery = ({ images = [] }) => {
+const ProductGallery = ({ images = [], targetId }) => {
 	// Состояние для связки основного слайдера и слайдера миниатюр
 	const [thumbsSwiper, setThumbsSwiper] = useState(null)
 
@@ -40,13 +41,6 @@ const ProductGallery = ({ images = [] }) => {
 		}
 	}, [activeOriginalImage])
 
-	// Обработка клика на звёздочку
-	const handleFavoriteClick = (e) => {
-		e.stopPropagation() // Чтобы не срабатывал клик по открытию картинки
-		// !!! TODO: Добавить/удалить из избранного (Zustand/API)
-		console.log('Избранное переключено')
-	}
-
 	// Если изображения товара будут отсутствовать
 	if (!images || images.length === 0) {
 		return (
@@ -59,15 +53,7 @@ const ProductGallery = ({ images = [] }) => {
 							className={styles.mainImage}
 						/>
 					</div>
-					{/* Оставляем иконку избранного даже без фото */}
-					<button
-						type="button"
-						className={styles.favoriteBtn}
-						onClick={handleFavoriteClick}
-						aria-label="Добавить в избранное"
-					>
-						<StarIcon className={styles.starIcon} />
-					</button>
+					<ButtonFavorite targetId={targetId} className={styles.favoriteBtn} />
 				</div>
 			</div>
 		)
@@ -105,15 +91,7 @@ const ProductGallery = ({ images = [] }) => {
 					))}
 				</Swiper>
 
-				{/* Иконка «Избранное» в правом верхнем углу */}
-				<button
-					type="button"
-					className={styles.favoriteBtn}
-					onClick={handleFavoriteClick}
-					aria-label="Добавить в избранное"
-				>
-					<StarIcon className={styles.starIcon} />
-				</button>
+				<ButtonFavorite targetId={targetId} className={styles.favoriteBtn} />
 			</div>
 
 			{/* 2. СЛАЙДЕР МИНИАТЮР (Маленькие фото) */}

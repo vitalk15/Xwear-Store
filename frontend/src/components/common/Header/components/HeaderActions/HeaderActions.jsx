@@ -1,28 +1,62 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import SearchIcon from '@/shared/icons/search.svg'
 import StarIcon from '@/shared/icons/star.svg'
 import UserIcon from '@/shared/icons/user.svg'
 import BagIcon from '@/shared/icons/bag.svg'
 import { formatPriceBy } from '@/shared/utils/formatPriceBy'
+import AuthModal from '@/features/auth/components/AuthModal'
+import useAuthStore from '@/features/auth/store/useAuthStore'
+import { useCartQuery } from '@/features/cart/hooks/useCart'
+import { paths } from '@/routes/paths'
 import styles from './HeaderActions.module.scss'
 
 // Принимаем пропсы из Header
 const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
-	// Todo: После подключим Zustand Store для авторизации и корзины
-	// Имитация состояния авторизации (потом заменим на Zustand useAuthStore)
-	const isAuthenticated = true
-	// Имитация данных корзины (потом заменим на Zustand useCartStore)
-	const cartTotalItems = 5
-	const cartTotalPrice = formatPriceBy(1250)
+	// Состояние для модального окна авторизации
+	const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
+	// Достаем состояние авторизации
+	const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+
+	/* КОРЗИНА */
+	// Получаем данные корзины
+	const { data: cartData } = useCartQuery(isAuthenticated)
+
+	// Считаем общее количество единиц товаров
+	const cartTotalItems =
+		cartData?.items?.reduce((total, item) => total + item.quantity, 0) || 0
+
+	// Форматируем цену (если total_price нет, выводим 0)
+	const cartTotalPrice = cartData?.total_price ? formatPriceBy(cartData.total_price) : ''
+
+	/* ПОИСК */
 	// Ссылки для управления фокусом поля поиска и кликом вне области
 	const searchWrapperRef = useRef(null)
 	const inputRef = useRef(null)
+	const navigate = useNavigate() // Инициализируем навигацию
 
 	// Обработчик клика по лупе
 	const handleSearchToggle = (e) => {
 		e.preventDefault()
 		setIsSearchOpen(!isSearchOpen)
+	}
+
+	// Обработчик нажатия клавиш
+	const handleKeyDown = (e) => {
+		if (e.key === 'Enter') {
+			const query = inputRef.current.value.trim()
+
+			if (query) {
+				// Переходим на страницу каталога, передавая текст в URL
+				navigate(`/catalog?search=${encodeURIComponent(query)}`)
+
+				// Закрываем поиск и очищаем поле после перехода
+				setIsSearchOpen(false)
+				inputRef.current.value = ''
+				inputRef.current.blur()
+			}
+		}
 	}
 
 	// Управление фокусом поля поиска и очисткой
@@ -59,61 +93,87 @@ const HeaderActions = ({ isSearchOpen, setIsSearchOpen }) => {
 		return () => document.removeEventListener('mousedown', handleClickOutside)
 	}, [isSearchOpen, setIsSearchOpen])
 
-	return (
-		<ul className={styles.actionsList}>
-			<li className={styles.searchWrapper} ref={searchWrapperRef}>
-				<input
-					ref={inputRef}
-					type="text"
-					className={`${styles.searchInput} ${isSearchOpen ? styles.searchInputOpen : ''}`}
-					placeholder="Поиск по каталогу товаров"
-				/>
-				<button
-					className={`${styles.actionBtn} ${isSearchOpen ? styles.actionBtnActive : ''}`}
-					aria-label="Открыть поиск"
-					onClick={handleSearchToggle}
-				>
-					<SearchIcon />
-				</button>
-			</li>
+	// Обработчик открытия модалки авторизации
+	// const handleOpenAuth = () => {
+	// 	setIsAuthModalOpen(true)
+	// }
 
-			{isAuthenticated ? (
-				// Авторизованный пользователь
-				<>
+	return (
+		<>
+			<ul className={styles.actionsList}>
+				<li className={styles.searchWrapper} ref={searchWrapperRef}>
+					<input
+						ref={inputRef}
+						type="text"
+						className={`${styles.searchInput} ${isSearchOpen ? styles.searchInputOpen : ''}`}
+						placeholder="Поиск по каталогу товаров"
+						onKeyDown={handleKeyDown}
+					/>
+					<button
+						className={`${styles.actionBtn} ${isSearchOpen ? styles.actionBtnActive : ''}`}
+						aria-label="Открыть поиск"
+						onClick={handleSearchToggle}
+					>
+						<SearchIcon />
+					</button>
+				</li>
+
+				{isAuthenticated ? (
+					// Авторизованный пользователь
+					<>
+						<li>
+							<button
+								className={styles.actionBtn}
+								aria-label="Избранное"
+								onClick={() => navigate(paths.favorites)}
+							>
+								<StarIcon className={styles.starIcon} />
+							</button>
+						</li>
+						<li>
+							{/* Если авторизован - переходим в профиль */}
+							<button
+								className={styles.actionBtn}
+								aria-label="Профиль"
+								onClick={() => navigate(paths.profile)}
+							>
+								<UserIcon />
+							</button>
+						</li>
+						<li>
+							<button
+								className={`${styles.actionBtn} ${styles.cartBtn}`}
+								aria-label="Корзина"
+								onClick={() => navigate(paths.cart)}
+							>
+								<BagIcon />
+								<div className={styles.cartInfo}>
+									<span className={styles.cartPrice}>{cartTotalPrice}</span>
+									<span className={styles.cartBadge}>
+										<span>{cartTotalItems}</span>
+									</span>
+								</div>
+							</button>
+						</li>
+					</>
+				) : (
+					// НЕ авторизованный пользователь
 					<li>
-						<button className={styles.actionBtn} aria-label="Избранное">
-							<StarIcon className={styles.starIcon} />
-						</button>
-					</li>
-					<li>
-						<button className={styles.actionBtn} aria-label="Профиль">
+						{/* Если не авторизован - открываем модалку авторизации */}
+						<button
+							className={styles.actionBtn}
+							onClick={() => setIsAuthModalOpen(true)}
+							aria-label="Войти"
+						>
 							<UserIcon />
 						</button>
 					</li>
-					<li>
-						<button
-							className={`${styles.actionBtn} ${styles.cartBtn}`}
-							aria-label="Корзина"
-						>
-							<BagIcon />
-							<div className={styles.cartInfo}>
-								<span className={styles.cartPrice}>{cartTotalPrice}</span>
-								<span className={styles.cartBadge}>
-									<span>{cartTotalItems}</span>
-								</span>
-							</div>
-						</button>
-					</li>
-				</>
-			) : (
-				// НЕ авторизованный пользователь
-				<li>
-					<button className={styles.actionBtn} aria-label="Войти">
-						<UserIcon />
-					</button>
-				</li>
-			)}
-		</ul>
+				)}
+			</ul>
+
+			{/* Рендерим модальное окно авторизации, оно открывается только если isAuthModalOpen === true */}
+			<AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+		</>
 	)
 }
 

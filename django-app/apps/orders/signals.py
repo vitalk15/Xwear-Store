@@ -6,7 +6,6 @@ from core.utils import send_custom_email
 from .utils import get_order_email_context
 from .models import Cart, Order
 
-
 # # сигнал для автоматического создания корзины пользователя при его создании
 # @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 # def create_user_cart(sender, instance, created, **kwargs):
@@ -46,10 +45,7 @@ def order_status_changed(sender, instance, created, **kwargs):
                     context=context,
                     to_email=instance.user.email,
                 )
-            elif (
-                instance.status == "ready_for_pickup"
-                and instance.delivery_method == "pickup"
-            ):
+            elif instance.status == "ready" and instance.delivery_method == "pickup":
                 send_custom_email(
                     subject=f"Заказ №{instance.id} готов к выдаче",
                     template_name="orders/emails/order_ready.html",

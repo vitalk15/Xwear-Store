@@ -1,0 +1,60 @@
+import apiClient from '@/shared/api/apiClient'
+
+export const profileApi = {
+	// Получение данных профиля
+	getProfile: async () => {
+		const response = await apiClient.get('/auth/profile/')
+		return response.data
+	},
+
+	// Обновление данных профиля
+	updateProfile: async (data) => {
+		const profilePayload = {}
+
+		if ('first_name' in data) profilePayload.first_name = data.first_name
+		if ('last_name' in data) profilePayload.last_name = data.last_name
+		if ('phone' in data) {
+			profilePayload.phone = data.phone ? data.phone.replace(/[\s()-]/g, '') : ''
+		}
+
+		const response = await apiClient.patch('/auth/profile/', {
+			profile: profilePayload,
+		})
+		return response.data
+	},
+
+	// Получение списка городов, доступных для доставки
+	getCities: async () => {
+		const response = await apiClient.get('/core/cities/')
+		return response.data
+	},
+
+	// Добавление нового адреса пользователя
+	createAddress: async (addressData) => {
+		const response = await apiClient.post('/auth/addresses/', {
+			city_id: addressData.city_id,
+			street: addressData.street,
+			house: addressData.house,
+			apartment: addressData.apartment || null,
+		})
+		return response.data
+	},
+
+	// Частичное обновление адреса (для выбора default или редактирования полей)
+	updateAddress: async ({ id, ...data }) => {
+		const response = await apiClient.patch(`/auth/addresses/${id}/`, data)
+		return response.data
+	},
+
+	// Удаление адреса
+	deleteAddress: async (id) => {
+		const response = await apiClient.delete(`/auth/addresses/${id}/`)
+		return response.data
+	},
+
+	// Смена пароля
+	changePassword: async (data) => {
+		const response = await apiClient.post('/auth/change-password/', data)
+		return response.data
+	},
+}

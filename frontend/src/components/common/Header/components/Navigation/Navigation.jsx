@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useCategories } from '@/entities/category/hooks/useCategories'
-// import { ChevronDownIcon } from '@/components/common/Header/Icons'
 import ChevronDownIcon from '@/shared/icons/arrow-down.svg'
 import { STATIC_INFO_MENU } from '@/shared/constants/info-menu'
 import { getLinkPath } from '@/shared/utils/getLinkPath'

@@ -1,9 +1,8 @@
 from rest_framework import serializers
 from xwear.utils import get_thumbnail_data
-from xwear.models import Product, ProductSize
+from xwear.models import ProductVariant, ProductSize
 from core.serializers import CitySerializer
 from .models import Cart, CartItem, Order, OrderItem, PickupPoint
-
 
 # --- КОРЗИНА ---
 
@@ -12,10 +11,11 @@ class ProductCartSerializer(serializers.ModelSerializer):
     # Данные о самом товаре для корзины
 
     main_image = serializers.SerializerMethodField()
+    naming = serializers.SerializerMethodField()
 
     class Meta:
-        model = Product
-        fields = ["id", "name", "slug", "main_image"]
+        model = ProductVariant
+        fields = ["id", "slug", "main_image", "naming"]
 
     def get_main_image(self, obj):
         img_obj = obj.get_main_image_obj
@@ -30,6 +30,10 @@ class ProductCartSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def get_naming(self, obj):
+
+        return {"full_title": obj.full_name}
+
 
 class CartItemSerializer(serializers.ModelSerializer):
     # Для проверки входящих ID (поле используется только для POST и PATCH запросов - write_only=True)
@@ -37,7 +41,7 @@ class CartItemSerializer(serializers.ModelSerializer):
         queryset=ProductSize.objects.all(), write_only=True
     )
     # Данные о товаре (имя, фото)
-    product_info = ProductCartSerializer(source="product_size.product", read_only=True)
+    product_info = ProductCartSerializer(source="product_size.variant", read_only=True)
     # Данные о размере
     size_name = serializers.CharField(source="product_size.size.name", read_only=True)
     # Цена за одну единицу (уже со скидкой)
@@ -61,16 +65,21 @@ class CartItemSerializer(serializers.ModelSerializer):
     # Проверяем, активен ли товар и есть ли он в наличии
     def validate_product_size(self, value):
         # value — это объект ProductSize, так как PrimaryKeyRelatedField его уже нашел
-        product = value.product
+        # 1. Проверяем сам размер
+        if not value.is_active:
+            raise serializers.ValidationError("Выбранный размер недоступен.")
 
-        if not product.is_active:
-            raise serializers.ValidationError(
-                "Этот товар временно недоступен для заказа."
-            )
+        # 2. Проверяем вариант товара (цвет)
+        if not value.variant.is_active:
+            raise serializers.ValidationError("Данный вариант товара сейчас недоступен.")
 
-        # Для поля остатка в ProductSize
+        # 3. Проверяем базовый товар
+        if not value.variant.product.is_active:
+            raise serializers.ValidationError("Базовый товар недоступен.")
+
+        # Опционально: можно добавить проверку остатков, если используется stock в ProductSize
         # if value.stock <= 0:
-        #     raise serializers.ValidationError("Данного размера нет в наличии.")
+        #     raise serializers.ValidationError("Товара нет в наличии.")
 
         return value
 
@@ -123,13 +132,13 @@ class PickupPointSerializer(serializers.ModelSerializer):
 class OrderItemSerializer(serializers.ModelSerializer):
     # Если товар еще существует, можем показать его актуальное фото
     # Если удален — product_info будет None, но product_name останется!
-    product_info = ProductCartSerializer(source="product", read_only=True)
+    product_info = ProductCartSerializer(source="variant", read_only=True)
 
     class Meta:
         model = OrderItem
         fields = [
             "id",
-            "product",
+            "variant",
             "product_info",
             "product_name",
             "size_name",
@@ -145,6 +154,9 @@ class OrderSerializer(serializers.ModelSerializer):
     delivery_method_display = serializers.CharField(
         source="get_delivery_method_display", read_only=True
     )
+    payment_method_display = serializers.CharField(
+        source="get_payment_method_display", read_only=True
+    )
 
     class Meta:
         model = Order
@@ -153,7 +165,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "status",
             "status_display",
             "delivery_method",
-            "delivery_method_display",
+            "delivery_method_display",  # Добавляем читаемое название
+            "payment_method",
+            "payment_method_display",  # Добавляем читаемое название
             "city",
             "city_details",
             "address_text",

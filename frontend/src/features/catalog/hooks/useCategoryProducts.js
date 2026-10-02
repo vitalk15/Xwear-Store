@@ -1,12 +1,13 @@
-import { useSuspenseQuery, skipToken } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { fetchCategoryProducts } from '../api/productApi'
 
+// хук для списка товаров категории
 export const useCategoryProducts = (categoryId, params = {}) => {
 	return useSuspenseQuery({
 		queryKey: ['categoryProducts', categoryId, params],
-		// Если categoryId есть — делаем запрос. Если нет — передаем skipToken,
-		// чтобы хук "подождал" и не делал ошибочный запрос к бэкенду.
-		queryFn: categoryId ? () => fetchCategoryProducts(categoryId, params) : skipToken,
+
+		// Если categoryId === null, API-функция сама сделает запрос на глобальный эндпоинт /shop/products/
+		queryFn: () => fetchCategoryProducts(categoryId, params),
 		// Кэшируем на 5 минут
 		staleTime: 5 * 60 * 1000,
 	})

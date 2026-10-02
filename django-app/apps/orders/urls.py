@@ -8,8 +8,8 @@ urlpatterns = [
     path("cart/item/<int:pk>/", views.cart_update_item, name="cart-update"),
     path("cart/item/<int:pk>/delete/", views.cart_remove_item, name="cart-delete"),
     # Заказы
-    path("orders/checkout/", views.order_create, name="order-checkout"),
-    path("orders/", views.order_list, name="order-list"),
+    path("checkout/", views.order_create, name="order-checkout"),
+    path("list/", views.order_list, name="order-list"),
     # Список ПВЗ
     path("pickup-points/", views.pickup_point_list, name="pickup-point-list"),
 ]

@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.db import transaction
 from django.db.models import Prefetch
 from django.utils.http import urlsafe_base64_decode
@@ -38,6 +39,7 @@ User = get_user_model()
 # переопределяем так как нужно установить Refresh-токен в HttpOnly куку
 class CustomTokenObtainView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
+        # 1. Получаем стандартный ответ с токенами
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             refresh_token = response.data.get("refresh")
@@ -45,6 +47,18 @@ class CustomTokenObtainView(TokenObtainPairView):
             set_refresh_cookie(response, refresh_token)
             # Удаляем refresh из JSON-ответа
             del response.data["refresh"]
+
+            # 2. Достаем пользователя из валидированных данных и добавляем в ответ
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.user
+            
+            # 3. Формируем объект user, как ожидает фронтенд
+            response.data["user"] = {
+                "id": user.id,
+                "email": user.email,
+            }
+            
         return response
 
 
@@ -52,16 +66,32 @@ class CustomTokenObtainView(TokenObtainPairView):
 # переопределяем так как Refresh-токен установлен в HttpOnly куку, фронтенд не сможет достать его и отправить в теле запроса.
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
-        # Достаем токен из куки, если его нет в body
+        # 1. Достаем токен из куки
         refresh_token = request.COOKIES.get("refresh_token")
+
+        # 2. Создаем независимый словарь с данными (чтобы избежать проблем с неизменяемостью request.data в DRF)
+        data = dict(request.data) 
+        
+        # 3. Если кука пришла — кладем ее в словарь под нужным ключом
         if refresh_token:
-            request.data["refresh"] = refresh_token
+            data["refresh"] = refresh_token
 
-        response = super().post(request, *args, **kwargs)
+        # 4. Инициализируем сериализатор нашими данными
+        serializer = self.get_serializer(data=data)
 
-        # Если включена ротация (ROTATE_REFRESH_TOKENS: True)
-        if response.status_code == 200 and "refresh" in response.data:
-            set_refresh_cookie(response, response.data["refresh"])
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        # 5. Формируем успешный ответ
+        response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+
+        # 6. Если бэкенд возвращает новый refresh-токен (включена ротация) — обновляем куку
+        if "refresh" in serializer.validated_data:
+            # Вызываем функцию установки куки
+            set_refresh_cookie(response, serializer.validated_data["refresh"])
+            # Удаляем refresh-токен из JSON-тела ответа для безопасности
             del response.data["refresh"]
 
         return response

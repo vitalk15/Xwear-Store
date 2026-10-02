@@ -1,7 +1,9 @@
+import requests
+from django.contrib import admin
 from django.db import models
 from django.conf import settings
-from xwear.models import Product, ProductSize
 
+from xwear.models import ProductVariant, ProductSize
 
 # --- Корзина ---
 
@@ -15,16 +17,22 @@ class Cart(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
 
-    class Meta:
-        verbose_name = "Корзина"
-        verbose_name_plural = "Корзины"
-
     def __str__(self):
         return f"Корзина {self.user.email}"
 
     @property
+    @admin.display(description="Итоговая стоимость")
     def total_price(self):
         return sum(item.total_item_price for item in self.items.all())
+
+    @property
+    @admin.display(description="Всего товаров")
+    def total_quantity(self):
+        return sum(item.quantity for item in self.items.all())
+
+    class Meta:
+        verbose_name = "Корзина"
+        verbose_name_plural = "Корзины"
 
 
 class CartItem(models.Model):
@@ -36,16 +44,21 @@ class CartItem(models.Model):
     )
     quantity = models.PositiveIntegerField(default=1, verbose_name="Количество")
 
+    def __str__(self):
+        # variant_name = self.product_size.variant.full_name
+        # size_name = self.product_size.size.name
+
+        # return f"{variant_name} - Размер: {size_name}"
+        return ""
+
+    @property
+    @admin.display(description="Стоимость")
+    def total_item_price(self):
+        return self.product_size.final_price * self.quantity
+
     class Meta:
         verbose_name = "Товар в корзине"
         verbose_name_plural = "Товары в корзине"
-
-    def __str__(self):
-        return f"{self.product_size.product.full_name} ({self.product_size.size.name}) x {self.quantity}"
-
-    @property
-    def total_item_price(self):
-        return self.product_size.final_price * self.quantity
 
 
 # --- Адреса ПВЗ ---
@@ -77,12 +90,47 @@ class PickupPoint(models.Model):
 
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
-    class Meta:
-        verbose_name = "Пункт выдачи"
-        verbose_name_plural = "Пункты выдачи"
+    def save(self, *args, **kwargs):
+        # Если координаты не введены вручную
+        if not self.lat or not self.lon:
+            try:
+                full_address = f"{self.city.name}, {self.address}"
+
+                url = "https://geocode-maps.yandex.ru/1.x/"
+                params = {
+                    "apikey": settings.API_KEY_GEOKODER_YANDEX,
+                    "geocode": full_address,
+                    "format": "json",
+                }
+
+                response = requests.get(url, params=params, timeout=5)
+                data = response.json()
+
+                # Извлекаем найденные объекты
+                feature_member = (
+                    data.get("response", {})
+                    .get("GeoObjectCollection", {})
+                    .get("featureMember", [])
+                )
+
+                if feature_member:
+                    # Строка координат вида "37.617635 55.755814" (долгота широта)
+                    pos = feature_member[0]["GeoObject"]["Point"]["pos"]
+                    lon_str, lat_str = pos.split(" ")
+
+                    self.lon = float(lon_str)
+                    self.lat = float(lat_str)
+            except Exception as e:
+                print(f"Ошибка геокодирования Яндекса: {e}")
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.city}, {self.address}"
+
+    class Meta:
+        verbose_name = "Пункт выдачи"
+        verbose_name_plural = "Пункты выдачи"
 
 
 # --- Заказы ---
@@ -94,9 +142,14 @@ class Order(models.Model):
         ("delivery", "Доставка"),
     ]
 
+    PAYMENT_METHODS = [
+        ("online", "Онлайн картой"),
+        ("upon_receipt", "При получении"),
+    ]
+
     STATUS_CHOICES = [
         ("processing", "В обработке"),
-        ("paid", "Оплачен"),  # не используется (возможно понадобится позже)
+        # ("paid", "Оплачен"),  # (возможно понадобится позже)
         ("ready", "Готов к получению"),  # только Самовывоз
         ("shipped", "Отправлен"),  # только Доставка
         ("completed", "Завершен"),
@@ -114,6 +167,12 @@ class Order(models.Model):
         choices=DELIVERY_METHODS,
         default="pickup",
         verbose_name="Способ получения",
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHODS,
+        default="online",
+        verbose_name="Способ оплаты",
     )
     pickup_point = models.ForeignKey(
         PickupPoint,
@@ -150,10 +209,13 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 
-    class Meta:
-        verbose_name = "Заказ"
-        verbose_name_plural = "Заказы"
-        ordering = ["-created_at"]
+    @property
+    def total_quantity(self):
+        return sum(item.quantity for item in self.items.all())
+
+    @property
+    def items_total_price(self):
+        return sum(item.total_price for item in self.items.all())
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -170,6 +232,11 @@ class Order(models.Model):
     def __str__(self):
         return f"Заказ #{self.id} ({self.user.email})"
 
+    class Meta:
+        verbose_name = "Заказ"
+        verbose_name_plural = "Заказы"
+        ordering = ["-created_at"]
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(
@@ -178,11 +245,11 @@ class OrderItem(models.Model):
         related_name="items",
         verbose_name="Заказ",
     )
-    product = models.ForeignKey(
-        Product,
+    variant = models.ForeignKey(
+        ProductVariant,
         on_delete=models.SET_NULL,
         null=True,
-        verbose_name="Товар",
+        verbose_name="Вариант товара",
     )
 
     # Снимки данных на момент покупки
@@ -195,9 +262,14 @@ class OrderItem(models.Model):
     )
     quantity = models.PositiveIntegerField(default=1, verbose_name="Количество")
 
+    @property
+    def total_price(self):
+        return self.price_at_purchase * self.quantity
+
+    def __str__(self):
+        # return f"{self.product_name} (x{self.quantity}) для заказа #{self.order.id}"
+        return ""
+
     class Meta:
         verbose_name = "Товар в заказе"
         verbose_name_plural = "Товары в заказе"
-
-    def __str__(self):
-        return f"{self.product_name} (x{self.quantity}) для заказа #{self.order.id}"

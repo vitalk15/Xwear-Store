@@ -1,0 +1,51 @@
+/* 1. "обнуляет" базовый Modal и убирает появляющийся скроллбар (overflow: visible) */
+.transparentModalOverride {
+	background: transparent !important;
+	box-shadow: none !important;
+	padding: 0 !important;
+	overflow: visible !important;
+}
+
+/* 3D Контейнер и Анимация */
+.flipContainer {
+	perspective: 1000px; /* Задает глубину 3D-пространства */
+	width: 100%;
+}
+
+.flipper {
+	width: 100%;
+	position: relative;
+	transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+	transform-style: preserve-3d;
+	/* Хак для динамической высоты без JS: */
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-rows: 1fr;
+}
+
+/* Применяется при переключении на форму обратной стороны */
+.isFlipped {
+	transform: rotateY(180deg);
+}
+
+/* Общие стили для обеих сторон */
+.front,
+.back {
+	position: relative;
+	/* Помещаем обе стороны в одну ячейку Grid */
+	// Это позволяет контейнеру автоматически подстраивать высоту под самую высокую форму (регистрацию)
+	grid-area: 1 / 1 / 2 / 2;
+	backface-visibility: hidden; /* Скрываем нелицевую сторону при повороте */
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	background-color: #fff;
+	border-radius: $border-radius;
+	padding: 35px 40px;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* Задняя сторона (Регистрация) перевернута изначально */
+.back {
+	transform: rotateY(180deg);
+}
