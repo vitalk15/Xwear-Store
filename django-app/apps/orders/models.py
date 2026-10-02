@@ -1,6 +1,8 @@
+import requests
 from django.contrib import admin
 from django.db import models
 from django.conf import settings
+
 from xwear.models import ProductVariant, ProductSize
 
 # --- Корзина ---
@@ -15,10 +17,6 @@ class Cart(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
 
-    class Meta:
-        verbose_name = "Корзина"
-        verbose_name_plural = "Корзины"
-
     def __str__(self):
         return f"Корзина {self.user.email}"
 
@@ -32,6 +30,10 @@ class Cart(models.Model):
     def total_quantity(self):
         return sum(item.quantity for item in self.items.all())
 
+    class Meta:
+        verbose_name = "Корзина"
+        verbose_name_plural = "Корзины"
+
 
 class CartItem(models.Model):
     cart = models.ForeignKey(
@@ -41,10 +43,6 @@ class CartItem(models.Model):
         ProductSize, on_delete=models.CASCADE, verbose_name="Товар и размер"
     )
     quantity = models.PositiveIntegerField(default=1, verbose_name="Количество")
-
-    class Meta:
-        verbose_name = "Товар в корзине"
-        verbose_name_plural = "Товары в корзине"
 
     def __str__(self):
         # variant_name = self.product_size.variant.full_name
@@ -57,6 +55,10 @@ class CartItem(models.Model):
     @admin.display(description="Стоимость")
     def total_item_price(self):
         return self.product_size.final_price * self.quantity
+
+    class Meta:
+        verbose_name = "Товар в корзине"
+        verbose_name_plural = "Товары в корзине"
 
 
 # --- Адреса ПВЗ ---
@@ -88,12 +90,47 @@ class PickupPoint(models.Model):
 
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
-    class Meta:
-        verbose_name = "Пункт выдачи"
-        verbose_name_plural = "Пункты выдачи"
+    def save(self, *args, **kwargs):
+        # Если координаты не введены вручную
+        if not self.lat or not self.lon:
+            try:
+                full_address = f"{self.city.name}, {self.address}"
+
+                url = "https://geocode-maps.yandex.ru/1.x/"
+                params = {
+                    "apikey": settings.API_KEY_GEOKODER_YANDEX,
+                    "geocode": full_address,
+                    "format": "json",
+                }
+
+                response = requests.get(url, params=params, timeout=5)
+                data = response.json()
+
+                # Извлекаем найденные объекты
+                feature_member = (
+                    data.get("response", {})
+                    .get("GeoObjectCollection", {})
+                    .get("featureMember", [])
+                )
+
+                if feature_member:
+                    # Строка координат вида "37.617635 55.755814" (долгота широта)
+                    pos = feature_member[0]["GeoObject"]["Point"]["pos"]
+                    lon_str, lat_str = pos.split(" ")
+
+                    self.lon = float(lon_str)
+                    self.lat = float(lat_str)
+            except Exception as e:
+                print(f"Ошибка геокодирования Яндекса: {e}")
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.city}, {self.address}"
+
+    class Meta:
+        verbose_name = "Пункт выдачи"
+        verbose_name_plural = "Пункты выдачи"
 
 
 # --- Заказы ---
@@ -180,11 +217,6 @@ class Order(models.Model):
     def items_total_price(self):
         return sum(item.total_price for item in self.items.all())
 
-    class Meta:
-        verbose_name = "Заказ"
-        verbose_name_plural = "Заказы"
-        ordering = ["-created_at"]
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Запоминаем статус, который был в базе
@@ -199,6 +231,11 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Заказ #{self.id} ({self.user.email})"
+
+    class Meta:
+        verbose_name = "Заказ"
+        verbose_name_plural = "Заказы"
+        ordering = ["-created_at"]
 
 
 class OrderItem(models.Model):
@@ -229,10 +266,10 @@ class OrderItem(models.Model):
     def total_price(self):
         return self.price_at_purchase * self.quantity
 
-    class Meta:
-        verbose_name = "Товар в заказе"
-        verbose_name_plural = "Товары в заказе"
-
     def __str__(self):
         # return f"{self.product_name} (x{self.quantity}) для заказа #{self.order.id}"
         return ""
+
+    class Meta:
+        verbose_name = "Товар в заказе"
+        verbose_name_plural = "Товары в заказе"

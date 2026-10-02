@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'django.contrib.postgres',  # для полнотекстового поиска
+    "django.contrib.postgres",  # для полнотекстового поиска
     "core.apps.CoreConfig",
     "xwear.apps.XwearConfig",
     "accounts.apps.AccountsConfig",
@@ -484,6 +484,11 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 # EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@xwear.by")
+
+
+# Api-ключ Геокодера Яндекса
+# ---------------------
+API_KEY_GEOKODER_YANDEX = config("API_KEY_GEOKODER_YANDEX")
 
 
 # Security (production)
