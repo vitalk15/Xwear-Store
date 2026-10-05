@@ -1,8 +1,8 @@
 # Интернет-магазин одежды XWEAR
 
 ### Стек технологий 
-Бэкенд: Python 3.11, Django 5, DRF, PostgreSQL, env\
-Фронтенд (в процессе разработки): React 19, Vite, TanStack Query, Axios, Zustand, SASS/SCSS, PostCSS.
+Бэкенд: Python 3.11, Django 5, DRF, PostgreSQL, JWT-аутентификация
+Фронтенд: Vite, React 19, TanStack Query, Zustand, Axios, React Router, React Error Boundary, React Yandex Maps, Zod, React Hook Form, Swiper, Framer Motion, SASS/SCSS, PostCSS.
 
 ### Реализовано на бэкенде:
 - Регистрация пользователей по email и паролю с подтверждением почты. Реализована возможность сброса забытого пароля с использованием зарегистрированной почты пользователя.
